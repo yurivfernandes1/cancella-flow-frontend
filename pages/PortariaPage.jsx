@@ -72,10 +72,10 @@ function PortariaPage() {
         const response = await api.get(`/cadastros/encomendas/?page=${page}&search=${search}`);
         if (response.data.results !== undefined) {
           // Mapear unidade_identificacao para unidade_info
-          const mappedData = response.data.results.map(item => ({
-            ...item,
-            unidade_info: item.unidade_identificacao || '-'
-          }));
+          // Mostrar apenas encomendas que ainda não foram retiradas (retirado_em null/undefined)
+          const mappedData = response.data.results
+            .map(item => ({ ...item, unidade_info: item.unidade_identificacao || '-' }))
+            .filter(item => !item.retirado_em);
           setTableData(prev => ({ ...prev, encomendas: mappedData }));
           setTotalPages(prev => ({
             ...prev,
@@ -83,10 +83,9 @@ function PortariaPage() {
           }));
         } else {
           // Mapear unidade_identificacao para unidade_info
-          const mappedData = response.data.map(item => ({
-            ...item,
-            unidade_info: item.unidade_identificacao || '-'
-          }));
+          const mappedData = response.data
+            .map(item => ({ ...item, unidade_info: item.unidade_identificacao || '-' }))
+            .filter(item => !item.retirado_em);
           setTableData(prev => ({ ...prev, encomendas: mappedData }));
           setTotalPages(prev => ({ ...prev, encomendas: 1 }));
         }
@@ -353,7 +352,7 @@ function PortariaPage() {
       key: 'data_entrada',
       label: 'Data de Entrada',
       width: '180px',
-      editable: true,
+      editable: false,
       type: 'datetime-local',
       render: (value) => formatDateTime(value)
     },
@@ -361,7 +360,7 @@ function PortariaPage() {
       key: 'data_saida',
       label: 'Data de Saída',
       width: '180px',
-      editable: true,
+      editable: false,
       type: 'datetime-local',
       render: (value) => formatDateTime(value)
     },
@@ -384,45 +383,7 @@ function PortariaPage() {
         return 'No condomínio';
       }
     },
-    {
-      key: 'actions',
-      label: 'Ações',
-      width: '150px',
-      render: (_, row) => {
-        if (editingRowId === row.id) {
-          return (
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button
-                onClick={() => handleSaveVisitante(row.id, currentEditData)}
-                className="action-button save-button"
-                title="Salvar"
-              >
-                <FaCheck />
-              </button>
-              <button
-                onClick={() => setEditingRowId(null)}
-                className="action-button cancel-button"
-                title="Cancelar"
-              >
-                <FaTimes />
-              </button>
-            </div>
-          );
-        }
-        return (
-          <button
-            onClick={() => {
-              handleEditRow(row.id);
-              setCurrentEditData(row);
-            }}
-            className="action-button edit-button"
-            title="Editar datas"
-          >
-            <FaEdit />
-          </button>
-        );
-      }
-    }
+    // Portaria não pode editar visitantes aqui — sem ações
   ];
 
   // Colunas para Veículos (apenas visualização)
@@ -618,11 +579,15 @@ function PortariaPage() {
                 totalPages={totalPages.encomendas}
                 onPageChange={setCurrentPage}
                 editingRowId={editingRowId}
+                onEditRow={handleEditRow}
                 onEditChange={(field, value) => {
                   setCurrentEditData(prev => ({ ...prev, [field]: value }));
                 }}
+                onEditDataChange={setCurrentEditData}
                 currentEditData={currentEditData}
+                onSave={handleSaveEncomenda}
                 className="full-width-table allow-horizontal-scroll"
+                titleColumnKey={'codigo_rastreio'}
               />
             </>
           )}
@@ -652,12 +617,10 @@ function PortariaPage() {
                 currentPage={currentPage}
                 totalPages={totalPages.visitantes}
                 onPageChange={setCurrentPage}
-                editingRowId={editingRowId}
-                onEditChange={(field, value) => {
-                  setCurrentEditData(prev => ({ ...prev, [field]: value }));
-                }}
-                currentEditData={currentEditData}
+                editingRowId={null}
+                currentEditData={{}}
                 className="full-width-table allow-horizontal-scroll"
+                hideEditButton={true}
               />
             </>
           )}
@@ -689,6 +652,7 @@ function PortariaPage() {
                 onPageChange={setCurrentPage}
                 editingRowId={null}
                 currentEditData={{}}
+                hideEditButton={true}
                 className="full-width-table allow-horizontal-scroll"
               />
             </>
@@ -724,6 +688,7 @@ function PortariaPage() {
                   editingRowId={null}
                   currentEditData={{}}
                   className="full-width-table allow-horizontal-scroll"
+                  hideEditButton={true}
                 />
               )}
             </>
@@ -756,6 +721,7 @@ function PortariaPage() {
                 onPageChange={setCurrentPage}
                 editingRowId={null}
                 currentEditData={{}}
+                hideEditButton={true}
                 className="full-width-table allow-horizontal-scroll"
               />
             </>
