@@ -14,7 +14,7 @@ import AddEspacoModal from '../components/Espacos/AddEspacoModal';
 import EditEspacoModal from '../components/Espacos/EditEspacoModal';
 import EventoModal from '../components/Eventos/EventoModal';
 import { useAuth } from '../context/AuthContext';
-import api, { condominioAPI, avisoAPI, espacoAPI, espacoReservaAPI } from '../services/api';
+import api, { condominioAPI, avisoAPI, espacoAPI, espacoReservaAPI, eventoAPI } from '../services/api';
 import ProtectedImage from '../components/common/ProtectedImage';
 import '../styles/UsersPage.css';
 import { FaUserPlus, FaSearch, FaPlus, FaKey, FaEdit, FaCheck, FaTimes, FaBan } from 'react-icons/fa';
@@ -128,6 +128,8 @@ function UsersPage() {
   const [teamsLoaded, setTeamsLoaded] = useState(false);
   const [unidades, setUnidades] = useState([]);
   const [unidadesLoaded, setUnidadesLoaded] = useState(false);
+  const [espacosDisponiveis, setEspacosDisponiveis] = useState([]);
+  const [espacosLoaded, setEspacosLoaded] = useState(false);
   const [logoFile, setLogoFile] = useState(null);
   const [logoPreviewEdit, setLogoPreviewEdit] = useState(null);
 
@@ -194,6 +196,27 @@ function UsersPage() {
     };
 
     loadUnidades();
+  }, []);
+
+  useEffect(() => {
+    const loadEspacos = async () => {
+      try {
+        console.log('[UsersPage] Carregando espaços...');
+        const response = await espacoAPI.list({ page_size: 1000 });
+        console.log('[UsersPage] Resposta da API de espaços:', response.data);
+        const espacosList = response.data.results || response.data || [];
+        console.log('[UsersPage] Espaços carregados:', espacosList);
+        // Não filtrar para não perder dados se is_active não vier
+        setEspacosDisponiveis(espacosList);
+        setEspacosLoaded(true);
+      } catch (error) {
+        console.error('Erro ao carregar espaços:', error);
+        setEspacosDisponiveis([]);
+        setEspacosLoaded(true);
+      }
+    };
+
+    loadEspacos();
   }, []);
 
   const fetchData = async (type, page = 1, search = '') => {
@@ -301,16 +324,25 @@ function UsersPage() {
         case 'eventos':
           // Buscar eventos
           const responseEventos = await api.get(`/cadastros/eventos/?page=${page}&search=${search}`);
-          if (responseEventos.data.results !== undefined) {
-            setTableData(prev => ({ ...prev, eventos: responseEventos.data.results }));
-            setTotalPages(prev => ({
-              ...prev,
-              eventos: responseEventos.data.num_pages || Math.ceil(responseEventos.data.count / 10)
-            }));
-          } else {
-            setTableData(prev => ({ ...prev, eventos: responseEventos.data }));
-            setTotalPages(prev => ({ ...prev, eventos: 1 }));
-          }
+          const eventosData = responseEventos.data.results !== undefined
+            ? responseEventos.data.results
+            : responseEventos.data;
+
+          const eventosNormalizados = Array.isArray(eventosData)
+            ? eventosData.map(ev => ({
+                ...ev,
+                espaco: ev.espaco_id ?? ev.espaco ?? null,
+                espaco_nome: ev.espaco_nome ?? ev.espaco_nome,
+                // Backend não retorna local_texto; preencher com local_completo quando não houver espaço
+                local_texto: ev.local_texto ?? ev.local_completo ?? '',
+              }))
+            : [];
+
+          setTableData(prev => ({ ...prev, eventos: eventosNormalizados }));
+          setTotalPages(prev => ({
+            ...prev,
+            eventos: responseEventos.data.num_pages || Math.ceil((responseEventos.data.count || eventosNormalizados.length || 1) / 10)
+          }));
           break;
         case 'espacos':
           // Buscar espaços
@@ -1756,10 +1788,72 @@ function UsersPage() {
       width: '22%'
     },
     {
-      key: 'local_completo',
-      label: 'Local',
+      key: 'espaco',
+      label: 'Espaço',
       width: '15%',
-      render: (value, row) => row.espaco_nome || row.local_texto || '-'
+      render: (value, row) => row.espaco_nome || row.local_texto || row.local_completo || '-',
+      editComponent: (data, onChange) => {
+        console.log('[EventosColumns] Renderizando select de espaços:', {
+          espacosDisponiveis: espacosDisponiveis,
+          espacosCount: espacosDisponiveis.length,
+          valorAtual: data.espaco
+        });
+        const ativos = espacosDisponiveis.filter(e => e.is_active !== false);
+        const selecionado = data.espaco ? espacosDisponiveis.find(e => e.id === data.espaco) : null;
+        const options = selecionado && !ativos.some(e => e.id === selecionado.id)
+          ? [...ativos, selecionado]
+          : ativos;
+        return (
+          <select
+            className="mobile-edit-input"
+            value={data.espaco || ''}
+            onChange={(e) => {
+              const newValue = e.target.value === '' ? null : parseInt(e.target.value);
+              console.log('[EventosColumns] Espaço alterado:', newValue);
+              onChange('espaco', newValue);
+            }}
+          >
+            <option value="">-- Nenhum espaço --</option>
+            {options.map(esp => (
+              <option key={esp.id} value={esp.id}>{esp.nome}</option>
+            ))}
+          </select>
+        );
+      }
+    },
+    {
+      key: 'local_texto',
+      label: 'Local (texto)',
+      width: '15%',
+      render: (value, row) => value || row.local_completo || '-'
+    },
+    {
+      key: 'datetime_inicio',
+      label: 'Início',
+      width: '14%',
+      render: (value, row) => {
+        const v = value || row.datetime_inicio;
+        if (!v) return '-';
+        if (typeof v === 'string' && v.includes('T')) {
+          const cleaned = v.replace('Z','').split('.')[0];
+          return cleaned.replace('T',' ');
+        }
+        return v;
+      }
+    },
+    {
+      key: 'datetime_fim',
+      label: 'Fim',
+      width: '14%',
+      render: (value, row) => {
+        const v = value || row.datetime_fim;
+        if (!v) return '-';
+        if (typeof v === 'string' && v.includes('T')) {
+          const cleaned = v.replace('Z','').split('.')[0];
+          return cleaned.replace('T',' ');
+        }
+        return v;
+      }
     },
     {
       key: 'data_evento',
@@ -2019,6 +2113,25 @@ function UsersPage() {
               columns={eventosColumns}
               data={tableData.eventos}
               loading={loading}
+              onSave={async (rowId, updatedData) => {
+                try {
+                  console.log('[UsersPage] Salvando evento:', { rowId, updatedData });
+                  
+                  // Remover apenas campos calculados/readonly antes de enviar
+                  const { espaco_nome, created_at, hora_inicio, hora_fim, ...dataToSave } = updatedData;
+                  // Normalizar campo espaco vazio para null
+                  if (!dataToSave.espaco) {
+                    dataToSave.espaco = null;
+                  }
+                  
+                  console.log('[UsersPage] Dados filtrados para salvar:', dataToSave);
+                  await eventoAPI.patch(rowId, dataToSave);
+                  await fetchData('eventos', currentPage, searchTerm);
+                } catch (error) {
+                  console.error('Erro ao salvar evento:', error);
+                  alert('Erro ao salvar evento: ' + (error.response?.data?.detail || error.response?.data?.non_field_errors?.[0] || error.message));
+                }
+              }}
               onPageChange={(page) => setCurrentPage(page)}
               totalPages={totalPages.eventos}
               currentPage={currentPage}
@@ -2032,10 +2145,77 @@ function UsersPage() {
                 { key: 'titulo', header: 'Título', width: '22%' },
                 { key: 'descricao', header: 'Descrição', width: '28%', render: (v) => v || '-' },
                 { key: 'grupo_nome', header: 'Grupo', width: '12%' },
-                { key: 'prioridade', header: 'Prioridade', width: '10%', render: (v) => ({ baixa:'Baixa', media:'Média', alta:'Alta', urgente:'Urgente' }[v] || v) },
-                { key: 'status', header: 'Status', width: '10%', render: (v) => ({ rascunho:'Rascunho', ativo:'Ativo', inativo:'Inativo' }[v] || v) },
-                { key: 'data_inicio', header: 'Início', width: '9%', render: (v) => v ? new Date(v).toLocaleString('pt-BR') : '-' },
-                { key: 'data_fim', header: 'Fim', width: '9%', render: (v) => v ? new Date(v).toLocaleString('pt-BR') : '-' },
+                { key: 'prioridade', header: 'Prioridade', width: '10%', render: (v) => ({ baixa:'Baixa', media:'Média', alta:'Alta', urgente:'Urgente' }[v] || v),
+                  editComponent: (data, onChange) => (
+                    <select className="mobile-edit-input" value={data.prioridade || ''} onChange={(e)=>onChange('prioridade', e.target.value)}>
+                      <option value="">Selecione</option>
+                      <option value="baixa">Baixa</option>
+                      <option value="media">Média</option>
+                      <option value="alta">Alta</option>
+                      <option value="urgente">Urgente</option>
+                    </select>
+                  )
+                },
+                { key: 'status', header: 'Status', width: '10%', render: (v) => ({ rascunho:'Rascunho', ativo:'Ativo', inativo:'Inativo' }[v] || v),
+                  editComponent: (data, onChange) => (
+                    <select className="mobile-edit-input" value={data.status || ''} onChange={(e)=>onChange('status', e.target.value)}>
+                      <option value="">Selecione</option>
+                      <option value="rascunho">Rascunho</option>
+                      <option value="ativo">Ativo</option>
+                      <option value="inativo">Inativo</option>
+                    </select>
+                  )
+                },
+                { key: 'data_inicio', header: 'Início', width: '9%', render: (v) => {
+                    if (!v) return '-';
+                    if (typeof v === 'string') {
+                      const cleaned = v.replace('Z','').split('.')[0];
+                      if (cleaned.includes('T')) return cleaned.replace('T',' ');
+                    }
+                    return v;
+                  },
+                  editComponent: (data, onChange) => (
+                    <input
+                      className="mobile-edit-input"
+                      type="datetime-local"
+                      value={(() => {
+                        const raw = data.data_inicio;
+                        if (!raw) return '';
+                        if (typeof raw === 'string') {
+                          const cleaned = raw.replace('Z','').split('.')[0];
+                          if (cleaned.length >= 16) return cleaned.slice(0,16);
+                        }
+                        return '';
+                      })()}
+                      onChange={(e)=> onChange('data_inicio', e.target.value ? `${e.target.value}:00Z` : null)}
+                    />
+                  )
+                },
+                { key: 'data_fim', header: 'Fim', width: '9%', render: (v) => {
+                    if (!v) return '-';
+                    if (typeof v === 'string') {
+                      const cleaned = v.replace('Z','').split('.')[0];
+                      if (cleaned.includes('T')) return cleaned.replace('T',' ');
+                    }
+                    return v;
+                  },
+                  editComponent: (data, onChange) => (
+                    <input
+                      className="mobile-edit-input"
+                      type="datetime-local"
+                      value={(() => {
+                        const raw = data.data_fim;
+                        if (!raw) return '';
+                        if (typeof raw === 'string') {
+                          const cleaned = raw.replace('Z','').split('.')[0];
+                          if (cleaned.length >= 16) return cleaned.slice(0,16);
+                        }
+                        return '';
+                      })()}
+                      onChange={(e)=> onChange('data_fim', e.target.value ? `${e.target.value}:00Z` : null)}
+                    />
+                  )
+                },
                 {
                   key: 'acoes', header: 'Ações', width: '10%', render: (_val, row) => (
                     <div className="actions-column">
@@ -2052,6 +2232,16 @@ function UsersPage() {
               ]}
               data={tableData.avisos}
               loading={loading}
+              onSave={async (rowId, updatedData) => {
+                try {
+                  console.log('[UsersPage] Salvando aviso:', { rowId, updatedData });
+                  await avisoAPI.patch(rowId, updatedData);
+                  await fetchData('avisos', currentPage, searchTerm);
+                } catch (error) {
+                  console.error('Erro ao salvar aviso:', error);
+                  alert('Erro ao salvar aviso: ' + (error.response?.data?.detail || error.message));
+                }
+              }}
               onPageChange={(page) => setCurrentPage(page)}
               totalPages={totalPages.avisos}
               currentPage={currentPage}

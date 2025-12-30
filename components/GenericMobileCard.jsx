@@ -62,6 +62,16 @@ function GenericMobileCard({
     
     // Usar updatedData diretamente pois já contém todos os dados necessários
     const dataToSave = updatedData || currentEditData || editData;
+
+    // Validação básica de intervalo de datas/horas
+    if (dataToSave?.datetime_inicio && dataToSave?.datetime_fim) {
+      const ini = new Date(dataToSave.datetime_inicio);
+      const fim = new Date(dataToSave.datetime_fim);
+      if (!isNaN(ini.getTime()) && !isNaN(fim.getTime()) && fim <= ini) {
+        alert('A data/hora de término deve ser posterior à data/hora de início.');
+        return;
+      }
+    }
     
     console.log('[GenericMobileCard] Dados a serem salvos:', dataToSave);
     
@@ -119,6 +129,22 @@ function GenericMobileCard({
                         column.key === 'updated_on' ||
                         column.key === 'atualizado_em';
     
+    // Detectar campos de data editáveis (data_evento, data_reserva, etc)
+    const isEditableDateField = column.key === 'data_evento' || 
+                                 column.key === 'data_reserva' ||
+                                 column.key === 'data_inicio' ||
+                                 column.key === 'data_fim' ||
+                                 column.key?.includes('_data') ||
+                                 column.key?.startsWith('data_');
+
+    // Detectar campos de data+hora editáveis
+    const isEditableDateTimeField = column.key === 'datetime_inicio' || column.key === 'datetime_fim';
+
+    // Ocultar duplicados em eventos no mobile (data_evento/hora_inicio/hora_fim já representados por datetime_inicio/datetime_fim)
+    if (['data_evento', 'hora_inicio', 'hora_fim'].includes(column.key)) {
+      return null;
+    }
+    
     const isEditable = column.editable !== false && !isActionsColumn && !isDateField;
     
     if (isEditingRow && isEditable) {
@@ -134,7 +160,7 @@ function GenericMobileCard({
           <label className="field-label">{column.header || column.label}</label>
           <div className="field-value">
             {column.editComponent ? (
-              column.editComponent(activeEditData, handleInputChange)
+              column.editComponent({ ...row, ...activeEditData }, handleInputChange)
             ) : (
               // Detectar campos de status booleano e renderizar como checkbox
               // Apenas se o valor for booleano (não strings como 'confirmada', 'cancelada', etc)
@@ -160,6 +186,50 @@ function GenericMobileCard({
                   <option value="confirmada">Confirmada</option>
                   <option value="cancelada">Cancelada</option>
                 </select>
+              ) : isEditableDateTimeField ? (
+                // Renderizar campos datetime com calendário + hora
+                <input
+                  className="mobile-edit-input"
+                  type="datetime-local"
+                  value={
+                    (() => {
+                      const raw = activeEditData[column.key] || row[column.key] || "";
+                      if (!raw) return "";
+                      if (typeof raw === 'string') {
+                        if (raw.includes('T')) {
+                          // Remover sufixo Z e milissegundos e pegar yyyy-MM-ddTHH:mm
+                          const cleaned = raw.replace('Z', '').split('.')[0];
+                          if (cleaned.length >= 16) return cleaned.slice(0, 16);
+                        }
+                        if (raw.length >= 16) return raw.slice(0, 16);
+                      }
+                      return "";
+                    })()
+                  }
+                  onChange={(e) => {
+                    const v = e.target.value; // yyyy-MM-ddTHH:mm
+                    const normalized = v ? `${v}:00Z` : null; // manter hora exata, com Z
+                    handleInputChange(column.key, normalized);
+                  }}
+                />
+              ) : isEditableDateField ? (
+                // Renderizar campos de data editáveis com calendário
+                <input
+                  className="mobile-edit-input"
+                  type="date"
+                  value={
+                    (() => {
+                      const dateValue = activeEditData[column.key] || row[column.key] || "";
+                      if (!dateValue) return "";
+                      // Converter para formato yyyy-MM-dd se necessário
+                      if (dateValue.includes('T')) {
+                        return dateValue.split('T')[0];
+                      }
+                      return dateValue;
+                    })()
+                  }
+                  onChange={(e) => handleInputChange(column.key, e.target.value)}
+                />
               ) : (
                 <input
                   className="mobile-edit-input"
@@ -180,6 +250,10 @@ function GenericMobileCard({
       const value = row[column.key];
       try {
         displayValue = column.render(value, row);
+        // Se render retorna null, não renderizar o campo (campos ocultos)
+        if (displayValue === null) {
+          return null;
+        }
       } catch (err) {
         console.error('Erro no render da coluna', column.key, err);
         if (typeof value === 'object' && value !== null) {
