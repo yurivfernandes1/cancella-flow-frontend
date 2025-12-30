@@ -4,7 +4,7 @@ import Select from 'react-select';
 import '../styles/GenericTable.css';
 import GenericMobileCard from './GenericMobileCard';
 
-function GenericTable({ columns, data, loading, onSave, onEdit, onCancel, onPageChange, totalPages, currentPage, editingRowId, onEditRow, className = '', teams, onEditDataChange, onEditChange, currentEditData, titleColumnKey }) {
+function GenericTable({ columns, data, loading, onSave, onEdit, onCancel, onPageChange, totalPages, currentPage, editingRowId, onEditRow, className = '', teams, onEditDataChange, onEditChange, currentEditData, titleColumnKey, hideEditButton = false }) {
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
   const [isMobile, setIsMobile] = useState(false);
@@ -178,6 +178,7 @@ function GenericTable({ columns, data, loading, onSave, onEdit, onCancel, onPage
         onEditChange={onEditChange}
         currentEditData={currentEditData}
         titleColumnKey={titleColumnKey}
+        hideEditButton={hideEditButton}
       />
     );
   }

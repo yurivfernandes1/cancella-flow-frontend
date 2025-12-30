@@ -373,6 +373,7 @@ function EncomendasPage() {
           editingRowId={editingRowId}
           onEditRow={handleEditRow}
           onEditDataChange={setCurrentEditData}
+          titleColumnKey={'codigo_rastreio'}
         />
       </main>
     </div>

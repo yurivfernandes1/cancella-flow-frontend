@@ -313,6 +313,7 @@ function MoradorPage() {
       width: '18%',
       render: (value) => formatDateTime(value)
     }
+    // Nenhuma coluna editável
   ];
 
   const visitantesColumns = [
@@ -397,10 +398,19 @@ function MoradorPage() {
       key: 'esta_no_condominio',
       header: 'Status',
       width: '10%',
+      editable: true,
       render: (value) => (
         <span className={value ? 'status-active' : 'status-inactive'}>
           {value ? 'Presente' : 'Saiu'}
         </span>
+      ),
+      editComponent: (editData, handleInputChange) => (
+        <input
+          type="checkbox"
+          checked={Boolean(editData.esta_no_condominio)}
+          onChange={(e) => handleInputChange('esta_no_condominio', e.target.checked)}
+          className="status-checkbox"
+        />
       )
     },
     {
@@ -498,6 +508,7 @@ function MoradorPage() {
       key: 'status',
       header: 'Status',
       width: '15%',
+      editable: false,
       render: (value) => (
         <span style={{
           padding: '4px 12px',
@@ -573,6 +584,7 @@ function MoradorPage() {
         return `${value.slice(0, 5)} - ${horaFim.slice(0, 5)}`;
       }
     }
+    // Nenhuma coluna editável
   ];
 
   // Colunas para Veículos
@@ -841,9 +853,11 @@ function MoradorPage() {
                   : undefined
             }
             className="full-width-table allow-horizontal-scroll"
-            editingRowId={editingRowId}
-            onEditRow={handleEditRow}
-            onEditDataChange={setCurrentEditData}
+            editingRowId={activeTab === 'visitantes' || activeTab === 'veiculos' ? editingRowId : null}
+            onEditRow={activeTab === 'visitantes' || activeTab === 'veiculos' ? handleEditRow : undefined}
+            onEditDataChange={activeTab === 'visitantes' || activeTab === 'veiculos' ? setCurrentEditData : undefined}
+            hideEditButton={activeTab === 'encomendas' || activeTab === 'eventos' || activeTab === 'avisos'}
+            titleColumnKey={activeTab === 'encomendas' ? 'codigo_rastreio' : undefined}
           />
         )}
       </main>

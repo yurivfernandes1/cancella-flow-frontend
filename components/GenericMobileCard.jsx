@@ -17,7 +17,8 @@ function GenericMobileCard({
   onEditDataChange,
   onEditChange,
   currentEditData,
-  titleColumnKey
+  titleColumnKey,
+  hideEditButton = false
 }) {
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
@@ -380,13 +381,15 @@ function GenericMobileCard({
                 </>
               ) : (
                 <>
-                  <button 
-                    type="button" 
-                    className="mobile-action-button edit-button" 
-                    onClick={() => handleEdit(row)}
-                  >
-                    Editar
-                  </button>
+                  {!hideEditButton && (
+                    <button 
+                      type="button" 
+                      className="mobile-action-button edit-button" 
+                      onClick={() => handleEdit(row)}
+                    >
+                      Editar
+                    </button>
+                  )}
                   {customActions}
                 </>
               )}
