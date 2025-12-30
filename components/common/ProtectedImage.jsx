@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../../../frontend/services/api';
+import api from '../../services/api';
 
 // Componente que carrega imagens protegidas (endpoint que exige token) retornando um blob URL.
 // Uso: <ProtectedImage src={url} alt="..." className="..." style={{}} />

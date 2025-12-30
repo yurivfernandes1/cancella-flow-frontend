@@ -161,7 +161,8 @@
 .dropdown-menu {
   position: absolute;
   top: 100%;
-  left: 0;
+  left: 50%;
+  transform: translateX(-50%);
   width: 260px;
   background: #2abb98;
   border-radius: 0.5rem;
@@ -170,6 +171,7 @@
   overflow: auto; /* permite rolar quando o conteúdo é grande */
   z-index: 1000;
   max-height: min(70vh, 520px); /* limita a altura em telas pequenas */
+  margin-top: 0.5rem;
 }
 
 .app-menu-item.dropdown:hover .dropdown-menu {
@@ -323,7 +325,7 @@
     width: 70%; /* Reduzido de 80% para 70% */
     height: auto; /* Removido height fixo */
     max-height: 90vh; /* Limitando altura máxima */
-    background: rgba(25, 41, 74, 0.98);
+    background: #2abb98; /* padronizado com desktop */
     backdrop-filter: blur(10px);
     transition: 0.3s ease-in-out;
     padding: 1rem;
@@ -346,6 +348,12 @@
     height: auto;
   }
 
+  /* Garantir que o submenu fique abaixo do item clicado */
+  .app-menu-item.dropdown {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .app-submenu {
     position: static;
     width: 100%;
@@ -363,15 +371,21 @@
   }
 
   .app-menu-trigger,
-  .app-menu li a {
-    padding: 0.75rem 1rem; /* Reduzido de 1rem para 0.75rem */
+  .app-menu li a,
+  .nav-link,
+  .dropdown-link {
+    padding: 0.75rem 1rem;
     width: 100%;
     transition: background-color 0.2s ease;
+    color: white !important;
   }
 
   .app-menu-trigger:hover,
-  .app-menu li a:hover {
-    background-color: rgba(42, 187, 152, 0.3); /* Ciano transparente no hover */
+  .app-menu li a:hover,
+  .nav-link:hover,
+  .dropdown-link:hover {
+    background-color: rgba(42, 187, 152, 0.3);
+    color: white !important;
   }
 
   .app-menu-divider {
@@ -411,7 +425,7 @@
     width: 100%;
     box-shadow: none;
     border-radius: 8px;
-    background: rgba(0,0,0,0.12);
+    background: #2abb98; /* padroniza com desktop */
     padding-left: 0; /* sem indentação para ganhar espaço */
     max-height: 60vh; /* limite no mobile */
     overflow-y: auto;
@@ -419,14 +433,19 @@
   
   .dropdown-menu li a, 
   .dropdown-menu li button {
-    color: white;
+    color: white !important;
     padding: 0.5rem 1rem;
+  }
+
+  .dropdown-menu li a svg,
+  .dropdown-menu li button svg {
+    color: white !important;
   }
   
   .dropdown-menu li a:hover, 
   .dropdown-menu li button:hover {
     background-color: rgba(255, 255, 255, 0.1);
-    color: white;
+    color: white !important;
   }
 }
 
@@ -524,7 +543,7 @@
     left: 0;
     width: 100vw;
     height: calc(100vh - 64px);
-    background: #19294a;
+    background: #2abb98; /* padronizado com desktop */
     transform: translateX(-100%);
     transition: transform 0.3s ease;
     overflow-y: auto;
@@ -545,11 +564,33 @@
     width: 100%;
   }
 
-  .dropdown-menu {
-    position: static;
-    display: block !important;
-    background: rgba(255, 255, 255, 0.1);
+  .dropdown-link {
+    border-radius: 8px;
+    color: white !important;
+  }
+
+  .app-menu-item.dropdown .dropdown-menu {
+    position: static !important;
+    display: none !important;
+    background: #2abb98; /* padroniza com desktop */
     margin-top: 0.5rem;
+    border-radius: 8px;
+    max-height: 60vh;
+    overflow-y: auto;
+    width: 100% !important;
+    box-shadow: none;
+    left: auto !important;
+    transform: none !important;
+  }
+
+  .app-menu-item.dropdown.open .dropdown-menu {
+    display: block !important;
+  }
+
+  /* Destaca item principal quando o submenu estiver aberto */
+  .app-menu-item.dropdown.open > .dropdown-link {
+    background-color: rgba(42, 187, 152, 0.18);
+    color: white !important;
     border-radius: 8px;
   }
 

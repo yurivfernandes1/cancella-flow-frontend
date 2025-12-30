@@ -22,6 +22,7 @@ import { /* avisoAPI */ } from '../../services/api';
 
 function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
@@ -32,6 +33,16 @@ function Header() {
 
   const toggleMenu = () => {
     setMenuOpen(!menuOpen);
+    setOpenDropdown(null); // Fecha todos os dropdowns ao fechar o menu
+  };
+
+  const toggleDropdown = (dropdownName) => {
+    setOpenDropdown(openDropdown === dropdownName ? null : dropdownName);
+  };
+
+  const closeMenu = () => {
+    setMenuOpen(false);
+    setOpenDropdown(null);
   };
 
   // Helper para verificar se o usuário pertence a um grupo
@@ -107,8 +118,8 @@ function Header() {
             {/* Avisos removidos do header */}
             {/* Seção de Gestão do Sistema */}
             {(isAdmin || isSindico) && (
-              <li className="app-menu-item dropdown">
-                <div className="dropdown-link">
+              <li className={`app-menu-item dropdown ${openDropdown === 'gestao' ? 'open' : ''}`}>
+                <div className="dropdown-link" onClick={() => toggleDropdown('gestao')}>
                   <FaCogs />
                   <span>Gestão do Sistema</span>
                 </div>
@@ -117,19 +128,19 @@ function Header() {
                   {isAdmin && (
                     <>
                       <li>
-                        <Link to="/gestao-usuarios?tab=condominios">
+                        <Link to="/gestao-usuarios?tab=condominios" onClick={closeMenu}>
                           <FaBuilding />
                           <span>Gestão de Condomínios</span>
                         </Link>
                       </li>
                       <li>
-                        <Link to="/gestao-usuarios?tab=sindicos">
+                        <Link to="/gestao-usuarios?tab=sindicos" onClick={closeMenu}>
                           <FaUserTie />
                           <span>Gestão de Síndicos</span>
                         </Link>
                       </li>
                       <li>
-                        <Link to="/gestao-usuarios?tab=grupos">
+                        <Link to="/gestao-usuarios?tab=grupos" onClick={closeMenu}>
                           <FaUserFriends />
                           <span>Gestão de Grupos</span>
                         </Link>
@@ -140,37 +151,37 @@ function Header() {
                   {isSindico && (
                     <>
                       <li>
-                        <Link to="/gestao-usuarios?tab=unidades">
+                        <Link to="/gestao-usuarios?tab=unidades" onClick={closeMenu}>
                           <FaBuilding />
                           <span>Gestão de Unidades</span>
                         </Link>
                       </li>
                       <li>
-                        <Link to="/gestao-usuarios?tab=espacos">
+                        <Link to="/gestao-usuarios?tab=espacos" onClick={closeMenu}>
                           <FaBox />
                           <span>Gestão de Espaços</span>
                         </Link>
                       </li>
                       <li>
-                        <Link to="/gestao-usuarios?tab=avisos">
+                        <Link to="/gestao-usuarios?tab=avisos" onClick={closeMenu}>
                           <FaBell />
                           <span>Gestão de Avisos</span>
                         </Link>
                       </li>
                       <li>
-                        <Link to="/gestao-usuarios?tab=eventos">
+                        <Link to="/gestao-usuarios?tab=eventos" onClick={closeMenu}>
                           <FaCalendarAlt />
                           <span>Gestão de Eventos</span>
                         </Link>
                       </li>
                       <li>
-                        <Link to="/gestao-usuarios?tab=portaria">
+                        <Link to="/gestao-usuarios?tab=portaria" onClick={closeMenu}>
                           <FaUsers />
                           <span>Gestão de Portaria</span>
                         </Link>
                       </li>
                       <li>
-                        <Link to="/gestao-usuarios?tab=moradores">
+                        <Link to="/gestao-usuarios?tab=moradores" onClick={closeMenu}>
                           <FaHome />
                           <span>Gestão de Moradores</span>
                         </Link>
@@ -193,44 +204,44 @@ function Header() {
 
             {/* Portaria - Apenas para grupo Portaria (com subopções) */}
             {isPortaria && !isAdmin && (
-              <li className="app-menu-item dropdown">
-                <div className="dropdown-link">
+              <li className={`app-menu-item dropdown ${openDropdown === 'portaria' ? 'open' : ''}`}>
+                <div className="dropdown-link" onClick={() => toggleDropdown('portaria')}>
                   <FaIdCard />
                   <span>Portaria</span>
                 </div>
                 <ul className="dropdown-menu">
                   <li>
-                    <Link to="/portaria?tab=encomendas">
+                    <Link to="/portaria?tab=encomendas" onClick={closeMenu}>
                       <FaBox />
                       <span>Gestão de Encomendas</span>
                     </Link>
                   </li>
                   <li>
-                    <Link to="/portaria?tab=visitantes">
+                    <Link to="/portaria?tab=visitantes" onClick={closeMenu}>
                       <FaUser />
                       <span>Gestão de Visitantes</span>
                     </Link>
                   </li>
                   <li>
-                    <Link to="/portaria?tab=veiculos">
+                    <Link to="/portaria?tab=veiculos" onClick={closeMenu}>
                       <FaIdCard />
                       <span>Veículos Cadastrados</span>
                     </Link>
                   </li>
                   <li>
-                    <Link to="/portaria?tab=reservas">
+                    <Link to="/portaria?tab=reservas" onClick={closeMenu}>
                       <FaBox />
                       <span>Reservas do Dia</span>
                     </Link>
                   </li>
                   <li>
-                    <Link to="/portaria?tab=eventos">
+                    <Link to="/portaria?tab=eventos" onClick={closeMenu}>
                       <FaCalendarAlt />
                       <span>Eventos</span>
                     </Link>
                   </li>
                   <li>
-                    <Link to="/portaria?tab=avisos">
+                    <Link to="/portaria?tab=avisos" onClick={closeMenu}>
                       <FaBell />
                       <span>Avisos</span>
                     </Link>
@@ -240,20 +251,20 @@ function Header() {
             )}
             
             <li className="app-menu-divider" />
-            <li className="app-menu-item dropdown">
-              <div className="dropdown-link user-name">
+            <li className={`app-menu-item dropdown ${openDropdown === 'user' ? 'open' : ''}`}>
+              <div className="dropdown-link user-name" onClick={() => toggleDropdown('user')}>
                 <FaUser />
                 <span>{`${user?.first_name || ''} ${user?.last_name || ''}`}</span>
               </div>
               <ul className="dropdown-menu">
                 <li>
-                  <Link to="/perfil/senha">
+                  <Link to="/perfil/senha" onClick={closeMenu}>
                     <FaKey />
                     <span>Alterar Senha</span>
                   </Link>
                 </li>
                 <li>
-                  <button onClick={handleLogout} className="app-logout">
+                  <button onClick={() => { handleLogout(); closeMenu(); }} className="app-logout">
                     <FaSignOutAlt />
                     <span>Sair</span>
                   </button>
