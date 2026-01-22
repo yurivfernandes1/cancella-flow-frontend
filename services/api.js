@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+// Use Vite environment variable when available, fallback para localhost
+const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -35,9 +38,16 @@ api.interceptors.request.use(config => {
 });
 
 // Interceptor para tratamento de erros
+// Interceptor para tratamento de erros: normaliza erros de rede
 api.interceptors.response.use(
   response => response,
   error => {
+    // Erro de rede (sem resposta do servidor)
+    if (error.request && !error.response) {
+      error.userMessage = 'Erro ao conectar com o servidor. Tente novamente mais tarde.';
+    }
+
+    // Propaga o erro, com userMessage disponível para UI
     return Promise.reject(error);
   }
 );

@@ -55,7 +55,10 @@ function LoginPage() {
       }
     } catch (error) {
       console.error('Erro no login:', error);
-      if (error.response && error.response.data) {
+      // Mensagem amigável definida pelo interceptor de rede
+      if (error.userMessage) {
+        setMessage({ type: 'error', text: error.userMessage });
+      } else if (error.response && error.response.data) {
         if (error.response.data.error === 'Usuário inativo') {
           setMessage({ type: 'error', text: 'Sua conta está inativa. Por favor, entre em contato com o suporte.' });
         } else if (error.response.data.error) {

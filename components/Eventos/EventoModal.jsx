@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaUpload, FaTrash } from 'react-icons/fa';
-import api, { espacoAPI, eventoAPI } from '../../services/api';
+import { espacoAPI, eventoAPI } from '../../services/api';
 import '../../styles/Modal.css';
 
 function EventoModal({ isOpen, onClose, onSuccess, evento = null }) {

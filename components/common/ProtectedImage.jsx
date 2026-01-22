@@ -5,7 +5,6 @@ import api from '../../services/api';
 // Uso: <ProtectedImage src={url} alt="..." className="..." style={{}} />
 export default function ProtectedImage({ src, alt, ...rest }) {
   const [blobUrl, setBlobUrl] = useState(null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -21,7 +20,7 @@ export default function ProtectedImage({ src, alt, ...rest }) {
 
     const fetchBlob = async () => {
       try {
-        setLoading(true);
+        // setLoading removed (unused)
         // axios aceita URL absoluto; interceptors do api adicionarão token
         const resp = await api.get(src, { responseType: 'blob' });
         if (!mounted) return;
@@ -30,8 +29,6 @@ export default function ProtectedImage({ src, alt, ...rest }) {
       } catch (e) {
         console.error('Erro ao carregar imagem protegida:', e);
         setBlobUrl(null);
-      } finally {
-        if (mounted) setLoading(false);
       }
     };
 

@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { FaSave, FaTimes, FaPlus, FaUpload, FaTrash } from 'react-icons/fa';
-import { useAuth } from '../../context/AuthContext';
+import { FaSave, FaTimes, FaPlus, FaUpload } from 'react-icons/fa';
 import { condominioAPI } from '../../services/api';
 import GenericDropdown from '../common/GenericDropdown';
 import { validateCEP, formatCEP, fetchCEPData } from '../../utils/validators';
 
 function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
-  const { user: currentUser } = useAuth();
+  
   const [formData, setFormData] = useState({
     nome: '',
     cep: '',
@@ -23,7 +22,6 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
   const [addressData, setAddressData] = useState(null);
   const [loadingCep, setLoadingCep] = useState(false);
   // Removemos a pré-visualização para simplificar o layout
-  const [logoPreview, setLogoPreview] = useState(null);
 
   const buscarCep = async (cep) => {
     if (!validateCEP(cep)) {

@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import '../../styles/CalendarioReservas.css';
 
 export default function CalendarioReservas({ 
-  espacoId, 
   datasOcupadas = [], 
   onDateSelect, 
   selectedDate 
 }) {
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [viewDate, setViewDate] = useState(new Date());
 
   // Calcular limites: hoje até 1 ano em meses fechados

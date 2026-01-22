@@ -317,7 +317,7 @@
 
 /* Quando usamos position="relative" com trigger, posicionamos abaixo do botão via inline JS (top/left). 
    O container continua fixo para não descer com a tela. */
-.
+.generic-dropdown.dropdown-position-relative {
   z-index: 1050 !important;
 }
 

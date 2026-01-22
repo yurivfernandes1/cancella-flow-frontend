@@ -5,7 +5,7 @@ import GenericTable from '../components/GenericTable';
 import AddEncomendaDropdown from '../components/Encomendas/AddEncomendaDropdown';
 import { useAuth } from '../context/AuthContext';
 import api, { espacoReservaAPI } from '../services/api';
-import { validatePlaca, formatPlaca } from '../utils/placaValidator';
+import { formatPlaca } from '../utils/placaValidator';
 import '../styles/PortariaPage.css';
 import AvisoBanner from '../components/Avisos/AvisoBanner';
 import { avisoAPI } from '../services/api';
@@ -194,22 +194,7 @@ function PortariaPage() {
     }
   };
 
-  const handleSaveVisitante = async (id, data) => {
-    try {
-      // Portaria só pode editar as datas de entrada e saída
-      const payload = {
-        data_entrada: data.data_entrada ? new Date(data.data_entrada).toISOString() : null,
-        data_saida: data.data_saida ? new Date(data.data_saida).toISOString() : null
-      };
-
-      await api.patch(`/cadastros/visitantes/${id}/update/`, payload);
-      fetchData('visitantes', currentPage, searchTerm);
-      setEditingRowId(null);
-    } catch (error) {
-      console.error('Erro ao atualizar visitante:', error);
-      alert(`Erro ao salvar: ${error.response?.data?.error || 'Ocorreu um erro ao salvar os dados'}`);
-    }
-  };
+  // handleSaveVisitante removed (não usado nesta página)
 
   const handleEditRow = (rowId) => {
     setEditingRowId(rowId);

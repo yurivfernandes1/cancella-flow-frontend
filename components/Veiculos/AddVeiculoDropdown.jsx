@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
 import { FaCar } from 'react-icons/fa';
-import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import { validatePlaca, formatPlaca, normalizePlaca, maskPlaca } from '../../utils/placaValidator';
 import GenericDropdown from '../common/GenericDropdown';
 import '../../styles/GenericDropdown.css';
 
 function AddVeiculoDropdown({ onClose, onSuccess, triggerRef }) {
-  const { user } = useAuth();
+  
   const [formData, setFormData] = useState({
     placa: '',
     marca_modelo: ''
@@ -40,6 +39,10 @@ function AddVeiculoDropdown({ onClose, onSuccess, triggerRef }) {
       setError('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
+
+    // DEBUG: log placa e validação
+    console.log('[DEBUG] Placa antes validação:', JSON.stringify(formData.placa));
+    console.log('[DEBUG] validatePlaca result:', validatePlaca(formData.placa));
 
     // Validar placa
     if (!validatePlaca(formData.placa)) {

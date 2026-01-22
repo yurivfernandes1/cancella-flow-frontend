@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import Header from '../components/Header/Header';
 import GenericTable from '../components/GenericTable';
 import AddUnidadeModal from '../components/Unidades/AddUnidadeModal';

@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { FaUserCog, FaTimes, FaSave } from 'react-icons/fa';
 import api from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
 import GenericDropdown from '../common/GenericDropdown';
 
 function AddProfileDropdown({ onClose, onSuccess, triggerRef }) {
-  const { user } = useAuth();
+  
   const [formData, setFormData] = useState({
     nome: '',
     is_ativo: true // Mantemos como true por padrão, mas não exibimos mais a opção

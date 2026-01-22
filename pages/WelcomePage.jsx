@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Header from '../components/Header/Header';
 import '../styles/WelcomePage.css';
@@ -10,7 +10,6 @@ import { condominioAPI } from '../services/api';
 import { 
   FaUserCog, 
   FaUsers,
-  FaUser,
   FaCogs,
   FaBuilding,
   FaUserTie,
@@ -19,7 +18,7 @@ import {
   FaChartLine,
   FaCheckCircle,
   FaUserShield,
-  FaClock,
+  
   FaServer,
   FaBell,
   FaBox,

@@ -310,8 +310,7 @@ function GenericMobileCard({
     );
   }
 
-  // Obter coluna de ações para renderizar os botões customizados
-  const actionsColumn = columns.find(col => col.key === 'actions');
+  // Obter coluna de ações para renderizar os botões customizados (não usado no mobile)
 
   return (
     <div className={`mobile-cards-container ${className}`}>

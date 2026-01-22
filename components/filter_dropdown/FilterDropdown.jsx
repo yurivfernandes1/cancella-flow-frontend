@@ -15,7 +15,7 @@ function FilterDropdown({ isOpen, onClose, filters, setFilters, onApply, trigger
 
   const [grupoSearchTerm, setGrupoSearchTerm] = useState('');
   const [isGrupoDropdownOpen, setIsGrupoDropdownOpen] = useState(false);
-  const [selectedGrupo, setSelectedGrupo] = useState(filters.grupo_economico || '');
+  // selectedGrupo removed (not used directly)
 
   useEffect(() => {
     fetchClients();
@@ -98,12 +98,12 @@ function FilterDropdown({ isOpen, onClose, filters, setFilters, onApply, trigger
                   .filter(grupo => 
                     grupo.razao_social.toLowerCase().includes(grupoSearchTerm.toLowerCase())
                   )
-                  .map(grupo => (
+                    .map(grupo => (
                     <div
                       key={grupo.id}
                       className="inv-client-option"
                       onClick={() => {
-                        setSelectedGrupo(grupo.id);
+                        // setSelectedGrupo removed
                         setGrupoSearchTerm(grupo.razao_social);
                         setIsGrupoDropdownOpen(false);
                         setLocalFilters(prev => ({...prev, grupo_economico: grupo.id}));

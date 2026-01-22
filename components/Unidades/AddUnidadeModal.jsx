@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FaSave, FaTimes, FaPlus, FaTrash } from 'react-icons/fa';
 import api from '../../services/api';
 import '../../styles/Modal.css';
@@ -8,20 +8,11 @@ function AddUnidadeModal({ onClose, onSuccess }) {
     { numero: '', bloco: '' }
   ]);
   // Modelo antigo removido: a seleção de morador agora acontece no usuário
-  const [moradores] = useState([]);
-  const [loadingMoradores] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // Sem carregamento de moradores neste modal (associação mudou para o usuário)
 
-  const handleAddRow = () => {
-    // Copiar informações da última linha
-    const lastUnidade = unidades[unidades.length - 1];
-    setUnidades([
-      ...unidades,
-      { numero: '', bloco: lastUnidade.bloco || '' }
-    ]);
-  };
+  // handleAddRow não é usado; usamos botão inline para adicionar linhas
 
   const handleRemoveRow = (index) => {
     if (unidades.length === 1) {

@@ -8,8 +8,7 @@ import SignupPage from './pages/SignupPage';
 import WelcomePage from './pages/WelcomePage';
 import PasswordPage from './pages/PasswordPage';
 import UsersPage from './pages/UsersPage';
-import EncomendasPage from './pages/EncomendasPage';
-import VisitantesPage from './pages/VisitantesPage';
+// EncomendasPage and VisitantesPage imports removed (not used in this router)
 import MoradorPage from './pages/MoradorPage';
 import PortariaPage from './pages/PortariaPage';
 
@@ -29,14 +28,7 @@ const ProtectedGestaoUsuariosRoute = ({ children }) => {
   return children;
 };
 
-// Nova proteção para páginas que só admins podem acessar
-const ProtectedStaffRoute = ({ children }) => {
-  const { user } = useAuth();
-  if (!user?.is_staff && !user?.groups?.some(group => group.name === 'admin')) {
-    return <Navigate to="/welcome" replace />;
-  }
-  return children;
-};
+// ProtectedStaffRoute removed (não utilizado)
 
 const FirstAccessRoute = ({ children }) => {
   const { user } = useAuth();

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { FaEdit, FaCheck, FaTimes } from 'react-icons/fa';
-import Select from 'react-select';
+// Select import removed (unused)
 import '../styles/GenericTable.css';
 import GenericMobileCard from './GenericMobileCard';
 
-function GenericTable({ columns, data, loading, onSave, onEdit, onCancel, onPageChange, totalPages, currentPage, editingRowId, onEditRow, className = '', teams, onEditDataChange, onEditChange, currentEditData, titleColumnKey, hideEditButton = false }) {
+function GenericTable({ columns, data, loading, onSave, onEdit, onCancel, onPageChange, totalPages, currentPage, editingRowId, onEditRow, className = '', onEditDataChange, onEditChange, currentEditData, titleColumnKey, hideEditButton = false }) {
   const [editingId, setEditingId] = useState(null);
   const [editData, setEditData] = useState({});
   const [isMobile, setIsMobile] = useState(false);

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FaSave, FaTimes, FaTrash, FaPlus, FaEdit, FaCheck } from 'react-icons/fa';
+import { FaSave, FaTimes, FaTrash, FaPlus } from 'react-icons/fa';
 import { espacoAPI, espacoInventarioAPI } from '../../services/api';
 import GenericTable from '../GenericTable';
 import '../../styles/Modal.css';
@@ -101,16 +101,7 @@ export default function EditEspacoModal({ espaco, onClose, onSaved, onDeleted })
     }
   };
 
-  const handleDeleteItem = async (itemId) => {
-    if (!confirm('Tem certeza que deseja excluir este item?')) return;
-    try {
-      await espacoInventarioAPI.delete(itemId);
-  await loadInventario(invPage);
-    } catch (err) {
-      console.error('Erro ao excluir item:', err);
-      alert('Erro ao excluir item.');
-    }
-  };
+  // item deletion handled by inventario API; function removed as unused
 
   const handleEditItem = (item) => {
     setEditingItem({ ...item });

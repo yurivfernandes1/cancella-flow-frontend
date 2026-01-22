@@ -432,6 +432,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
           onClose={handleModalClose}
         />
       )}
+      
     </>
   );
 }

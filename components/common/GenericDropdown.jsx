@@ -16,7 +16,7 @@ function GenericDropdown({
   triggerRef = null
 }) {
   const dropdownRef = useRef(null);
-  const blockBodyRef = useRef(true);
+  
   const [dropdownStyle, setDropdownStyle] = useState({});
   const [rendered, setRendered] = useState(false);
 
