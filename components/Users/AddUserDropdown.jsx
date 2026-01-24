@@ -210,8 +210,8 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
 
   const handleModalClose = () => {
     setResetPassword({ show: false, username: '', password: '' });
-    onClose();
-    onSuccess();
+    if (typeof onClose === 'function') onClose();
+    if (typeof onSuccess === 'function') onSuccess();
   };
 
   return (

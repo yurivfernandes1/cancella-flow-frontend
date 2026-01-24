@@ -237,7 +237,7 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
 
   const handleClose = () => {
     setShowDropdown(false);
-    if (onClose) {
+    if (typeof onClose === 'function') {
       onClose();
     }
   };

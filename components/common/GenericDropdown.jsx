@@ -119,7 +119,9 @@ function GenericDropdown({
         if (dropdownRef.current && 
             !dropdownRef.current.contains(event.target) &&
             (!triggerRef?.current || !triggerRef.current.contains(event.target))) {
-          onClose();
+          if (typeof onClose === 'function') {
+            onClose();
+          }
         }
       };
       
@@ -139,7 +141,7 @@ function GenericDropdown({
       {position !== 'relative' && (
         <div
           className="dropdown-overlay"
-          onClick={closeOnClickOutside ? onClose : undefined}
+          onClick={closeOnClickOutside ? (() => { if (typeof onClose === 'function') onClose(); }) : undefined}
         />
       )}
         
@@ -154,7 +156,7 @@ function GenericDropdown({
             <h2>{title}</h2>
           </div>
           {showCloseButton && (
-            <button className="close-button" onClick={onClose}>
+            <button className="close-button" onClick={() => { if (typeof onClose === 'function') onClose(); }}>
               <FaTimes />
             </button>
           )}
