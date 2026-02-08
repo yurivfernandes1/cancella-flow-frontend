@@ -13,6 +13,40 @@ function LoginPage() {
       setFormData(JSON.parse(savedFormData));
     }
   }, []);
+  const [systemReady, setSystemReady] = React.useState(false);
+  const [checkingSystem, setCheckingSystem] = React.useState(true);
+
+  useEffect(() => {
+    document.title = 'Cancella Flow | Login';
+    const savedFormData = localStorage.getItem('loginFormData');
+    if (savedFormData) {
+      setFormData(JSON.parse(savedFormData));
+    }
+
+    let intervalId = null;
+
+    const checkHealth = async () => {
+      try {
+        const resp = await api.get('/health/');
+        if (resp.status === 200) {
+          setSystemReady(true);
+          setCheckingSystem(false);
+          if (intervalId) clearInterval(intervalId);
+        }
+      } catch (err) {
+        setSystemReady(false);
+        setCheckingSystem(true);
+      }
+    };
+
+    // Checar imediatamente e depois uma vez por segundo até o sistema estar pronto
+    checkHealth();
+    intervalId = setInterval(checkHealth, 1000);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, []);
 
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -73,6 +107,21 @@ function LoginPage() {
       setLoading(false);
     }
   };
+
+  
+  if (checkingSystem || !systemReady) {
+    return (
+      <div className="login-container">
+        <div className="login-card">
+            <div style={{ textAlign: 'center', padding: '40px' }}>
+              <img src={logo} alt="Vita Logo" height="40" />
+              <div className="spinner" aria-hidden="true" />
+              <h2 className="loading-text">Carregando o sistema...</h2>
+            </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="login-container">
