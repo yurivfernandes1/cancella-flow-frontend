@@ -1,7 +1,7 @@
 # 🏢 Cancella Flow
 
 <div align="center">
-  <img src="./frontend/assets/logo_header.svg" alt="Cancella Flow Logo" width="200" style="margin-bottom: 20px"/>
+  <img src="./assets/logo_login.svg" alt="Cancella Flow Logo" width="200" style="margin-bottom: 20px"/>
 </div>
 
 <div align="center">
