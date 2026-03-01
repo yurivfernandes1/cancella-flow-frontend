@@ -1,76 +1,215 @@
 import React, { useState } from 'react';
-import { FaSave, FaTimes, FaPlus, FaTrash } from 'react-icons/fa';
+import { FaSave, FaTimes, FaPlus, FaTrash, FaUserPlus, FaUserMinus, FaCopy } from 'react-icons/fa';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { generateStrongPassword } from '../../utils/passwordGenerator';
+import { formatUsername } from '../../utils/stringUtils';
+import { formatCPF, formatTelefone } from '../../utils/formatters';
+import { validateCPF, validatePhone } from '../../utils/validators';
 import '../../styles/Modal.css';
 
 function AddUnidadeModal({ onClose, onSuccess }) {
+  const { user: currentUser } = useAuth();
+  const emptyMorador = () => ({ first_name: '', last_name: '', email: '', cpf: '', phone: '' });
   const [unidades, setUnidades] = useState([
-    { numero: '', bloco: '' }
+    { numero: '', bloco: '', addMorador: false, moradorData: emptyMorador() }
   ]);
-  // Modelo antigo removido: a seleção de morador agora acontece no usuário
   const [loading, setLoading] = useState(false);
-
-  // Sem carregamento de moradores neste modal (associação mudou para o usuário)
-
-  // handleAddRow não é usado; usamos botão inline para adicionar linhas
+  const [createdAccounts, setCreatedAccounts] = useState([]);
+  const [showCredentials, setShowCredentials] = useState(false);
 
   const handleRemoveRow = (index) => {
     if (unidades.length === 1) {
       alert('Deve haver pelo menos uma unidade.');
       return;
     }
-    const newUnidades = unidades.filter((_, i) => i !== index);
-    setUnidades(newUnidades);
+    setUnidades(unidades.filter((_, i) => i !== index));
   };
 
   const handleChange = (index, field, value) => {
     const newUnidades = [...unidades];
-    newUnidades[index][field] = value;
+    newUnidades[index] = { ...newUnidades[index], [field]: value };
     setUnidades(newUnidades);
+  };
+
+  const handleToggleMorador = (index) => {
+    const newUnidades = [...unidades];
+    newUnidades[index] = { ...newUnidades[index], addMorador: !newUnidades[index].addMorador };
+    setUnidades(newUnidades);
+  };
+
+  const handleMoradorChange = (index, field, value) => {
+    const newUnidades = [...unidades];
+    newUnidades[index] = {
+      ...newUnidades[index],
+      moradorData: { ...newUnidades[index].moradorData, [field]: value },
+    };
+    setUnidades(newUnidades);
+  };
+
+  const createMoradorForUnidade = async (moradorData, unidadeId) => {
+    const password = generateStrongPassword();
+    const username = formatUsername(moradorData.first_name, moradorData.last_name);
+    const userData = {
+      username,
+      password: password.trim(),
+      first_name: moradorData.first_name.trim(),
+      last_name: moradorData.last_name.trim(),
+      full_name: `${moradorData.first_name} ${moradorData.last_name}`.trim(),
+      email: moradorData.email.trim(),
+      cpf: moradorData.cpf?.replace(/\D/g, '') || '',
+      phone: moradorData.phone?.replace(/\D/g, '') || '',
+      first_access: true,
+      is_active: true,
+      user_type: 'morador',
+      unidade_id: unidadeId,
+    };
+    if (currentUser?.condominio_id) {
+      userData.condominio_id = currentUser.condominio_id;
+    }
+    await api.post('/access/create/', userData);
+    return { username, password: password.trim() };
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validar que todas as unidades têm número
     const invalidas = unidades.filter(u => !u.numero?.trim());
     if (invalidas.length > 0) {
       alert('Todas as unidades devem ter um número informado.');
       return;
     }
 
+    // Validate morador fields for rows with addMorador
+    for (let i = 0; i < unidades.length; i++) {
+      const u = unidades[i];
+      if (!u.addMorador) continue;
+      const m = u.moradorData;
+      if (!m.first_name?.trim() || !m.last_name?.trim()) {
+        alert(`Unidade ${u.numero}: informe nome e sobrenome do morador.`);
+        return;
+      }
+      if (!m.email?.trim()) {
+        alert(`Unidade ${u.numero}: informe o e-mail do morador.`);
+        return;
+      }
+      const cpfDigits = (m.cpf || '').replace(/\D/g, '');
+      if (cpfDigits && !validateCPF(cpfDigits)) {
+        alert(`Unidade ${u.numero}: CPF do morador inválido.`);
+        return;
+      }
+      const phoneDigits = (m.phone || '').replace(/\D/g, '');
+      if (phoneDigits && !validatePhone(phoneDigits)) {
+        alert(`Unidade ${u.numero}: telefone do morador inválido.`);
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
-      // Preparar dados para envio
       const unidadesData = unidades.map(u => ({
         numero: u.numero.trim(),
-        bloco: u.bloco?.trim() || ''
+        bloco: u.bloco?.trim() || '',
       }));
 
-      // Se for apenas uma unidade, usar o endpoint simples
+      let createdUnidadeIds = [];
+
       if (unidadesData.length === 1) {
-        await api.post('/cadastros/unidades/create/', unidadesData[0]);
-        alert('Unidade cadastrada com sucesso!');
+        const response = await api.post('/cadastros/unidades/create/', unidadesData[0]);
+        createdUnidadeIds = [response.data.id];
       } else {
-        // Múltiplas unidades, usar endpoint bulk
-        await api.post('/cadastros/unidades/create-bulk/', {
-          unidades: unidadesData
-        });
-        alert(`${unidadesData.length} unidades cadastradas com sucesso!`);
+        const response = await api.post('/cadastros/unidades/create-bulk/', { unidades: unidadesData });
+        createdUnidadeIds = (response.data.unidades || []).map(u => u.id);
       }
 
-      onSuccess();
-      onClose();
+      // Create moradores for units that requested it
+      const accounts = [];
+      for (let i = 0; i < unidades.length; i++) {
+        if (unidades[i].addMorador && createdUnidadeIds[i]) {
+          const account = await createMoradorForUnidade(unidades[i].moradorData, createdUnidadeIds[i]);
+          accounts.push({ ...account, unidade: unidades[i].numero });
+        }
+      }
+
+      if (accounts.length > 0) {
+        setCreatedAccounts(accounts);
+        setShowCredentials(true);
+      } else {
+        const count = unidadesData.length;
+        alert(`${count} unidade${count > 1 ? 's' : ''} cadastrada${count > 1 ? 's' : ''} com sucesso!`);
+        onSuccess();
+        onClose();
+      }
     } catch (error) {
       console.error('Erro ao cadastrar unidades:', error);
-      alert('Erro ao cadastrar unidades: ' + (error.response?.data?.error || 'Erro desconhecido'));
+      alert('Erro ao cadastrar: ' + (error.response?.data?.error || 'Erro desconhecido'));
     } finally {
       setLoading(false);
     }
   };
 
-  // Nenhum select neste modal — a associação de morador ocorre no cadastro/edição de usuário
+  // If accounts were created, show credentials screen
+  if (showCredentials) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-container modal-large" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h2>Moradores Cadastrados</h2>
+            <button className="modal-close" onClick={onClose}><FaTimes /></button>
+          </div>
+          <div className="modal-content">
+            <p style={{ color: '#64748b', marginBottom: '1rem' }}>
+              Anote as senhas geradas. Elas não poderão ser recuperadas depois.
+            </p>
+            <table className="unidades-form-table" style={{ width: '100%' }}>
+              <thead>
+                <tr>
+                  <th>Unidade</th>
+                  <th>Usuário</th>
+                  <th>Senha</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {createdAccounts.map((acc, idx) => (
+                  <tr key={idx}>
+                    <td>{acc.unidade}</td>
+                    <td>{acc.username}</td>
+                    <td>
+                      <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, fontSize: '0.9rem' }}>
+                        {acc.password}
+                      </code>
+                    </td>
+                    <td>
+                      <button
+                        type="button"
+                        className="action-button"
+                        title="Copiar senha"
+                        onClick={() => navigator.clipboard.writeText(acc.password).then(() => alert('Senha copiada!'))}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                      >
+                        <FaCopy />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="modal-footer">
+            <button
+              type="button"
+              className="button-primary"
+              onClick={() => { onSuccess(); onClose(); }}
+            >
+              <FaSave /> Concluir
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -87,47 +226,124 @@ function AddUnidadeModal({ onClose, onSuccess }) {
             <div className="unidades-table-container">
               <table className="unidades-form-table">
                 <thead>
+              <tr>
+                <th style={{ width: '38%' }}>Número*</th>
+                <th style={{ width: '38%' }}>Bloco</th>
+                <th style={{ width: '24%' }}>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {unidades.map((unidade, index) => (
+                <React.Fragment key={index}>
                   <tr>
-                    <th style={{ width: '45%' }}>Número*</th>
-                    <th style={{ width: '45%' }}>Bloco</th>
-                    <th style={{ width: '10%' }}>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {unidades.map((unidade, index) => (
-                    <tr key={index}>
-                      <td>
-                        <input
-                          type="text"
-                          value={unidade.numero}
-                          onChange={(e) => handleChange(index, 'numero', e.target.value)}
-                          placeholder="Ex: 101"
-                          required
-                          className="form-input"
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          value={unidade.bloco}
-                          onChange={(e) => handleChange(index, 'bloco', e.target.value)}
-                          placeholder="Ex: A (opcional)"
-                          className="form-input"
-                        />
-                      </td>
-                      <td>
+                    <td>
+                      <input
+                        type="text"
+                        value={unidade.numero}
+                        onChange={(e) => handleChange(index, 'numero', e.target.value)}
+                        placeholder="Ex: 101"
+                        required
+                        className="form-input"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        value={unidade.bloco}
+                        onChange={(e) => handleChange(index, 'bloco', e.target.value)}
+                        placeholder="Ex: A (opcional)"
+                        className="form-input"
+                      />
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleMorador(index)}
+                          className={`action-button ${unidade.addMorador ? 'save-button' : 'edit-button'}`}
+                          title={unidade.addMorador ? 'Remover morador' : 'Adicionar morador'}
+                        >
+                          {unidade.addMorador ? <FaUserMinus /> : <FaUserPlus />}
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleRemoveRow(index)}
-                          className="action-button delete-button"
+                          className="action-button cancel-button"
                           title="Remover linha"
                           disabled={unidades.length === 1}
                         >
                           <FaTrash />
                         </button>
+                      </div>
+                    </td>
+                  </tr>
+                  {unidade.addMorador && (
+                    <tr>
+                      <td colSpan={3} style={{ background: '#f8fafc', padding: '10px 16px 14px' }}>
+                        <p style={{ fontSize: '0.78rem', color: '#2abb98', fontWeight: 600, marginBottom: 8, marginTop: 0 }}>
+                          <FaUserPlus style={{ marginRight: 5 }} />
+                          Morador para a unidade {unidade.numero || ''}
+                        </p>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                          <div>
+                            <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: 3 }}>Nome*</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder="Nome"
+                              value={unidade.moradorData.first_name}
+                              onChange={(e) => handleMoradorChange(index, 'first_name', e.target.value)}
+                              required={unidade.addMorador}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: 3 }}>Sobrenome*</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder="Sobrenome"
+                              value={unidade.moradorData.last_name}
+                              onChange={(e) => handleMoradorChange(index, 'last_name', e.target.value)}
+                              required={unidade.addMorador}
+                            />
+                          </div>
+                          <div style={{ gridColumn: '1 / -1' }}>
+                            <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: 3 }}>E-mail*</label>
+                            <input
+                              type="email"
+                              className="form-input"
+                              placeholder="email@exemplo.com"
+                              value={unidade.moradorData.email}
+                              onChange={(e) => handleMoradorChange(index, 'email', e.target.value)}
+                              required={unidade.addMorador}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: 3 }}>CPF</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder="000.000.000-00"
+                              value={formatCPF(String(unidade.moradorData.cpf || '').replace(/\D/g, '').slice(0, 11))}
+                              onChange={(e) => handleMoradorChange(index, 'cpf', e.target.value.replace(/\D/g, '').slice(0, 11))}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: 3 }}>Telefone</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              placeholder="(00) 00000-0000"
+                              value={formatTelefone(String(unidade.moradorData.phone || '').replace(/\D/g, '').slice(0, 11))}
+                              onChange={(e) => handleMoradorChange(index, 'phone', e.target.value.replace(/\D/g, '').slice(0, 11))}
+                            />
+                          </div>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                  )}
+                </React.Fragment>
+              ))}
                 </tbody>
               </table>
             </div>
@@ -151,7 +367,9 @@ function AddUnidadeModal({ onClose, onSuccess }) {
                     const qtd = Math.max(1, Math.min(200, parseInt(input?.value || '1', 10)));
                     if (!qtd || Number.isNaN(qtd)) return;
                     const last = unidades[unidades.length - 1] || { bloco: '' };
-                    const novas = Array.from({ length: qtd }, () => ({ numero: '', bloco: last.bloco || '' }));
+                    const novas = Array.from({ length: qtd }, () => ({
+                      numero: '', bloco: last.bloco || '', addMorador: false, moradorData: emptyMorador()
+                    }));
                     setUnidades([...unidades, ...novas]);
                     input.value = '1';
                   }}

@@ -10,7 +10,7 @@ import { validateCPF, validatePhone } from '../../utils/validators';
 import PasswordResetModal from './PasswordResetModal';
 import GenericDropdown from '../common/GenericDropdown';
 
-function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionario' }) {
+function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionario', defaultUnidadeId = null, position = 'relative' }) {
   const { user: currentUser } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
@@ -22,7 +22,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
     phone: '',
     team_id: '',
     condominio_id: '',
-    unidade_id: '',
+    unidade_id: defaultUnidadeId || '',
     is_active: true,
   });
   const [isMoradorToo, setIsMoradorToo] = useState(false);
@@ -222,7 +222,8 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
           onClose={onClose}
           icon={<FaUserPlus size={18} />}
           className="add-user-dropdown"
-          position="relative"
+          size="large"
+          position={position}
           triggerRef={triggerRef}
           isOpen={true}
         >

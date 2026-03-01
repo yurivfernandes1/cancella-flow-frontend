@@ -322,6 +322,49 @@
     background: rgba(239, 68, 68, 0.1);
     transform: scale(1.05);
   }
+
+  .inactivate-button,
+  .activate-button,
+  .reset-button {
+    padding: 0.5rem;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+  }
+
+  .inactivate-button {
+    color: #ef4444;
+  }
+
+  .inactivate-button:hover {
+    background: rgba(239, 68, 68, 0.1);
+    transform: scale(1.05);
+  }
+
+  .activate-button {
+    color: #10b981;
+  }
+
+  .activate-button:hover {
+    background: rgba(16, 185, 129, 0.1);
+    transform: scale(1.05);
+  }
+
+  .reset-button {
+    color: #f59e0b;
+  }
+
+  .reset-button:hover {
+    background: rgba(245, 158, 11, 0.1);
+    transform: scale(1.05);
+  }
 }
 
 .edit-input {

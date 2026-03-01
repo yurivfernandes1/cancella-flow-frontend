@@ -3,6 +3,7 @@ import { Navigate, useSearchParams } from 'react-router-dom';
 import Header from '../components/Header/Header';
 import GenericTable from '../components/GenericTable';
 import AddEncomendaDropdown from '../components/Encomendas/AddEncomendaDropdown';
+import ExpandableUnitsTable from '../components/Unidades/ExpandableUnitsTable';
 import { useAuth } from '../context/AuthContext';
 import api, { espacoReservaAPI } from '../services/api';
 import { formatPlaca } from '../utils/placaValidator';
@@ -12,6 +13,7 @@ import { avisoAPI } from '../services/api';
 import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes } from 'react-icons/fa';
 
 const tabs = [
+  { id: 'unidades_moradores', label: 'Unidades e Moradores' },
   { id: 'encomendas', label: 'Gestão de Encomendas' },
   { id: 'visitantes', label: 'Gestão de Visitantes' },
   { id: 'veiculos', label: 'Veículos Cadastrados' },
@@ -23,8 +25,9 @@ const tabs = [
 function PortariaPage() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'encomendas');
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'unidades_moradores');
   const [tableData, setTableData] = useState({
+    unidades_moradores: [],
     encomendas: [],
     visitantes: [],
     veiculos: [],
@@ -34,6 +37,7 @@ function PortariaPage() {
   });
   const [loading, setLoading] = useState(false);
   const [totalPages, setTotalPages] = useState({
+    unidades_moradores: 1,
     encomendas: 1,
     visitantes: 1,
     veiculos: 1,
@@ -68,7 +72,19 @@ function PortariaPage() {
   const fetchData = async (type, page = 1, search = '') => {
     setLoading(true);
     try {
-      if (type === 'encomendas') {
+      if (type === 'unidades_moradores') {
+        const response = await api.get(`/cadastros/unidades/?page=${page}&search=${search}`);
+        if (response.data.results !== undefined) {
+          setTableData(prev => ({ ...prev, unidades_moradores: response.data.results }));
+          setTotalPages(prev => ({
+            ...prev,
+            unidades_moradores: response.data.num_pages || Math.ceil(response.data.count / 10)
+          }));
+        } else {
+          setTableData(prev => ({ ...prev, unidades_moradores: response.data }));
+          setTotalPages(prev => ({ ...prev, unidades_moradores: 1 }));
+        }
+      } else if (type === 'encomendas') {
         const response = await api.get(`/cadastros/encomendas/?page=${page}&search=${search}`);
         if (response.data.results !== undefined) {
           // Mapear unidade_identificacao para unidade_info
@@ -171,7 +187,7 @@ function PortariaPage() {
   // Sincronizar tab da URL com estado
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
-    if (tabFromUrl && ['encomendas', 'visitantes', 'veiculos', 'reservas', 'eventos', 'avisos'].includes(tabFromUrl)) {
+    if (tabFromUrl && ['unidades_moradores', 'encomendas', 'visitantes', 'veiculos', 'reservas', 'eventos', 'avisos'].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
   }, [searchParams]);
@@ -520,6 +536,34 @@ function PortariaPage() {
               ))}
             </div>
           </div>
+          {/* Aba de Unidades e Moradores */}
+          {activeTab === 'unidades_moradores' && (
+            <>
+              <div className="page-header">
+                <div className="search-container">
+                  <div className="search-wrapper">
+                    <FaSearch className="search-icon" />
+                    <input
+                      className="search-input"
+                      type="text"
+                      placeholder="Buscar por número, bloco ou morador..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+              <ExpandableUnitsTable
+                unidades={tableData.unidades_moradores}
+                loading={loading}
+                mode="portaria"
+                currentPage={currentPage}
+                totalPages={totalPages.unidades_moradores}
+                onPageChange={setCurrentPage}
+              />
+            </>
+          )}
+
           {/* Aba de Encomendas */}
           {activeTab === 'encomendas' && (
             <>
