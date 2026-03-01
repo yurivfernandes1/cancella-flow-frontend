@@ -252,7 +252,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
             </div>
 
             <div className="form-row">
-              <div className="form-field email-field">
+              <div className="form-field">
                 <input
                   required
                   type="email"

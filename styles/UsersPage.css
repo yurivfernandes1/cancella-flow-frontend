@@ -635,6 +635,10 @@
   flex: 3; /* Proporção maior - ocupa 60% da largura */
 }
 
+.form-field.phone-field {
+  flex: 2; /* Proporção intermediária para o campo de telefone */
+}
+
 .role-selector {
   display: flex;
   gap: 1rem;
