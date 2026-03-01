@@ -151,9 +151,9 @@ function Header() {
                   {isSindico && (
                     <>
                       <li>
-                        <Link to="/gestao-usuarios?tab=unidades" onClick={closeMenu}>
+                        <Link to="/gestao-usuarios?tab=unidades_moradores" onClick={closeMenu}>
                           <FaBuilding />
-                          <span>Gestão de Unidades</span>
+                          <span>Unidades e Moradores</span>
                         </Link>
                       </li>
                       <li>
@@ -180,12 +180,6 @@ function Header() {
                           <span>Gestão de Portaria</span>
                         </Link>
                       </li>
-                      <li>
-                        <Link to="/gestao-usuarios?tab=moradores" onClick={closeMenu}>
-                          <FaHome />
-                          <span>Gestão de Moradores</span>
-                        </Link>
-                      </li>
                     </>
                   )}
                 </ul>
@@ -210,6 +204,12 @@ function Header() {
                   <span>Portaria</span>
                 </div>
                 <ul className="dropdown-menu">
+                  <li>
+                    <Link to="/portaria?tab=unidades_moradores" onClick={closeMenu}>
+                      <FaBuilding />
+                      <span>Unidades e Moradores</span>
+                    </Link>
+                  </li>
                   <li>
                     <Link to="/portaria?tab=encomendas" onClick={closeMenu}>
                       <FaBox />

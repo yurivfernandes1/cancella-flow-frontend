@@ -427,6 +427,10 @@ function ExpandableUnitsTable({
                             <div className="table-container compact-table" style={{ marginTop: 4 }}>
                               <div className="table-scroll">
                               <table className="generic-table">
+                                <colgroup>
+                                  <col />
+                                  <col style={{ minWidth: 160 }} />
+                                </colgroup>
                                 <thead>
                                   <tr>
                                     <th><span className="header-content">Nome</span></th>
