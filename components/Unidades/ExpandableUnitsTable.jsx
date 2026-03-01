@@ -298,6 +298,15 @@ function ExpandableUnitsTable({
                             <div className={`table-container ${editingMoradorId ? 'editing-active' : ''}`} style={{ marginTop: 4 }}>
                               <div className="table-scroll">
                               <table className="generic-table">
+                                <colgroup>
+                                  <col />
+                                  <col />
+                                  <col />
+                                  <col style={{ minWidth: 155 }} />
+                                  <col style={{ minWidth: 155 }} />
+                                  <col />
+                                  <col />
+                                </colgroup>
                                 <thead>
                                   <tr>
                                     <th><span className="header-content">Nome</span></th>
@@ -364,7 +373,7 @@ function ExpandableUnitsTable({
                                               placeholder="000.000.000-00"
                                             />
                                           ) : (
-                                            <span className="cell-content">{formatCpfDisplay(morador.cpf)}</span>
+                                            <span className="cell-content" style={{ whiteSpace: 'nowrap' }}>{formatCpfDisplay(morador.cpf)}</span>
                                           )}
                                         </td>
                                         <td>
@@ -381,7 +390,7 @@ function ExpandableUnitsTable({
                                               placeholder="(00) 00000-0000"
                                             />
                                           ) : (
-                                            <span className="cell-content">{morador.phone ? formatTelefone(morador.phone) : '-'}</span>
+                                            <span className="cell-content" style={{ whiteSpace: 'nowrap' }}>{morador.phone ? formatTelefone(morador.phone) : '-'}</span>
                                           )}
                                         </td>
                                         <td>
