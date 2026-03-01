@@ -4,13 +4,15 @@ import Header from '../components/Header/Header';
 import GenericTable from '../components/GenericTable';
 import AddEncomendaDropdown from '../components/Encomendas/AddEncomendaDropdown';
 import ExpandableUnitsTable from '../components/Unidades/ExpandableUnitsTable';
+
 import { useAuth } from '../context/AuthContext';
-import api, { espacoReservaAPI } from '../services/api';
+import api, { espacoReservaAPI, listaConvidadosAPI } from '../services/api';
+import ListaConvidadosModal from '../components/Eventos/ListaConvidadosModal';
 import { formatPlaca } from '../utils/placaValidator';
 import '../styles/PortariaPage.css';
 import AvisoBanner from '../components/Avisos/AvisoBanner';
 import { avisoAPI } from '../services/api';
-import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaUsers } from 'react-icons/fa';
 
 const tabs = [
   { id: 'unidades_moradores', label: 'Unidades e Moradores' },
@@ -19,6 +21,7 @@ const tabs = [
   { id: 'veiculos', label: 'Veículos Cadastrados' },
   { id: 'reservas', label: 'Reservas do Dia' },
   { id: 'eventos', label: 'Eventos' },
+  { id: 'lista_convidados', label: 'Lista de Convidados' },
   { id: 'avisos', label: 'Avisos' }
 ];
 
@@ -33,6 +36,7 @@ function PortariaPage() {
     veiculos: [],
     reservas: [],
     eventos: [],
+    lista_convidados: [],
     avisos: []
   });
   const [loading, setLoading] = useState(false);
@@ -43,6 +47,7 @@ function PortariaPage() {
     veiculos: 1,
     reservas: 1,
     eventos: 1,
+    lista_convidados: 1,
     avisos: 1
   });
   const [currentPage, setCurrentPage] = useState(1);
@@ -51,10 +56,20 @@ function PortariaPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingRowId, setEditingRowId] = useState(null);
   const [currentEditData, setCurrentEditData] = useState({});
+  const [eventoSelecionado, setEventoSelecionado] = useState(null);
+  const [listaSelecionada, setListaSelecionada] = useState(null);
 
   // Verificar se o usuário tem acesso
   const isPortaria = user?.groups?.some(group => group.name === 'Portaria');
-  const hasAccess = isPortaria;
+  const isSindicoPortaria = user?.groups?.some(group => group.name === 'Síndicos') || user?.is_staff;
+  const hasAccess = isPortaria || isSindicoPortaria;
+
+  // Checkbox: mostrar apenas listas do dia
+  const [somenteHoje, setSomenteHoje] = useState(true);
+  const hoje = new Date().toISOString().slice(0, 10);
+  const listasFiltradas = somenteHoje
+    ? tableData.lista_convidados.filter((l) => l.data_evento === hoje)
+    : tableData.lista_convidados;
 
   // Debug
   React.useEffect(() => {
@@ -62,8 +77,9 @@ function PortariaPage() {
     console.log('User:', user);
     console.log('Groups:', user?.groups);
     console.log('isPortaria:', isPortaria);
+    console.log('isSindicoPortaria:', isSindicoPortaria);
     console.log('hasAccess:', hasAccess);
-  }, [user, isPortaria, hasAccess]);
+  }, [user, isPortaria, isSindicoPortaria, hasAccess]);
 
   if (!hasAccess) {
     return <Navigate to="/welcome" replace />;
@@ -147,6 +163,10 @@ function PortariaPage() {
           setTableData(prev => ({ ...prev, eventos: response.data }));
           setTotalPages(prev => ({ ...prev, eventos: 1 }));
         }
+      } else if (type === 'lista_convidados') {
+        const response = await listaConvidadosAPI.getListas({ search });
+        setTableData(prev => ({ ...prev, lista_convidados: Array.isArray(response.data) ? response.data : (response.data.results || []) }));
+        setTotalPages(prev => ({ ...prev, lista_convidados: 1 }));
       } else if (type === 'avisos') {
         const response = await avisoAPI.list({ page, search, vigente: 1 });
         if (response.data.results !== undefined) {
@@ -187,7 +207,7 @@ function PortariaPage() {
   // Sincronizar tab da URL com estado
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
-    if (tabFromUrl && ['unidades_moradores', 'encomendas', 'visitantes', 'veiculos', 'reservas', 'eventos', 'avisos'].includes(tabFromUrl)) {
+    if (tabFromUrl && ['unidades_moradores', 'encomendas', 'visitantes', 'veiculos', 'reservas', 'eventos', 'lista_convidados', 'avisos'].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
   }, [searchParams]);
@@ -474,39 +494,39 @@ function PortariaPage() {
     {
       key: 'titulo',
       header: 'Título',
-      width: '20%',
+      width: '18%',
       render: (value) => value || '-'
     },
     {
       key: 'descricao',
       header: 'Descrição',
-      width: '25%',
+      width: '22%',
       render: (value) => value || '-'
     },
     {
       key: 'local_completo',
       header: 'Local',
-      width: '20%',
+      width: '18%',
       render: (value, row) => row.espaco_nome || row.local_texto || '-'
     },
     {
       key: 'data_evento',
       header: 'Data',
-      width: '12%',
+      width: '11%',
       render: (value) => value ? formatDate(value) : '-'
     },
     {
       key: 'hora_inicio',
       header: 'Início',
-      width: '10%',
+      width: '9%',
       render: (value) => value || '-'
     },
     {
       key: 'hora_fim',
       header: 'Término',
-      width: '10%',
+      width: '9%',
       render: (value) => value || '-'
-    }
+    },
   ];
 
   const handleAddEncomenda = () => {
@@ -723,6 +743,89 @@ function PortariaPage() {
             </>
           )}
 
+          {/* Aba de Lista de Convidados */}
+          {activeTab === 'lista_convidados' && (
+            <>
+              <div className="page-header">
+                <div className="search-container">
+                  <div className="search-wrapper">
+                    <FaSearch className="search-icon" />
+                    <input
+                      className="search-input"
+                      type="text"
+                      placeholder="Buscar listas..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: '#374151', cursor: 'pointer', userSelect: 'none', marginLeft: 12, whiteSpace: 'nowrap' }}>
+                  <input
+                    type="checkbox"
+                    checked={somenteHoje}
+                    onChange={(e) => setSomenteHoje(e.target.checked)}
+                    style={{ accentColor: '#2abb98', width: 15, height: 15, cursor: 'pointer' }}
+                  />
+                  Somente hoje
+                </label>
+              </div>
+
+              <GenericTable
+                data={listasFiltradas}
+                columns={[
+                  { key: 'morador_nome', header: 'Morador', width: '22%', render: (v) => v || '-' },
+                  { key: 'titulo', header: 'Título', width: '25%', render: (v) => v || '-' },
+                  {
+                    key: 'data_evento', header: 'Data do Evento', width: '15%',
+                    render: (v) => {
+                      if (!v) return '-';
+                      const [y, m, d] = v.split('-');
+                      return `${d}/${m}/${y}`;
+                    }
+                  },
+                  {
+                    key: 'total_convidados', header: 'Convidados', width: '12%',
+                    render: (v) => v ?? 0
+                  },
+                  {
+                    key: 'ativa', header: 'Status', width: '10%',
+                    render: (v) => (
+                      <span style={{
+                        padding: '3px 10px', borderRadius: 12, fontSize: '0.75rem', fontWeight: 600,
+                        background: v ? '#dcfce7' : '#f3f4f6', color: v ? '#15803d' : '#6b7280', display: 'inline-block'
+                      }}>{v ? 'Ativa' : 'Inativa'}</span>
+                    )
+                  },
+                  {
+                    key: 'actions', header: 'Convidados', width: '11%',
+                    render: (_, row) => (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setListaSelecionada(row); }}
+                        style={{
+                          background: '#2abb98', color: '#fff', border: 'none',
+                          borderRadius: 6, padding: '5px 10px', cursor: 'pointer',
+                          fontSize: '0.78rem', display: 'flex', alignItems: 'center',
+                          gap: 4, whiteSpace: 'nowrap',
+                        }}
+                        title="Ver lista de convidados"
+                      >
+                        <FaUsers size={12} /> Ver Lista
+                      </button>
+                    )
+                  },
+                ]}
+                loading={loading}
+                currentPage={currentPage}
+                totalPages={totalPages.lista_convidados}
+                onPageChange={setCurrentPage}
+                editingRowId={null}
+                currentEditData={{}}
+                hideEditButton={true}
+                className="full-width-table allow-horizontal-scroll"
+              />
+            </>
+          )}
+
           {/* Aba de Eventos */}
           {activeTab === 'eventos' && (
             <>
@@ -768,6 +871,14 @@ function PortariaPage() {
           )}
         </div>
       </div>
+
+      {listaSelecionada && (
+        <ListaConvidadosModal
+          lista={listaSelecionada}
+          readOnly={true}
+          onClose={() => setListaSelecionada(null)}
+        />
+      )}
     </>
   );
 }

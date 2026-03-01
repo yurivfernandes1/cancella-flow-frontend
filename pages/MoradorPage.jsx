@@ -5,8 +5,12 @@ import EncomendaBadge from '../components/Encomendas/EncomendaBadge';
 import GenericTable from '../components/GenericTable';
 import AddVisitanteDropdown from '../components/Visitantes/AddVisitanteDropdown';
 import AddVeiculoDropdown from '../components/Veiculos/AddVeiculoDropdown';
+
 import { useAuth } from '../context/AuthContext';
-import api, { avisoAPI, espacoReservaAPI } from '../services/api';
+import api, { avisoAPI, espacoReservaAPI, listaConvidadosAPI } from '../services/api';
+import ListaConvidadosModal from '../components/Eventos/ListaConvidadosModal';
+import AddListaConvidadosModal from '../components/Eventos/AddListaConvidadosModal';
+import { FaUsers } from 'react-icons/fa';
 import AvisoBanner from '../components/Avisos/AvisoBanner';
 import ReservaModal from '../components/Reservas/ReservaModal';
 import { validatePlaca, formatPlaca, normalizePlaca, maskPlaca } from '../utils/placaValidator';
@@ -19,6 +23,7 @@ const tabs = [
   { id: 'veiculos', label: 'Meus Veículos' },
   { id: 'reservas', label: 'Minhas Reservas' },
   { id: 'eventos', label: 'Eventos' },
+  { id: 'lista_convidados', label: 'Lista de Convidados' },
   { id: 'avisos', label: 'Avisos' }
 ];
 
@@ -32,6 +37,7 @@ function MoradorPage() {
     veiculos: [],
     reservas: [],
     eventos: [],
+    lista_convidados: [],
     avisos: []
   });
   const [loading, setLoading] = useState(false);
@@ -41,6 +47,7 @@ function MoradorPage() {
     veiculos: 1,
     reservas: 1,
     eventos: 1,
+    lista_convidados: 1,
     avisos: 1
   });
   const [currentPage, setCurrentPage] = useState(1);
@@ -52,6 +59,9 @@ function MoradorPage() {
   const [editingRowId, setEditingRowId] = useState(null);
   const [currentEditData, setCurrentEditData] = useState({});
   const [showReservaModal, setShowReservaModal] = useState(false);
+  const [eventoSelecionado, setEventoSelecionado] = useState(null);
+  const [listaSelecionada, setListaSelecionada] = useState(null);
+  const [showAddLista, setShowAddLista] = useState(false);
 
   // Verificar se o usuário tem acesso
   const isMorador = user?.groups?.some(group => group.name === 'Moradores');
@@ -134,6 +144,10 @@ function MoradorPage() {
           setTableData(prev => ({ ...prev, eventos: response.data }));
           setTotalPages(prev => ({ ...prev, eventos: 1 }));
         }
+      } else if (type === 'lista_convidados') {
+        const response = await listaConvidadosAPI.getListas({ search });
+        setTableData(prev => ({ ...prev, lista_convidados: Array.isArray(response.data) ? response.data : (response.data.results || []) }));
+        setTotalPages(prev => ({ ...prev, lista_convidados: 1 }));
       } else if (type === 'avisos') {
         const response = await avisoAPI.list({ page, search, vigente: 1 });
         if (response.data.results !== undefined) {
@@ -544,6 +558,73 @@ function MoradorPage() {
     }
   ];
 
+  // Colunas para Lista de Convidados
+  const listaConvidadosColumns = [
+    {
+      key: 'titulo',
+      header: 'Título',
+      width: '30%',
+      render: (value) => value || '-'
+    },
+    {
+      key: 'data_evento',
+      header: 'Data do Evento',
+      width: '18%',
+      render: (value) => {
+        if (!value) return '-';
+        const [y, m, d] = value.split('-');
+        return `${d}/${m}/${y}`;
+      }
+    },
+    {
+      key: 'total_convidados',
+      header: 'Convidados',
+      width: '14%',
+      render: (value) => value ?? 0
+    },
+    {
+      key: 'ativa',
+      header: 'Status',
+      width: '12%',
+      render: (value) => (
+        <span style={{
+          padding: '3px 10px', borderRadius: 12, fontSize: '0.75rem', fontWeight: 600,
+          background: value ? '#dcfce7' : '#f3f4f6',
+          color: value ? '#15803d' : '#6b7280',
+          display: 'inline-block'
+        }}>
+          {value ? 'Ativa' : 'Inativa'}
+        </span>
+      )
+    },
+    {
+      key: 'actions',
+      header: 'Ações',
+      width: '13%',
+      render: (_, row) => (
+        <button
+          onClick={(e) => { e.stopPropagation(); setListaSelecionada(row); }}
+          style={{
+            background: '#2abb98',
+            color: '#fff',
+            border: 'none',
+            borderRadius: 6,
+            padding: '5px 10px',
+            cursor: 'pointer',
+            fontSize: '0.78rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            whiteSpace: 'nowrap',
+          }}
+          title="Gerenciar lista de convidados"
+        >
+          <FaUsers size={12} /> Gerenciar
+        </button>
+      )
+    }
+  ];
+
   // Colunas para Eventos (somente visualização)
   const eventosColumns = [
     {
@@ -555,7 +636,7 @@ function MoradorPage() {
     {
       key: 'descricao',
       header: 'Descrição',
-      width: '30%',
+      width: '28%',
       render: (value) => value || '-'
     },
     {
@@ -567,7 +648,7 @@ function MoradorPage() {
     {
       key: 'data_evento',
       header: 'Data',
-      width: '12%',
+      width: '13%',
       render: (value) => {
         if (!value) return '-';
         const date = new Date(value);
@@ -577,14 +658,13 @@ function MoradorPage() {
     {
       key: 'hora_inicio',
       header: 'Horário',
-      width: '13%',
+      width: '14%',
       render: (value, row) => {
         if (!value) return '-';
         const horaFim = row.hora_fim || '';
         return `${value.slice(0, 5)} - ${horaFim.slice(0, 5)}`;
       }
-    }
-    // Nenhuma coluna editável
+    },
   ];
 
   // Colunas para Veículos
@@ -797,6 +877,14 @@ function MoradorPage() {
                 </button>
               </div>
             )}
+
+            {activeTab === 'lista_convidados' && (
+              <div className="dropdown-wrapper">
+                <button className="add-button" onClick={() => setShowAddLista(true)}>
+                  <FaPlus /> Nova Lista
+                </button>
+              </div>
+            )}
           </div>
 
           {activeTab !== 'avisos' && (
@@ -838,7 +926,9 @@ function MoradorPage() {
                     ? reservasColumns
                     : activeTab === 'eventos'
                       ? eventosColumns
-                      : veiculosColumns
+                      : activeTab === 'lista_convidados'
+                        ? listaConvidadosColumns
+                        : veiculosColumns
             }
             data={tableData[activeTab]}
             loading={loading}
@@ -856,7 +946,7 @@ function MoradorPage() {
             editingRowId={activeTab === 'visitantes' || activeTab === 'veiculos' ? editingRowId : null}
             onEditRow={activeTab === 'visitantes' || activeTab === 'veiculos' ? handleEditRow : undefined}
             onEditDataChange={activeTab === 'visitantes' || activeTab === 'veiculos' ? setCurrentEditData : undefined}
-            hideEditButton={activeTab === 'encomendas' || activeTab === 'eventos' || activeTab === 'avisos'}
+            hideEditButton={activeTab === 'encomendas' || activeTab === 'eventos' || activeTab === 'lista_convidados' || activeTab === 'avisos'}
             titleColumnKey={activeTab === 'encomendas' ? 'codigo_rastreio' : undefined}
           />
         )}
@@ -868,6 +958,25 @@ function MoradorPage() {
           onSuccess={() => {
             setShowReservaModal(false);
             fetchData('reservas', currentPage, searchTerm);
+          }}
+        />
+      )}
+
+      {listaSelecionada && (
+        <ListaConvidadosModal
+          lista={listaSelecionada}
+          readOnly={false}
+          onClose={() => setListaSelecionada(null)}
+          onUpdate={() => fetchData('lista_convidados', currentPage, searchTerm)}
+        />
+      )}
+
+      {showAddLista && (
+        <AddListaConvidadosModal
+          onClose={() => setShowAddLista(false)}
+          onSuccess={() => {
+            setShowAddLista(false);
+            fetchData('lista_convidados', 1, searchTerm);
           }}
         />
       )}

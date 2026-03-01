@@ -13,7 +13,8 @@ import {
   FaBox,
   FaIdCard,
   FaBell,
-  FaCalendarAlt
+  FaCalendarAlt,
+  FaClipboardList
 } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import logo from '../../assets/logo_header.svg';
@@ -169,9 +170,15 @@ function Header() {
                         </Link>
                       </li>
                       <li>
-                        <Link to="/gestao-usuarios?tab=eventos" onClick={closeMenu}>
+                        <Link to="/portaria?tab=eventos" onClick={closeMenu}>
                           <FaCalendarAlt />
-                          <span>Gestão de Eventos</span>
+                          <span>Eventos</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link to="/portaria?tab=lista_convidados" onClick={closeMenu}>
+                          <FaClipboardList />
+                          <span>Listas de Convidados</span>
                         </Link>
                       </li>
                       <li>
@@ -188,11 +195,25 @@ function Header() {
 
             {/* Minha Área - Apenas para Moradores */}
             {isMorador && !isPortaria && !isAdmin && !isSindico && (
-              <li className="app-menu-item">
-                <Link to="/minha-area" className="nav-link">
+              <li className={`app-menu-item dropdown ${openDropdown === 'morador' ? 'open' : ''}`}>
+                <div className="dropdown-link" onClick={() => toggleDropdown('morador')}>
                   <FaHome />
                   <span>Minha Área</span>
-                </Link>
+                </div>
+                <ul className="dropdown-menu">
+                  <li>
+                    <Link to="/minha-area" onClick={closeMenu}>
+                      <FaHome />
+                      <span>Início</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/minha-area?tab=lista_convidados" onClick={closeMenu}>
+                      <FaClipboardList />
+                      <span>Listas de Convidados</span>
+                    </Link>
+                  </li>
+                </ul>
               </li>
             )}
 
@@ -232,6 +253,12 @@ function Header() {
                     <Link to="/portaria?tab=reservas" onClick={closeMenu}>
                       <FaBox />
                       <span>Reservas do Dia</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/portaria?tab=lista_convidados" onClick={closeMenu}>
+                      <FaClipboardList />
+                      <span>Listas de Convidados</span>
                     </Link>
                   </li>
                   <li>
