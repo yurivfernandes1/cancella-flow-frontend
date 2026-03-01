@@ -27,7 +27,7 @@ function EventoModal({ isOpen, onClose, onSuccess, evento = null }) {
         setFormData({
           titulo: evento.titulo || '',
           descricao: evento.descricao || '',
-          espaco: evento.espaco_id || '',
+          espaco: evento.espaco_id ? String(evento.espaco_id) : '',
           local_texto: evento.local_texto || '',
           inicio: evento.datetime_inicio ? evento.datetime_inicio.replace(' ', 'T').slice(0,16) : (evento.data_evento && evento.hora_inicio ? `${evento.data_evento}T${evento.hora_inicio}` : ''),
           fim: evento.datetime_fim ? evento.datetime_fim.replace(' ', 'T').slice(0,16) : (evento.data_evento && evento.hora_fim ? `${evento.data_evento}T${evento.hora_fim}` : ''),
@@ -87,6 +87,14 @@ function EventoModal({ isOpen, onClose, onSuccess, evento = null }) {
       setFormData(prev => ({
         ...prev,
         local_texto: ''
+      }));
+    }
+
+    // Se digitar no campo local_texto, limpar espaço selecionado
+    if (name === 'local_texto' && value) {
+      setFormData(prev => ({
+        ...prev,
+        espaco: ''
       }));
     }
   };
@@ -163,6 +171,9 @@ function EventoModal({ isOpen, onClose, onSuccess, evento = null }) {
     }
 
     if (!formData.inicio) newErrors.inicio = 'Data e hora de início são obrigatórias';
+    if (formData.inicio && new Date(formData.inicio) < new Date()) {
+      newErrors.inicio = 'Data de início não pode ser no passado';
+    }
     if (!formData.fim) newErrors.fim = 'Data e hora de término são obrigatórias';
     if (formData.inicio && formData.fim && formData.inicio >= formData.fim) {
       newErrors.fim = 'Término deve ser posterior ao início';
@@ -201,8 +212,8 @@ function EventoModal({ isOpen, onClose, onSuccess, evento = null }) {
       }
 
       if (evento) {
-        // Editar evento existente
-        await eventoAPI.update(evento.id, formDataToSend);
+        // Editar evento existente (PATCH para suportar upload parcial)
+        await eventoAPI.patch(evento.id, formDataToSend);
       } else {
         // Criar novo evento
         await eventoAPI.create(formDataToSend);
@@ -272,7 +283,7 @@ function EventoModal({ isOpen, onClose, onSuccess, evento = null }) {
                 value={formData.descricao}
                 onChange={handleChange}
                 placeholder="Descreva os detalhes do evento..."
-                rows="4"
+                rows="2"
                 className={errors.descricao ? 'error' : ''}
               />
               {errors.descricao && <span className="error-message">{errors.descricao}</span>}
@@ -288,7 +299,6 @@ function EventoModal({ isOpen, onClose, onSuccess, evento = null }) {
                   value={formData.espaco}
                   onChange={handleChange}
                   className={errors.local ? 'error' : ''}
-                  disabled={!!formData.local_texto}
                 >
                   <option value="">Selecione um espaço (opcional)</option>
                   {espacos.map(esp => (
@@ -309,7 +319,6 @@ function EventoModal({ isOpen, onClose, onSuccess, evento = null }) {
                   onChange={handleChange}
                   placeholder="Ex: Salão de Festas Externo"
                   className={errors.local ? 'error' : ''}
-                  disabled={!!formData.espaco}
                 />
               </div>
             </div>
@@ -317,7 +326,7 @@ function EventoModal({ isOpen, onClose, onSuccess, evento = null }) {
 
             {/* Início e término em datetime único */}
             <div className="form-row">
-              <div className="form-group" style={{ flex: '0 0 48%' }}>
+              <div className="form-group" style={{ flex: 1 }}>
                 <label htmlFor="inicio">
                   Início <span className="required">*</span>
                 </label>
@@ -327,12 +336,13 @@ function EventoModal({ isOpen, onClose, onSuccess, evento = null }) {
                   name="inicio"
                   value={formData.inicio}
                   onChange={handleChange}
+                  min={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
                   className={errors.inicio ? 'error' : ''}
                 />
                 {errors.inicio && <span className="error-message">{errors.inicio}</span>}
               </div>
 
-              <div className="form-group" style={{ flex: '0 0 48%' }}>
+              <div className="form-group" style={{ flex: 1 }}>
                 <label htmlFor="fim">
                   Término <span className="required">*</span>
                 </label>
@@ -342,6 +352,7 @@ function EventoModal({ isOpen, onClose, onSuccess, evento = null }) {
                   name="fim"
                   value={formData.fim}
                   onChange={handleChange}
+                  min={formData.inicio || new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
                   className={errors.fim ? 'error' : ''}
                 />
                 {errors.fim && <span className="error-message">{errors.fim}</span>}

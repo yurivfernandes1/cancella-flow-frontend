@@ -27,7 +27,7 @@
   border-radius: 12px;
   width: 90%;
   max-width: 700px;
-  max-height: 85vh;
+  max-height: 90vh;
   overflow: hidden;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
   animation: modal-appear 0.3s ease-out;
@@ -44,7 +44,7 @@
   .modal-container {
     width: 100%;
     max-width: 100%;
-    max-height: calc(100vh - 70px);
+    max-height: calc(100vh - 60px);
     border-radius: 8px;
     margin: 0;
   }
@@ -1329,6 +1329,7 @@ input:checked + .slider:before {
 .form-group input[type="text"],
 .form-group input[type="date"],
 .form-group input[type="time"],
+.form-group input[type="datetime-local"],
 .form-group select,
 .form-group textarea {
   width: 100%;
@@ -1338,6 +1339,15 @@ input:checked + .slider:before {
   font-size: 0.95rem;
   transition: all 0.2s ease;
   font-family: inherit;
+  box-sizing: border-box;
+  background-color: #fff;
+  color: #334155;
+}
+
+.form-group input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  opacity: 0.5;
+  cursor: pointer;
+  filter: invert(50%) sepia(1) saturate(3) hue-rotate(130deg);
 }
 
 .form-group input:focus,
