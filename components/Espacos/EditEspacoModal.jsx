@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { FaSave, FaTimes, FaTrash, FaPlus } from 'react-icons/fa';
+import { FaSave, FaTimes, FaTrash, FaPlus, FaEdit, FaCheck } from 'react-icons/fa';
 import { espacoAPI, espacoInventarioAPI } from '../../services/api';
-import GenericTable from '../GenericTable';
 import '../../styles/Modal.css';
 
 export default function EditEspacoModal({ espaco, onClose, onSaved, onDeleted }) {
@@ -101,14 +100,23 @@ export default function EditEspacoModal({ espaco, onClose, onSaved, onDeleted })
     }
   };
 
-  // item deletion handled by inventario API; function removed as unused
-
   const handleEditItem = (item) => {
     setEditingItem({ ...item });
   };
 
   const handleCancelEditItem = () => {
     setEditingItem(null);
+  };
+
+  const handleDeleteItem = async (itemId) => {
+    if (!confirm('Tem certeza que deseja excluir este item do inventário?')) return;
+    try {
+      await espacoInventarioAPI.delete(itemId);
+      await loadInventario(invPage);
+    } catch (err) {
+      console.error('Erro ao excluir item:', err);
+      alert('Erro ao excluir item: ' + (err.response?.data?.error || 'Tente novamente.'));
+    }
   };
 
   const loadInventario = async (page = 1) => {
@@ -131,7 +139,7 @@ export default function EditEspacoModal({ espaco, onClose, onSaved, onDeleted })
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-  <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 800 }}>
+      <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 860, width: '95%' }}>
         <div className="modal-header">
           <h2>Editar Espaço</h2>
           <button className="modal-close" onClick={onClose}>
@@ -140,40 +148,22 @@ export default function EditEspacoModal({ espaco, onClose, onSaved, onDeleted })
         </div>
 
         <form onSubmit={handleSaveEspaco}>
-          <div className="modal-content" style={{ padding: '20px' }}>
-            <div style={{ display: 'flex', gap: 12, marginBottom: '1rem' }}>
-              <div style={{ flex: 1 }}>
-                <div className="form-field" style={{ marginBottom: 8 }}>
-                  <input
-                    type="text"
-                    value={form.nome}
-                    onChange={(e) => setForm(prev => ({ ...prev, nome: e.target.value }))}
-                    required
-                    placeholder="Nome do espaço"
-                  />
-                  <label>Nome do Espaço*</label>
-                </div>
-                <div style={{ paddingLeft: 4 }}>
-                  <label style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 8, 
-                    cursor: 'pointer'
-                  }}>
-                    <input
-                      type="checkbox"
-                      checked={form.is_active}
-                      onChange={(e) => setForm(prev => ({ ...prev, is_active: e.target.checked }))}
-                      style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#22c55e' }}
-                    />
-                    <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>
-                      {form.is_active ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </label>
-                </div>
+          <div className="modal-content" style={{ padding: '24px' }}>
+
+            {/* Campos principais */}
+            <div style={{ display: 'flex', gap: 16, marginBottom: '1.25rem', flexWrap: 'wrap' }}>
+              <div className="form-field" style={{ flex: '1 1 260px', minWidth: 0 }}>
+                <input
+                  type="text"
+                  value={form.nome}
+                  onChange={(e) => setForm(prev => ({ ...prev, nome: e.target.value }))}
+                  required
+                  placeholder="Nome do espaço"
+                />
+                <label>Nome do Espaço*</label>
               </div>
 
-              <div className="form-field" style={{ width: 80, marginBottom: 0 }}>
+              <div className="form-field" style={{ width: 110, flexShrink: 0 }}>
                 <input
                   type="number"
                   min="0"
@@ -181,10 +171,10 @@ export default function EditEspacoModal({ espaco, onClose, onSaved, onDeleted })
                   onChange={(e) => setForm(prev => ({ ...prev, capacidade_pessoas: e.target.value }))}
                   placeholder="0"
                 />
-                <label style={{ fontSize: '0.85rem' }}>Pessoas</label>
+                <label>Pessoas</label>
               </div>
 
-              <div className="form-field" style={{ width: 120, marginBottom: 0 }}>
+              <div className="form-field" style={{ width: 140, flexShrink: 0 }}>
                 <input
                   type="number"
                   min="0"
@@ -193,125 +183,213 @@ export default function EditEspacoModal({ espaco, onClose, onSaved, onDeleted })
                   onChange={(e) => setForm(prev => ({ ...prev, valor_aluguel: e.target.value }))}
                   placeholder="0.00"
                 />
-                <label style={{ fontSize: '0.85rem' }}>Valor (R$)</label>
+                <label>Valor (R$)</label>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', paddingTop: 8, flexShrink: 0 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={form.is_active}
+                    onChange={(e) => setForm(prev => ({ ...prev, is_active: e.target.checked }))}
+                    style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#22c55e' }}
+                  />
+                  <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>
+                    {form.is_active ? 'Ativo' : 'Inativo'}
+                  </span>
+                </label>
               </div>
             </div>
 
-            <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid #e2e8f0' }} />
+            <hr style={{ margin: '0 0 1.25rem 0', border: 'none', borderTop: '1px solid #e2e8f0' }} />
 
-            <h3 style={{ marginBottom: 10, fontSize: '1rem', fontWeight: 600 }}>Itens do Inventário</h3>
+            <h3 style={{ marginBottom: 12, fontSize: '0.95rem', fontWeight: 600, color: '#334155' }}>
+              Itens do Inventário
+            </h3>
 
-            {/* Adicionar novo item */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+            {/* Linha de adição de item */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
               <input
                 type="text"
                 value={newItem.nome}
                 onChange={(e) => setNewItem(prev => ({ ...prev, nome: e.target.value }))}
                 placeholder="Nome do item"
-                style={{ flex: 1, padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 4 }}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddItem())}
+                style={{ flex: '1 1 200px', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: '0.9rem', outline: 'none' }}
               />
               <input
                 type="text"
                 value={newItem.codigo}
                 onChange={(e) => setNewItem(prev => ({ ...prev, codigo: e.target.value }))}
                 placeholder="Código"
-                style={{ width: '150px', padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: 4 }}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddItem())}
+                style={{ width: 160, padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: '0.9rem', outline: 'none' }}
               />
               <button
                 type="button"
                 onClick={handleAddItem}
                 className="button-primary"
-                style={{ padding: '8px 16px' }}
+                style={{ padding: '9px 18px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}
               >
-                <FaPlus />
+                <FaPlus /> Adicionar
               </button>
             </div>
 
-            {/* Lista de itens - área exclusiva de rolagem */}
-            <div className="modal-table-area" style={{ marginTop: 8 }}>
-              <GenericTable
-                className="compact-table"
-                columns={[
-                  { 
-                    key: 'nome', 
-                    header: 'Nome',
-                    width: '40%',
-                    editable: true,
-                    editComponent: (data, onChange) => (
-                      <input
-                        type="text"
-                        value={data.nome || ''}
-                        onChange={(e) => onChange('nome', e.target.value)}
-                        style={{ width: '100%', padding: '6px 8px', border: '1px solid #cbd5e1', borderRadius: 4 }}
-                      />
-                    )
-                  },
-                  { 
-                    key: 'codigo', 
-                    header: 'Código',
-                    width: '25%',
-                    editable: true,
-                    editComponent: (data, onChange) => (
-                      <input
-                        type="text"
-                        value={data.codigo || ''}
-                        onChange={(e) => onChange('codigo', e.target.value)}
-                        style={{ width: '100%', padding: '6px 8px', border: '1px solid #cbd5e1', borderRadius: 4 }}
-                      />
-                    )
-                  },
-                  { 
-                    key: 'is_active', 
-                    header: 'Status',
-                    width: '15%',
-                    editable: true,
-                    render: (value) => (
-                      <span style={{
-                        padding: '4px 12px',
-                        borderRadius: 12,
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        background: value ? '#dcfce7' : '#fee2e2',
-                        color: value ? '#15803d' : '#dc2626',
-                        display: 'inline-block'
-                      }}>
-                        {value ? 'Ativo' : 'Inativo'}
-                      </span>
-                    ),
-                    editComponent: (data, onChange) => (
-                      <label style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', justifyContent: 'center' }}>
-                        <input
-                          type="checkbox"
-                          checked={data.is_active}
-                          onChange={(e) => onChange('is_active', e.target.checked)}
-                          style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#22c55e' }}
-                        />
-                      </label>
-                    )
-                  },
-                  { 
-                    key: 'actions', 
-                    header: 'Ações',
-                    width: '20%'
-                  }
-                ]}
-                data={inventario}
-                loading={loadingInventario}
-                totalPages={invTotalPages}
-                currentPage={invPage}
-                onPageChange={(next) => {
-                  const target = Math.min(Math.max(1, next), invTotalPages || 1);
-                  if (target !== invPage) loadInventario(target);
-                }}
-                editingRowId={editingItem?.id}
-                onSave={handleSaveItem}
-                onEdit={handleEditItem}
-                onCancel={handleCancelEditItem}
-              />
-            </div>
+            {/* Tabela de itens */}
+            {loadingInventario ? (
+              <p style={{ color: '#94a3b8', fontSize: '0.875rem', textAlign: 'center', padding: '16px 0' }}>Carregando...</p>
+            ) : inventario.length > 0 ? (
+              <>
+                <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                    <thead>
+                      <tr style={{ background: '#2abb98', color: 'white' }}>
+                        <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600 }}>Nome</th>
+                        <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 600 }}>Código</th>
+                        <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600 }}>Status</th>
+                        <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 600, width: 110 }}>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {inventario.map((item, index) => {
+                        const isEditing = editingItem?.id === item.id;
+                        return (
+                          <tr
+                            key={item.id}
+                            style={{ borderTop: index > 0 ? '1px solid #f1f5f9' : 'none', background: index % 2 === 0 ? 'white' : '#fafafa' }}
+                          >
+                            <td style={{ padding: '10px 14px' }}>
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  value={editingItem.nome}
+                                  onChange={(e) => setEditingItem(prev => ({ ...prev, nome: e.target.value }))}
+                                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: '0.875rem' }}
+                                />
+                              ) : item.nome}
+                            </td>
+                            <td style={{ padding: '10px 14px', color: isEditing ? 'inherit' : '#64748b' }}>
+                              {isEditing ? (
+                                <input
+                                  type="text"
+                                  value={editingItem.codigo}
+                                  onChange={(e) => setEditingItem(prev => ({ ...prev, codigo: e.target.value }))}
+                                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #cbd5e1', borderRadius: 4, fontSize: '0.875rem' }}
+                                />
+                              ) : item.codigo}
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                              {isEditing ? (
+                                <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={editingItem.is_active}
+                                    onChange={(e) => setEditingItem(prev => ({ ...prev, is_active: e.target.checked }))}
+                                    style={{ width: 16, height: 16, accentColor: '#22c55e' }}
+                                  />
+                                  <span style={{ fontSize: '0.8rem' }}>{editingItem.is_active ? 'Ativo' : 'Inativo'}</span>
+                                </label>
+                              ) : (
+                                <span style={{
+                                  padding: '3px 10px',
+                                  borderRadius: 12,
+                                  fontSize: '0.75rem',
+                                  fontWeight: 600,
+                                  background: item.is_active ? '#dcfce7' : '#fee2e2',
+                                  color: item.is_active ? '#15803d' : '#dc2626',
+                                }}>
+                                  {item.is_active ? 'Ativo' : 'Inativo'}
+                                </span>
+                              )}
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                              <div style={{ display: 'inline-flex', gap: 4 }}>
+                                {isEditing ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSaveItem(item.id, editingItem)}
+                                      title="Salvar"
+                                      style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', padding: 6, borderRadius: 4, display: 'inline-flex', alignItems: 'center', fontSize: '1rem' }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = '#d1fae5'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                    >
+                                      <FaCheck />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleCancelEditItem}
+                                      title="Cancelar"
+                                      style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 6, borderRadius: 4, display: 'inline-flex', alignItems: 'center', fontSize: '1rem' }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                    >
+                                      <FaTimes />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditItem(item)}
+                                      title="Editar item"
+                                      style={{ background: 'none', border: 'none', color: '#2abb98', cursor: 'pointer', padding: 6, borderRadius: 4, display: 'inline-flex', alignItems: 'center', fontSize: '1rem' }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = '#d1fae5'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                    >
+                                      <FaEdit />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteItem(item.id)}
+                                      title="Excluir item"
+                                      style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 6, borderRadius: 4, display: 'inline-flex', alignItems: 'center', fontSize: '1rem' }}
+                                      onMouseEnter={(e) => e.currentTarget.style.background = '#fee2e2'}
+                                      onMouseLeave={(e) => e.currentTarget.style.background = 'none'}
+                                    >
+                                      <FaTrash />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Paginação */}
+                {invTotalPages > 1 && (
+                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 12, marginTop: 12, fontSize: '0.875rem', color: '#64748b' }}>
+                    <button
+                      type="button"
+                      onClick={() => loadInventario(invPage - 1)}
+                      disabled={invPage <= 1}
+                      style={{ padding: '5px 14px', border: '1px solid #e2e8f0', borderRadius: 6, background: 'white', cursor: invPage <= 1 ? 'not-allowed' : 'pointer', color: invPage <= 1 ? '#cbd5e1' : '#64748b' }}
+                    >
+                      Anterior
+                    </button>
+                    <span>Página {invPage} de {invTotalPages}</span>
+                    <button
+                      type="button"
+                      onClick={() => loadInventario(invPage + 1)}
+                      disabled={invPage >= invTotalPages}
+                      style={{ padding: '5px 14px', border: '1px solid #e2e8f0', borderRadius: 6, background: 'white', cursor: invPage >= invTotalPages ? 'not-allowed' : 'pointer', color: invPage >= invTotalPages ? '#cbd5e1' : '#64748b' }}
+                    >
+                      Próxima
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p style={{ color: '#94a3b8', fontSize: '0.875rem', textAlign: 'center', padding: '16px 0' }}>
+                Nenhum item no inventário. Adicione itens acima.
+              </p>
+            )}
           </div>
 
-          <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
+          <div className="modal-footer" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 0 }}>
             <button type="button" className="button-secondary" onClick={onClose}>
               <FaTimes /> Cancelar
             </button>
