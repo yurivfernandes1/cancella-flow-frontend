@@ -170,6 +170,12 @@ function Header() {
                         </Link>
                       </li>
                       <li>
+                        <Link to="/gestao-usuarios?tab=ocorrencias" onClick={closeMenu}>
+                          <FaClipboardList />
+                          <span>Ocorrências</span>
+                        </Link>
+                      </li>
+                      <li>
                         <Link to="/portaria?tab=eventos" onClick={closeMenu}>
                           <FaCalendarAlt />
                           <span>Eventos</span>
@@ -205,6 +211,12 @@ function Header() {
                     <Link to="/minha-area" onClick={closeMenu}>
                       <FaHome />
                       <span>Início</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/minha-area?tab=ocorrencias" onClick={closeMenu}>
+                      <FaClipboardList />
+                      <span>Minhas Ocorrências</span>
                     </Link>
                   </li>
                   <li>
@@ -271,6 +283,12 @@ function Header() {
                     <Link to="/portaria?tab=avisos" onClick={closeMenu}>
                       <FaBell />
                       <span>Avisos</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/portaria?tab=ocorrencias" onClick={closeMenu}>
+                      <FaClipboardList />
+                      <span>Ocorrências</span>
                     </Link>
                   </li>
                 </ul>

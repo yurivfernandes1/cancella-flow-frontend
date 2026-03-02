@@ -156,6 +156,14 @@ function WelcomePage() {
       icon: <FaExclamationTriangle size={32} />,
       color: '#ef4444',
       description: 'Itens que requerem atenção'
+    },
+    {
+      title: 'Ocorrências Abertas',
+      value: sindicoStats?.ocorrencias_pendentes?.total?.toString() || '0',
+      icon: <FaExclamationTriangle size={32} />,
+      color: sindicoStats?.ocorrencias_pendentes?.total > 0 ? '#ef4444' : '#2abb98',
+      description: 'Ocorrências aguardando resposta',
+      link: '/gestao-usuarios?tab=ocorrencias'
     }
   ];
 

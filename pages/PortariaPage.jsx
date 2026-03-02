@@ -6,13 +6,17 @@ import AddEncomendaDropdown from '../components/Encomendas/AddEncomendaDropdown'
 import ExpandableUnitsTable from '../components/Unidades/ExpandableUnitsTable';
 
 import { useAuth } from '../context/AuthContext';
-import api, { espacoReservaAPI, listaConvidadosAPI } from '../services/api';
+import api, { espacoReservaAPI, listaConvidadosAPI, ocorrenciaAPI } from '../services/api';
 import ListaConvidadosModal from '../components/Eventos/ListaConvidadosModal';
 import { formatPlaca } from '../utils/placaValidator';
 import '../styles/PortariaPage.css';
 import AvisoBanner from '../components/Avisos/AvisoBanner';
 import { avisoAPI } from '../services/api';
-import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaUsers } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaUsers, FaEye } from 'react-icons/fa';
+import AddOcorrenciaModal from '../components/Ocorrencias/AddOcorrenciaModal';
+import OcorrenciaDetalheModal from '../components/Ocorrencias/OcorrenciaDetalheModal';
+import OcorrenciaCard from '../components/Ocorrencias/OcorrenciaCard';
+import ScrollableTabs from '../components/common/ScrollableTabs';
 
 const tabs = [
   { id: 'unidades_moradores', label: 'Unidades e Moradores' },
@@ -22,7 +26,8 @@ const tabs = [
   { id: 'reservas', label: 'Reservas do Dia' },
   { id: 'eventos', label: 'Eventos' },
   { id: 'lista_convidados', label: 'Lista de Convidados' },
-  { id: 'avisos', label: 'Avisos' }
+  { id: 'avisos', label: 'Avisos' },
+  { id: 'ocorrencias', label: 'Ocorrências' }
 ];
 
 function PortariaPage() {
@@ -37,7 +42,8 @@ function PortariaPage() {
     reservas: [],
     eventos: [],
     lista_convidados: [],
-    avisos: []
+    avisos: [],
+    ocorrencias: []
   });
   const [loading, setLoading] = useState(false);
   const [totalPages, setTotalPages] = useState({
@@ -48,7 +54,8 @@ function PortariaPage() {
     reservas: 1,
     eventos: 1,
     lista_convidados: 1,
-    avisos: 1
+    avisos: 1,
+    ocorrencias: 1
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddEncomenda, setShowAddEncomenda] = useState(false);
@@ -58,6 +65,8 @@ function PortariaPage() {
   const [currentEditData, setCurrentEditData] = useState({});
   const [eventoSelecionado, setEventoSelecionado] = useState(null);
   const [listaSelecionada, setListaSelecionada] = useState(null);
+  const [showAddOcorrencia, setShowAddOcorrencia] = useState(false);
+  const [ocorrenciaSelecionada, setOcorrenciaSelecionada] = useState(null);
 
   // Verificar se o usuário tem acesso
   const isPortaria = user?.groups?.some(group => group.name === 'Portaria');
@@ -179,6 +188,11 @@ function PortariaPage() {
           setTableData(prev => ({ ...prev, avisos: response.data }));
           setTotalPages(prev => ({ ...prev, avisos: 1 }));
         }
+      } else if (type === 'ocorrencias') {
+        const response = await ocorrenciaAPI.list({ search });
+        const data = Array.isArray(response.data) ? response.data : (response.data.results || []);
+        setTableData(prev => ({ ...prev, ocorrencias: data }));
+        setTotalPages(prev => ({ ...prev, ocorrencias: 1 }));
       }
     } catch (error) {
       console.error('Erro ao buscar dados:', error);
@@ -207,7 +221,7 @@ function PortariaPage() {
   // Sincronizar tab da URL com estado
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
-    if (tabFromUrl && ['unidades_moradores', 'encomendas', 'visitantes', 'veiculos', 'reservas', 'eventos', 'lista_convidados', 'avisos'].includes(tabFromUrl)) {
+    if (tabFromUrl && ['unidades_moradores', 'encomendas', 'visitantes', 'veiculos', 'reservas', 'eventos', 'lista_convidados', 'avisos', 'ocorrencias'].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
   }, [searchParams]);
@@ -529,6 +543,68 @@ function PortariaPage() {
     },
   ];
 
+  const ocorrenciasColumns = [
+    {
+      key: 'titulo',
+      header: 'Título',
+      width: '35%',
+      render: (value) => value || '-'
+    },
+    {
+      key: 'tipo',
+      header: 'Tipo',
+      width: '12%',
+      render: (value) => (
+        <span style={{
+          padding: '2px 8px', borderRadius: 10, fontSize: '0.8rem', fontWeight: 600,
+          background: value === 'problema' ? '#fee2e2' : '#dbeafe',
+          color: value === 'problema' ? '#dc2626' : '#1d4ed8',
+        }}>
+          {value === 'problema' ? 'Problema' : 'Sugestão'}
+        </span>
+      )
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      width: '15%',
+      render: (value) => {
+        const bg = { aberta: '#fee2e2', em_andamento: '#fef9c3', resolvida: '#dcfce7', fechada: '#f3f4f6' };
+        const color = { aberta: '#dc2626', em_andamento: '#ca8a04', resolvida: '#15803d', fechada: '#6b7280' };
+        const label = { aberta: 'Aberta', em_andamento: 'Em Andamento', resolvida: 'Resolvida', fechada: 'Fechada' };
+        return (
+          <span style={{
+            padding: '2px 8px', borderRadius: 10, fontSize: '0.8rem', fontWeight: 600,
+            background: bg[value] || '#f3f4f6',
+            color: color[value] || '#6b7280',
+          }}>
+            {label[value] || value}
+          </span>
+        );
+      }
+    },
+    {
+      key: 'created_at',
+      header: 'Data',
+      width: '18%',
+      render: (value) => value ? new Date(value).toLocaleDateString('pt-BR') : '-'
+    },
+    {
+      key: 'actions',
+      header: '',
+      width: '60px',
+      render: (value, row) => (
+        <button
+          className="edit-button"
+          title="Ver detalhes"
+          onClick={() => setOcorrenciaSelecionada(row)}
+        >
+          <FaEye />
+        </button>
+      )
+    }
+  ];
+
   const handleAddEncomenda = () => {
     setShowAddEncomenda(!showAddEncomenda);
   };
@@ -543,7 +619,7 @@ function PortariaPage() {
       <Header />
       <div className="portaria-page">
         <div className="portaria-content">
-          <div className="tabs-container">
+          <ScrollableTabs>
             <div className="tabs">
               {tabs.map(tab => (
                 <button
@@ -555,7 +631,7 @@ function PortariaPage() {
                 </button>
               ))}
             </div>
-          </div>
+          </ScrollableTabs>
           {/* Aba de Unidades e Moradores */}
           {activeTab === 'unidades_moradores' && (
             <>
@@ -869,6 +945,43 @@ function PortariaPage() {
               )}
             </div>
           )}
+
+          {/* Aba de Ocorrências */}
+          {activeTab === 'ocorrencias' && (
+            <>
+              <div className="page-header">
+                <div className="page-actions">
+                  <button className="add-button" onClick={() => setShowAddOcorrencia(true)}>
+                    <FaPlus /> Nova Ocorrência
+                  </button>
+                </div>
+                <div className="search-container">
+                  <div className="search-wrapper">
+                    <FaSearch className="search-icon" />
+                    <input
+                      className="search-input"
+                      type="text"
+                      placeholder="Buscar ocorrências..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+              <GenericTable
+                data={tableData.ocorrencias}
+                columns={ocorrenciasColumns}
+                loading={loading}
+                currentPage={currentPage}
+                totalPages={totalPages.ocorrencias}
+                onPageChange={setCurrentPage}
+                editingRowId={null}
+                currentEditData={{}}
+                hideEditButton={true}
+                className="full-width-table allow-horizontal-scroll"
+              />
+            </>
+          )}
         </div>
       </div>
 
@@ -877,6 +990,24 @@ function PortariaPage() {
           lista={listaSelecionada}
           readOnly={true}
           onClose={() => setListaSelecionada(null)}
+        />
+      )}
+
+      {showAddOcorrencia && (
+        <AddOcorrenciaModal
+          onClose={() => setShowAddOcorrencia(false)}
+          onSuccess={() => {
+            setShowAddOcorrencia(false);
+            fetchData('ocorrencias', 1, searchTerm);
+          }}
+        />
+      )}
+
+      {ocorrenciaSelecionada && (
+        <OcorrenciaDetalheModal
+          ocorrencia={ocorrenciaSelecionada}
+          onClose={() => setOcorrenciaSelecionada(null)}
+          onUpdate={() => fetchData('ocorrencias', currentPage, searchTerm)}
         />
       )}
     </>
