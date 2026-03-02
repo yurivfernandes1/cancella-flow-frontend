@@ -335,6 +335,91 @@
   }
 }
 
+/* Seção de tabela de condomínios - Dashboard Admin */
+.admin-condominios-section {
+  max-width: 1600px;
+  margin: 2rem auto 0;
+  padding: 0 1rem 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.admin-section-title {
+  color: #19294a;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  padding-left: 0.25rem;
+}
+
+.admin-condominios-table-wrapper {
+  overflow-x: auto;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(25, 41, 74, 0.08);
+}
+
+.admin-condominios-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.admin-condominios-table thead tr {
+  background: #19294a;
+}
+
+.admin-condominios-table thead th {
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 0.875rem 1.25rem;
+  text-align: left;
+}
+
+.admin-condominios-table tbody tr {
+  border-bottom: 1px solid #f1f5f9;
+  transition: background 0.15s ease;
+}
+
+.admin-condominios-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.admin-condominios-table tbody tr.clickable {
+  cursor: pointer;
+}
+
+.admin-condominios-table tbody tr.clickable:hover {
+  background: #f8fafc;
+}
+
+.admin-condominios-table tbody td {
+  padding: 0.875rem 1.25rem;
+  color: #334155;
+  font-size: 0.9rem;
+}
+
+.admin-condominios-table tbody td:first-child {
+  font-weight: 500;
+  color: #19294a;
+}
+
+@media (max-width: 768px) {
+  .admin-condominios-section {
+    padding: 0 0 1.5rem;
+  }
+
+  .admin-condominios-table thead th,
+  .admin-condominios-table tbody td {
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+  }
+}
+
 /* Dashboard Administrativo */
 .dashboard-grid {
   display: grid;
