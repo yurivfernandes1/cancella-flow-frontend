@@ -1284,6 +1284,14 @@ input:checked + .slider:before {
 }
 
 @media (max-width: 768px) {
+  .modal-container {
+    width: 95vw;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    margin: 5vh auto;
+  }
+
   .modal-large {
     width: 98%;
     max-width: none;

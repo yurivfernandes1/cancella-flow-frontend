@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaChevronDown, FaChevronRight, FaEdit, FaCheck, FaTimes, FaKey, FaUserPlus } from 'react-icons/fa';
 import api from '../../services/api';
 import { formatCPF, formatTelefone } from '../../utils/formatters';
 import { validateCPF, validatePhone } from '../../utils/validators';
+import '../../styles/GenericMobileCard.css';
 
 /**
  * Tabela expansível de unidades com moradores vinculados.
@@ -43,6 +44,13 @@ function ExpandableUnitsTable({
   const [editingUnidadeId, setEditingUnidadeId] = useState(null);
   const [editUnidadeData, setEditUnidadeData] = useState({});
   const [savingUnidade, setSavingUnidade] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const isSindico = mode === 'sindico';
 
@@ -136,6 +144,241 @@ function ExpandableUnitsTable({
 
   if (!unidades.length) {
     return <div className="empty-state" style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>Nenhuma unidade encontrada.</div>;
+  }
+
+  if (isMobile) {
+    return (
+      <div className="mobile-cards-container">
+        {unidades.map(unidade => {
+          const isExpanded = expandedRows[unidade.id];
+          const moradores = unidade.moradores || [];
+          const isEditingUnidade = editingUnidadeId === unidade.id;
+          const unitTitle = unidade.identificacao_completa || `${unidade.bloco ? unidade.bloco + ' - ' : ''}${unidade.numero}`;
+
+          return (
+            <div key={unidade.id} className="mobile-card">
+              <div
+                className="mobile-card-header"
+                style={{ cursor: isEditingUnidade ? 'default' : 'pointer' }}
+                onClick={() => !isEditingUnidade && toggleRow(unidade.id)}
+              >
+                <span className="card-title">
+                  {isExpanded
+                    ? <FaChevronDown style={{ marginRight: 6, fontSize: '0.85rem', flexShrink: 0 }} />
+                    : <FaChevronRight style={{ marginRight: 6, fontSize: '0.85rem', flexShrink: 0 }} />}
+                  {unitTitle}
+                </span>
+                {isSindico && !isEditingUnidade && (
+                  <button
+                    style={{ background: 'transparent', color: 'white', border: 'none', cursor: 'pointer', padding: '4px 8px', minHeight: 44, display: 'flex', alignItems: 'center' }}
+                    title="Editar unidade"
+                    onClick={(e) => { e.stopPropagation(); startEditUnidade(unidade, e); }}
+                  >
+                    <FaEdit />
+                  </button>
+                )}
+              </div>
+
+              <div className="mobile-card-content">
+                <div className="mobile-card-field">
+                  <span className="field-label">Bloco</span>
+                  <span className="field-value">
+                    {isEditingUnidade ? (
+                      <input
+                        className="mobile-edit-input"
+                        type="text"
+                        value={editUnidadeData.bloco}
+                        onChange={e => setEditUnidadeData(prev => ({ ...prev, bloco: e.target.value }))}
+                        placeholder="Bloco"
+                        style={{ width: '100%' }}
+                      />
+                    ) : (unidade.bloco || '-')}
+                  </span>
+                </div>
+                <div className="mobile-card-field">
+                  <span className="field-label">Número</span>
+                  <span className="field-value">
+                    {isEditingUnidade ? (
+                      <input
+                        className="mobile-edit-input"
+                        type="text"
+                        value={editUnidadeData.numero}
+                        onChange={e => setEditUnidadeData(prev => ({ ...prev, numero: e.target.value }))}
+                        placeholder="Número"
+                        style={{ width: '100%' }}
+                      />
+                    ) : unidade.numero}
+                  </span>
+                </div>
+                <div className="mobile-card-field">
+                  <span className="field-label">Status</span>
+                  <span className="field-value">
+                    {isEditingUnidade ? (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(editUnidadeData.is_active)}
+                          onChange={e => setEditUnidadeData(prev => ({ ...prev, is_active: e.target.checked }))}
+                        />
+                        Ativo
+                      </label>
+                    ) : (
+                      <span className={unidade.is_active ? 'status-active' : 'status-inactive'}>
+                        {unidade.is_active ? 'Ativo' : 'Inativo'}
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <div className="mobile-card-field">
+                  <span className="field-label">Moradores</span>
+                  <span className="field-value">
+                    <span style={{
+                      display: 'inline-block',
+                      background: moradores.length ? '#dbeafe' : '#f1f5f9',
+                      color: moradores.length ? '#1d4ed8' : '#94a3b8',
+                      borderRadius: 12,
+                      padding: '2px 10px',
+                      fontSize: '0.78rem',
+                      fontWeight: 600,
+                    }}>
+                      {moradores.length} morador{moradores.length !== 1 ? 'es' : ''}
+                    </span>
+                  </span>
+                </div>
+
+                {isSindico && isEditingUnidade && (
+                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                    <button className="save-button" title="Salvar" disabled={savingUnidade} onClick={saveUnidade} style={{ flex: 1, minHeight: 44 }}>
+                      <FaCheck style={{ marginRight: 6 }} /> Salvar
+                    </button>
+                    <button className="cancel-button" title="Cancelar" onClick={cancelEditUnidade} style={{ flex: 1, minHeight: 44 }}>
+                      <FaTimes style={{ marginRight: 6 }} /> Cancelar
+                    </button>
+                  </div>
+                )}
+
+                {isExpanded && (
+                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+                      Moradores
+                    </div>
+                    {isSindico && onAddMorador && (
+                      <button
+                        className="add-user-button"
+                        style={{ fontSize: '0.82rem', padding: '8px 14px', marginBottom: 10, width: '100%', minHeight: 44 }}
+                        onClick={() => onAddMorador(unidade.id)}
+                      >
+                        <FaUserPlus style={{ marginRight: 6 }} />
+                        Adicionar Morador
+                      </button>
+                    )}
+                    {moradores.length === 0 ? (
+                      <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: 0 }}>Nenhum morador vinculado.</p>
+                    ) : moradores.map(morador => {
+                      const isEditingThis = isSindico && editingMoradorId === morador.id;
+                      return (
+                        <div key={morador.id} style={{ background: '#f8fafc', borderRadius: 8, padding: '0.75rem', marginBottom: 8, border: '1px solid #e2e8f0' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.9rem', flex: 1 }}>
+                              {isEditingThis ? (
+                                <input className="mobile-edit-input" type="text" value={editMoradorData.full_name || ''} onChange={e => handleMoradorFieldChange('full_name', e.target.value)} style={{ width: '100%' }} />
+                              ) : (morador.full_name || '-')}
+                            </span>
+                            {isSindico && !isEditingThis && (
+                              <button className="edit-button" style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', minHeight: 44, display: 'flex', alignItems: 'center' }} onClick={() => startEditMorador(morador)} title="Editar">
+                                <FaEdit />
+                              </button>
+                            )}
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 6 }}>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>CPF</span>
+                            <span style={{ fontSize: '0.9rem', color: '#1e293b' }}>
+                              {isEditingThis ? (
+                                <input
+                                  className={`mobile-edit-input ${moradorValidation.cpf === false ? 'input-error' : moradorValidation.cpf === true ? 'input-valid' : ''}`}
+                                  type="text"
+                                  value={formatCPF(String(editMoradorData.cpf || '').replace(/\D/g, '').slice(0, 11))}
+                                  onChange={e => {
+                                    const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+                                    setMoradorValidation(prev => ({ ...prev, cpf: digits ? validateCPF(digits) : null }));
+                                    handleMoradorFieldChange('cpf', digits);
+                                  }}
+                                  placeholder="000.000.000-00"
+                                  style={{ width: '100%' }}
+                                />
+                              ) : formatCpfDisplay(morador.cpf)}
+                            </span>
+                          </div>
+                          {isSindico && isEditingThis && (
+                            <>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 6 }}>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Usuário</span>
+                                <input className="mobile-edit-input" type="text" value={editMoradorData.username || ''} onChange={e => handleMoradorFieldChange('username', e.target.value)} style={{ width: '100%' }} />
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 6 }}>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>E-mail</span>
+                                <input className="mobile-edit-input" type="email" value={editMoradorData.email || ''} onChange={e => handleMoradorFieldChange('email', e.target.value)} style={{ width: '100%' }} />
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 6 }}>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Telefone</span>
+                                <input
+                                  className={`mobile-edit-input ${moradorValidation.phone === false ? 'input-error' : moradorValidation.phone === true ? 'input-valid' : ''}`}
+                                  type="text"
+                                  value={formatTelefone(String(editMoradorData.phone || '').replace(/\D/g, '').slice(0, 11))}
+                                  onChange={e => {
+                                    const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+                                    setMoradorValidation(prev => ({ ...prev, phone: digits ? validatePhone(digits) : null }));
+                                    handleMoradorFieldChange('phone', digits);
+                                  }}
+                                  placeholder="(00) 00000-0000"
+                                  style={{ width: '100%' }}
+                                />
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 6 }}>
+                                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Status</span>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                  <input type="checkbox" checked={Boolean(editMoradorData.is_active)} onChange={e => handleMoradorFieldChange('is_active', e.target.checked)} />
+                                  Ativo
+                                </label>
+                              </div>
+                            </>
+                          )}
+                          {isSindico && (
+                            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                              {isEditingThis ? (
+                                <>
+                                  <button className="save-button" onClick={saveMorador} title="Salvar" style={{ flex: 1, minHeight: 44 }}><FaCheck style={{ marginRight: 4 }} /> Salvar</button>
+                                  <button className="cancel-button" onClick={cancelEditMorador} title="Cancelar" style={{ flex: 1, minHeight: 44 }}><FaTimes style={{ marginRight: 4 }} /> Cancelar</button>
+                                </>
+                              ) : (
+                                <>
+                                  <button className="edit-button" onClick={() => startEditMorador(morador)} title="Editar morador" style={{ flex: 1, minHeight: 44 }}><FaEdit style={{ marginRight: 4 }} /> Editar</button>
+                                  {onResetPassword && (
+                                    <button className="reset-button" onClick={() => onResetPassword(morador.id)} title="Resetar senha" style={{ flex: 1, minHeight: 44 }}><FaKey style={{ marginRight: 4 }} /> Resetar senha</button>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {totalPages > 1 && (
+          <div className="pagination" style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '16px 0' }}>
+            <button className="page-button" style={{ minHeight: 44 }} disabled={currentPage <= 1} onClick={() => onPageChange && onPageChange(currentPage - 1)}>Anterior</button>
+            <span style={{ padding: '6px 12px', color: '#64748b', fontSize: '0.9rem', display: 'flex', alignItems: 'center' }}>Página {currentPage} de {totalPages}</span>
+            <button className="page-button" style={{ minHeight: 44 }} disabled={currentPage >= totalPages} onClick={() => onPageChange && onPageChange(currentPage + 1)}>Próxima</button>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (

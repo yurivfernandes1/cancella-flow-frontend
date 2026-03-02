@@ -338,9 +338,15 @@ function GenericMobileCard({
         const titleLabel = titleColumn?.header || titleColumn?.label || 'ID';
         const headerText = titleColumnKey ? titleValue : `${titleLabel}: ${titleValue}`;
         
-        // NO MOBILE: Não renderizar ações customizadas, apenas o botão padrão "Editar"
-        // Isso evita duplicação de botões de editar com ícones
-        const customActions = null;
+        // Computar ações customizadas a partir da coluna 'actions' (se existir)
+        const actionsColumn = columns.find(col =>
+          col.key === 'actions' || col.key === 'acoes' ||
+          col.label?.toLowerCase() === 'ações' || col.header?.toLowerCase() === 'ações'
+        );
+        let customActions = null;
+        if (actionsColumn?.render) {
+          try { customActions = actionsColumn.render(row[actionsColumn.key], row); } catch { customActions = null; }
+        }
 
         return (
           <div key={row.id} className={`mobile-card ${isEditingRow ? 'editing-active' : ''}`}>

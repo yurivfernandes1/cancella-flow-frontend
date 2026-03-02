@@ -1,8 +1,8 @@
-.aviso-banner { display:flex; gap:12px; padding:12px 16px; border-radius:10px; margin:8px 0; align-items:flex-start; }
-.aviso-icon { font-size:18px; line-height:1; }
-.aviso-content { flex:1; }
-.aviso-title { font-weight:700; margin-bottom:4px; }
-.aviso-description { opacity:0.95; }
+.aviso-banner { display:flex; gap:12px; padding:12px 16px; border-radius:10px; margin:8px 0; align-items:flex-start; overflow-wrap:break-word; word-break:break-word; }
+.aviso-icon { font-size:18px; line-height:1; flex-shrink:0; }
+.aviso-content { flex:1; min-width:0; overflow-wrap:break-word; word-break:break-word; }
+.aviso-title { font-weight:700; margin-bottom:4px; overflow-wrap:break-word; word-break:break-word; }
+.aviso-description { opacity:0.95; overflow-wrap:break-word; word-break:break-word; }
 .aviso-vigencia { font-size:12px; opacity:0.8; margin-top:4px; }
 .aviso-meta { margin-top:6px; display:flex; gap:8px; flex-wrap:wrap; }
 .aviso-chip { font-size:11px; font-weight:600; padding:3px 8px; border-radius:999px; background:rgba(255,255,255,0.3); color:#0f172a; }

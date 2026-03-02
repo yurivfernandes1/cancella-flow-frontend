@@ -81,10 +81,10 @@ function Header() {
           <img src={logo} alt="Logo" />
         </Link>
 
-        <div className="hamburger" onClick={toggleMenu}>
-          <span className={`bar ${menuOpen ? 'active' : ''}`}></span>
-          <span className={`bar ${menuOpen ? 'active' : ''}`}></span>
-          <span className={`bar ${menuOpen ? 'active' : ''}`}></span>
+        <div className={`hamburger ${menuOpen ? 'active' : ''}`} onClick={toggleMenu}>
+          <span className="bar"></span>
+          <span className="bar"></span>
+          <span className="bar"></span>
         </div>
 
         <nav className={`app-nav ${menuOpen ? 'active' : ''}`}>

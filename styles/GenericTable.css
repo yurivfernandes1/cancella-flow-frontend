@@ -499,3 +499,16 @@
   background-color: #f8fafc;
   font-weight: 600;
 }
+
+/* Garantir scroll horizontal no container e no table-scroll em todos os dispositivos */
+@media (max-width: 768px) {
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-scroll {
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+}

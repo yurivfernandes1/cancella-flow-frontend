@@ -234,6 +234,11 @@
   .signup-card {
     padding: 2rem 1.5rem;
   }
+
+  .signup-button {
+    min-height: 44px;
+    width: 100%;
+  }
 }
 
 @media (max-width: 580px) {

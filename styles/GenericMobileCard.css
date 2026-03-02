@@ -2,7 +2,7 @@
 .mobile-cards-container {
   width: 100%;
   min-height: 100vh;
-  background: #f8fafc;
+  background: white;
   padding: 0.75rem;
   box-sizing: border-box;
   display: flex;
@@ -335,20 +335,6 @@ select.mobile-edit-input {
   letter-spacing: 0.3px;
 }
 
-/* IMPORTANTE: Ocultar completamente qualquer SVG/ícone dentro dos botões mobile */
-.mobile-card-actions svg,
-.mobile-card-actions button svg,
-.mobile-card-actions .mobile-action-button svg,
-.mobile-card-actions .edit-button svg,
-.mobile-card-actions .save-button svg,
-.mobile-card-actions .cancel-button svg {
-  display: none !important;
-  visibility: hidden !important;
-  width: 0 !important;
-  height: 0 !important;
-  opacity: 0 !important;
-}
-
 /* Garantir que o texto dos botões seja sempre visível */
 .mobile-card-actions button {
   white-space: nowrap;
@@ -416,27 +402,62 @@ select.mobile-edit-input {
   font-size: 1.1rem;
 }
 
-/* FORÇA BRUTA: Remover TODOS os ícones, pseudo-elementos e SVGs dos botões mobile */
-.mobile-cards-container svg,
-.mobile-cards-container button svg,
-.mobile-cards-container .mobile-action-button svg,
-.mobile-cards-container .mobile-card-actions svg {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-  width: 0 !important;
-  height: 0 !important;
-  position: absolute !important;
-  left: -9999px !important;
+/* Botões de ação globais dentro de mobile-cards-container */
+.mobile-cards-container .save-button,
+.mobile-cards-container .cancel-button,
+.mobile-cards-container .edit-button,
+.mobile-cards-container .reset-button {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.4rem !important;
+  width: auto !important;
+  height: auto !important;
+  min-height: 44px !important;
+  padding: 0.625rem 1rem !important;
+  border: none !important;
+  border-radius: 8px !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: background 0.2s !important;
+  font-family: inherit !important;
 }
 
-/* Remover pseudo-elementos que possam estar adicionando ícones */
-.mobile-cards-container button::before,
-.mobile-cards-container button::after,
-.mobile-cards-container .mobile-action-button::before,
-.mobile-cards-container .mobile-action-button::after {
-  content: none !important;
-  display: none !important;
+.mobile-cards-container .save-button {
+  background: #10b981 !important;
+  color: white !important;
+}
+
+.mobile-cards-container .save-button:hover {
+  background: #059669 !important;
+}
+
+.mobile-cards-container .cancel-button {
+  background: #ef4444 !important;
+  color: white !important;
+}
+
+.mobile-cards-container .cancel-button:hover {
+  background: #dc2626 !important;
+}
+
+.mobile-cards-container .edit-button {
+  background: #2abb98 !important;
+  color: white !important;
+}
+
+.mobile-cards-container .edit-button:hover {
+  background: #1a9a7a !important;
+}
+
+.mobile-cards-container .reset-button {
+  background: #f59e0b !important;
+  color: white !important;
+}
+
+.mobile-cards-container .reset-button:hover {
+  background: #d97706 !important;
 }
 
 /* Otimizações para telas muito pequenas */
@@ -479,57 +500,7 @@ select.mobile-edit-input {
   }
 }
 
-/* Dark mode (preparado para futura implementação) */
-@media (prefers-color-scheme: dark) {
-  .mobile-cards-container {
-    background: #0f172a;
-  }
-
-  .mobile-card {
-    background: #1e293b;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-  }
-
-  .mobile-card-content {
-    color: #e2e8f0;
-  }
-
-  .field-label {
-    color: #94a3b8;
-  }
-
-  .field-value {
-    color: #e2e8f0;
-  }
-
-  .mobile-card-field {
-    border-bottom-color: #334155;
-  }
-
-  .mobile-card-field.editing {
-    background: #0f172a;
-    border-color: #2abb98;
-  }
-
-  .mobile-edit-input,
-  .mobile-card-field.editing textarea {
-    background: #1e293b;
-    color: #e2e8f0;
-    border-color: #475569;
-  }
-
-  .mobile-card-actions {
-    background: #0f172a;
-    border-top-color: #334155;
-  }
-
-  .nav-button {
-    background: #1e293b;
-    border-color: #2abb98;
-  }
-
-  .loading-text,
-  .empty-text {
-    color: #94a3b8;
-  }
-}
+/* Dark mode não implementado — estilos mantidos apenas como referência */
+/*
+@media (prefers-color-scheme: dark) { ... }
+*/

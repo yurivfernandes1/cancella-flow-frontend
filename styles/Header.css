@@ -383,6 +383,9 @@
     width: 100%;
     transition: background-color 0.2s ease;
     color: white !important;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
   }
 
   .app-menu-trigger:hover,
@@ -439,7 +442,10 @@
   .dropdown-menu li a, 
   .dropdown-menu li button {
     color: white !important;
-    padding: 0.5rem 1rem;
+    padding: 0.75rem 1rem;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
   }
 
   .dropdown-menu li a svg,

@@ -685,13 +685,20 @@ function MoradorPage() {
     {
       key: 'titulo',
       header: 'Título',
-      width: '35%',
+      width: '25%',
+      render: (value) => value || '-'
+    },
+    {
+      key: 'descricao',
+      header: 'Descrição',
+      width: '25%',
+      editable: false,
       render: (value) => value || '-'
     },
     {
       key: 'tipo',
       header: 'Tipo',
-      width: '12%',
+      width: '10%',
       render: (value) => (
         <span style={{
           padding: '2px 8px', borderRadius: 10, fontSize: '0.8rem', fontWeight: 600,
@@ -705,7 +712,7 @@ function MoradorPage() {
     {
       key: 'status',
       header: 'Status',
-      width: '15%',
+      width: '12%',
       render: (value) => {
         const bg = { aberta: '#fee2e2', em_andamento: '#fef9c3', resolvida: '#dcfce7', fechada: '#f3f4f6' };
         const color = { aberta: '#dc2626', em_andamento: '#ca8a04', resolvida: '#15803d', fechada: '#6b7280' };
@@ -724,7 +731,7 @@ function MoradorPage() {
     {
       key: 'created_at',
       header: 'Data',
-      width: '18%',
+      width: '15%',
       render: (value) => value ? new Date(value).toLocaleDateString('pt-BR') : '-'
     },
     {
@@ -736,8 +743,9 @@ function MoradorPage() {
           className="edit-button"
           title="Ver detalhes"
           onClick={() => setOcorrenciaSelecionada(row)}
+          style={{ display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          <FaEye />
+          <FaEye /> <span>Ver Detalhes</span>
         </button>
       )
     }

@@ -757,10 +757,15 @@
 }
 
 @media (max-width: 768px) {
-  .public-nav {
-    display: none; /* Simplificar para mobile - pode adicionar menu hambúrguer depois */
+  /* Ocultar links de navegação internos, mas manter o botão de login visível */
+  .public-nav .nav-link:not(.nav-login) {
+    display: none;
   }
-  
+
+  .public-nav {
+    gap: 0;
+  }
+
   .public-nav .nav-login {
     display: inline-flex;
   }

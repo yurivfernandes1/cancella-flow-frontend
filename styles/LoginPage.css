@@ -164,6 +164,15 @@
   .login-card {
     padding: 2rem 1.5rem;
   }
+
+  .login-form .form-group input {
+    min-height: 44px;
+  }
+
+  .login-button {
+    min-height: 44px;
+    width: 100%;
+  }
 }
 
 @media (max-width: 380px) {
