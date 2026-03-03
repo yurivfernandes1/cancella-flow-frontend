@@ -362,7 +362,7 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
                 <label
                   htmlFor="logo-upload"
-                  title="Formatos: PNG, JPG, JPEG, SVG | Tamanho ideal: 250x250px (quadrada)"
+                  title="Formatos: PNG, JPG, JPEG, SVG"
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
