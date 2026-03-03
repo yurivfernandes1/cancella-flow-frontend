@@ -26,13 +26,16 @@ import {
   FaClipboardList,
   FaUserClock,
   FaDoorOpen,
+  FaQrcode,
 } from 'react-icons/fa';
+import QrCodeScanner from '../components/Eventos/QrCodeScanner';
 
 
 function WelcomePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [avisosHome, setAvisosHome] = useState([]);
+  const [showQrScanner, setShowQrScanner] = useState(false);
   const [moradorStats, setMoradorStats] = useState(null);
   const [sindicoStats, setSindicoStats] = useState(null);
   const [portariaStats, setPortariaStats] = useState(null);
@@ -430,6 +433,23 @@ function WelcomePage() {
     }
   ];
 
+  const portariaQrCard = isPortaria && (
+    <div
+      className="dashboard-card clickable qr-mobile-only"
+      onClick={() => setShowQrScanner(true)}
+      style={{ cursor: 'pointer' }}
+    >
+      <div className="dashboard-card-icon" style={{ color: '#2abb98' }}>
+        <FaQrcode size={32} />
+      </div>
+      <div className="dashboard-card-content">
+        <h3>Ler QR Code</h3>
+        <div className="dashboard-card-value" style={{ color: '#2abb98' }}>→</div>
+        <p className="dashboard-card-description">Confirmar entrada de convidado via QR</p>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <Header />
@@ -497,6 +517,7 @@ function WelcomePage() {
         {showDashboard ? (
           <>
             <main className="dashboard-grid">
+              {portariaQrCard}
               {(isAdmin ? adminDashboardStats : isSindico ? sindicoDashboardStats : isPortaria ? portariaDashboardStats : moradorDashboardStats).map((stat, index) => (
                 <div 
                   key={index} 
@@ -579,6 +600,12 @@ function WelcomePage() {
           </main>
         )}
       </div>
+      {showQrScanner && (
+        <QrCodeScanner
+          onClose={() => setShowQrScanner(false)}
+          onConfirmado={() => {}}
+        />
+      )}
     </>
   );
 }

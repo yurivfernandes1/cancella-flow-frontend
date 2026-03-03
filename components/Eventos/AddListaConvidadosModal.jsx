@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaPlus, FaTimes, FaTrash, FaUsers } from 'react-icons/fa';
-import { listaConvidadosAPI } from '../../services/api';
+import { espacoAPI, listaConvidadosAPI } from '../../services/api';
 import '../../styles/Modal.css';
 
 const formatarCpf = (valor) => {
@@ -11,15 +11,31 @@ const formatarCpf = (valor) => {
   return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 };
 
-const emptyRow = () => ({ cpf: '', nome: '', buscando: false, encontrado: false, erro: '' });
+const emptyRow = () => ({ cpf: '', nome: '', email: '', buscando: false, encontrado: false, erro: '' });
 
-function AddListaConvidadosModal({ onClose, onSuccess }) {
+function AddListaConvidadosModal({ onClose, onSuccess, moradorUnidadeId }) {
   const [titulo, setTitulo] = useState('');
   const [dataEvento, setDataEvento] = useState('');
+  const [localTipo, setLocalTipo] = useState('');
+  const [espacoId, setEspacoId] = useState('');
+  const [espacos, setEspacos] = useState([]);
   const [rows, setRows] = useState([emptyRow()]);
   const [qtdAdicionar, setQtdAdicionar] = useState(1);
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
+
+  // Importar de listas anteriores
+  const [showImportar, setShowImportar] = useState(false);
+  const [buscaAnterior, setBuscaAnterior] = useState('');
+  const [resultadosAnteriores, setResultadosAnteriores] = useState([]);
+  const [buscandoAnteriores, setBuscandoAnteriores] = useState(false);
+
+  useEffect(() => {
+    espacoAPI.list().then(r => {
+      const lista = Array.isArray(r.data) ? r.data : (r.data.results || []);
+      setEspacos(lista);
+    }).catch(() => {});
+  }, []);
 
   const handleCpfChange = async (idx, valor) => {
     const raw = valor.replace(/\D/g, '').slice(0, 11);
@@ -45,6 +61,7 @@ function AddListaConvidadosModal({ onClose, onSuccess }) {
             ...next[idx],
             buscando: false,
             nome: resp.data.nome || '',
+            email: (resp.data.email && !next[idx].email) ? resp.data.email : next[idx].email,
             encontrado: resp.data.encontrado,
           };
           return next;
@@ -67,6 +84,14 @@ function AddListaConvidadosModal({ onClose, onSuccess }) {
     });
   };
 
+  const handleEmailChange = (idx, valor) => {
+    setRows((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], email: valor };
+      return next;
+    });
+  };
+
   const handleAddRows = () => {
     setRows((prev) => [...prev, ...Array.from({ length: qtdAdicionar }, emptyRow)]);
   };
@@ -76,9 +101,42 @@ function AddListaConvidadosModal({ onClose, onSuccess }) {
     setRows((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const handleBuscarAnterior = async (valor) => {
+    setBuscaAnterior(valor);
+    if (!valor.trim()) { setResultadosAnteriores([]); return; }
+    setBuscandoAnteriores(true);
+    try {
+      const resp = await listaConvidadosAPI.buscarConvidadosAnteriores(valor.trim());
+      setResultadosAnteriores(Array.isArray(resp.data) ? resp.data : []);
+    } catch {
+      setResultadosAnteriores([]);
+    } finally {
+      setBuscandoAnteriores(false);
+    }
+  };
+
+  const handleImportarConvidado = (c) => {
+    const emptyIdx = rows.findIndex(r => !r.cpf && !r.nome);
+    const nova = { cpf: c.cpf_formatado, nome: c.nome, email: c.email || '', buscando: false, encontrado: true, erro: '' };
+    if (emptyIdx >= 0) {
+      setRows(prev => { const next = [...prev]; next[emptyIdx] = nova; return next; });
+    } else {
+      setRows(prev => [...prev, nova]);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!titulo.trim()) {
       setErro('Informe o título da lista.');
+      return;
+    }
+
+    if (localTipo === 'espaco' && !espacoId) {
+      setErro('Selecione o espaço do condomínio.');
+      return;
+    }
+    if (localTipo === 'unidade' && !moradorUnidadeId) {
+      setErro('Sua conta não possui unidade cadastrada.');
       return;
     }
 
@@ -100,16 +158,23 @@ function AddListaConvidadosModal({ onClose, onSuccess }) {
 
     const convidados = rows
       .filter((r) => r.cpf.replace(/\D/g, '').length === 11 && r.nome.trim())
-      .map((r) => ({ cpf: r.cpf.replace(/\D/g, ''), nome: r.nome.trim() }));
+      .map((r) => ({ cpf: r.cpf.replace(/\D/g, ''), nome: r.nome.trim(), email: r.email.trim() }));
+
+    const payload = {
+      titulo: titulo.trim(),
+      data_evento: dataEvento || null,
+      convidados,
+    };
+    if (localTipo) {
+      payload.local_tipo = localTipo;
+      if (localTipo === 'espaco') payload.espaco = espacoId || null;
+      if (localTipo === 'unidade') payload.unidade_evento = moradorUnidadeId || null;
+    }
 
     setSalvando(true);
     setErro('');
     try {
-      await listaConvidadosAPI.criarLista({
-        titulo: titulo.trim(),
-        data_evento: dataEvento || null,
-        convidados,
-      });
+      await listaConvidadosAPI.criarLista(payload);
       onSuccess?.();
       onClose();
     } catch (e) {
@@ -123,7 +188,7 @@ function AddListaConvidadosModal({ onClose, onSuccess }) {
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-container"
-        style={{ maxWidth: 660, width: '95vw' }}
+        style={{ maxWidth: 700, width: '95vw' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabeçalho */}
@@ -145,7 +210,7 @@ function AddListaConvidadosModal({ onClose, onSuccess }) {
 
         <div className="modal-body" style={{ padding: '1.25rem' }}>
           {/* Título + Data */}
-          <div style={{ display: 'flex', gap: 12, marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', gap: 12, marginBottom: '1rem' }}>
             <div style={{ flex: 1 }}>
               <label style={s.label}>Título *</label>
               <input
@@ -168,6 +233,63 @@ function AddListaConvidadosModal({ onClose, onSuccess }) {
             </div>
           </div>
 
+          {/* Local do evento */}
+          <div style={{ marginBottom: '1rem', background: '#f9fafb', borderRadius: 8, padding: '0.75rem 1rem', border: '1px solid #e5e7eb' }}>
+            <label style={{ ...s.label, marginBottom: 8 }}>Local do Evento</label>
+            <div style={{ display: 'flex', gap: 16, marginBottom: localTipo ? 8 : 0 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="local_tipo"
+                  value="espaco"
+                  checked={localTipo === 'espaco'}
+                  onChange={() => { setLocalTipo('espaco'); setEspacoId(''); }}
+                  style={{ accentColor: '#2abb98' }}
+                />
+                Espaço do Condomínio
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="local_tipo"
+                  value="unidade"
+                  checked={localTipo === 'unidade'}
+                  onChange={() => setLocalTipo('unidade')}
+                  style={{ accentColor: '#2abb98' }}
+                />
+                Minha Unidade
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="local_tipo"
+                  value=""
+                  checked={localTipo === ''}
+                  onChange={() => setLocalTipo('')}
+                  style={{ accentColor: '#2abb98' }}
+                />
+                Não informar
+              </label>
+            </div>
+            {localTipo === 'espaco' && (
+              <select
+                value={espacoId}
+                onChange={(e) => setEspacoId(e.target.value)}
+                style={{ ...s.input, marginTop: 4 }}
+              >
+                <option value="">Selecione o espaço...</option>
+                {espacos.map(esp => (
+                  <option key={esp.id} value={esp.id}>{esp.nome}</option>
+                ))}
+              </select>
+            )}
+            {localTipo === 'unidade' && (
+              <p style={{ fontSize: '0.8rem', color: '#6b7280', margin: '4px 0 0' }}>
+                Será usada a sua unidade cadastrada no sistema.
+              </p>
+            )}
+          </div>
+
           {/* Linhas de convidados */}
           <div style={{ marginBottom: '0.75rem' }}>
             <p style={{ fontSize: '0.82rem', fontWeight: 600, color: '#374151', marginBottom: '0.6rem' }}>
@@ -175,20 +297,23 @@ function AddListaConvidadosModal({ onClose, onSuccess }) {
             </p>
 
             {/* Cabeçalho das colunas */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-              <div style={{ width: 170 }}>
+            <div className="convidado-col-header">
+              <div className="col-cpf">
                 <span style={s.label}>CPF</span>
               </div>
-              <div style={{ flex: 1 }}>
+              <div className="col-nome">
                 <span style={s.label}>Nome</span>
               </div>
-              <div style={{ width: 34 }} />
+              <div className="col-email">
+                <span style={s.label}>E-mail (opcional)</span>
+              </div>
+              <div className="col-acao" />
             </div>
 
             {rows.map((row, idx) => (
-              <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+              <div key={idx} className="convidado-row">
                 {/* CPF */}
-                <div style={{ width: 170 }}>
+                <div className="col-cpf">
                   <input
                     type="text"
                     value={row.cpf}
@@ -206,7 +331,7 @@ function AddListaConvidadosModal({ onClose, onSuccess }) {
                 </div>
 
                 {/* Nome */}
-                <div style={{ flex: 1, position: 'relative' }}>
+                <div className="col-nome">
                   <input
                     type="text"
                     value={row.nome}
@@ -232,22 +357,82 @@ function AddListaConvidadosModal({ onClose, onSuccess }) {
                   )}
                 </div>
 
+                {/* E-mail */}
+                <div className="col-email">
+                  <input
+                    type="email"
+                    value={row.email}
+                    onChange={(e) => handleEmailChange(idx, e.target.value)}
+                    placeholder="E-mail (opcional)"
+                    style={s.input}
+                  />
+                </div>
+
                 {/* Remover */}
-                <button
-                  type="button"
-                  onClick={() => handleRemoveRow(idx)}
-                  disabled={rows.length === 1}
-                  title="Remover linha"
-                  style={{
-                    ...s.iconBtn,
-                    opacity: rows.length === 1 ? 0.25 : 1,
-                    cursor: rows.length === 1 ? 'default' : 'pointer',
-                  }}
-                >
-                  <FaTrash size={13} />
-                </button>
+                <div className="col-acao">
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveRow(idx)}
+                    disabled={rows.length === 1}
+                    title="Remover linha"
+                    style={{
+                      ...s.iconBtn,
+                      opacity: rows.length === 1 ? 0.25 : 1,
+                      cursor: rows.length === 1 ? 'default' : 'pointer',
+                    }}
+                  >
+                    <FaTrash size={13} />
+                  </button>
+                </div>
               </div>
             ))}
+          </div>
+
+          {/* Importar de listas anteriores */}
+          <div style={{ marginBottom: '0.75rem' }}>
+            <button
+              type="button"
+              onClick={() => { setShowImportar(v => !v); setBuscaAnterior(''); setResultadosAnteriores([]); }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.78rem', color: '#6366f1', display: 'flex', alignItems: 'center', gap: 5, padding: 0 }}
+            >
+              📋 {showImportar ? 'Fechar busca de listas anteriores' : 'Importar convidado de lista anterior'}
+            </button>
+            {showImportar && (
+              <div style={{ marginTop: 8, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, padding: 10 }}>
+                <input
+                  type="text"
+                  placeholder="Buscar por nome ou CPF..."
+                  value={buscaAnterior}
+                  onChange={(e) => handleBuscarAnterior(e.target.value)}
+                  style={{ width: '100%', padding: '6px 8px', border: '1px solid #d1d5db', borderRadius: 5, fontSize: '0.83rem', boxSizing: 'border-box', outline: 'none', marginBottom: 6 }}
+                  autoFocus
+                />
+                {buscandoAnteriores && (
+                  <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: 0, textAlign: 'center' }}>Buscando...</p>
+                )}
+                {!buscandoAnteriores && buscaAnterior && resultadosAnteriores.length === 0 && (
+                  <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: 0, textAlign: 'center' }}>Nenhum convidado encontrado.</p>
+                )}
+                {!buscaAnterior && (
+                  <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: 0, textAlign: 'center' }}>Digite o nome ou CPF para buscar.</p>
+                )}
+                {resultadosAnteriores.map(c => (
+                  <div key={c.cpf} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, marginBottom: 4 }}>
+                    <div style={{ minWidth: 0, overflow: 'hidden' }}>
+                      <div style={{ fontSize: '0.83rem', fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.nome}</div>
+                      <div style={{ fontSize: '0.73rem', color: '#6b7280' }}>{c.cpf_formatado}{c.email ? ` • ${c.email}` : ''}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleImportarConvidado(c)}
+                      style={{ background: '#2abb98', color: '#fff', border: 'none', borderRadius: 5, padding: '3px 10px', cursor: 'pointer', fontSize: '0.78rem', flexShrink: 0, marginLeft: 8 }}
+                    >
+                      + Adicionar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Adicionar mais */}

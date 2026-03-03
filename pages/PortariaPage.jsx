@@ -12,7 +12,8 @@ import { formatPlaca } from '../utils/placaValidator';
 import '../styles/PortariaPage.css';
 import AvisoBanner from '../components/Avisos/AvisoBanner';
 import { avisoAPI } from '../services/api';
-import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaUsers, FaEye } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaUsers, FaEye, FaQrcode } from 'react-icons/fa';
+import QrCodeScanner from '../components/Eventos/QrCodeScanner';
 import AddOcorrenciaModal from '../components/Ocorrencias/AddOcorrenciaModal';
 import OcorrenciaDetalheModal from '../components/Ocorrencias/OcorrenciaDetalheModal';
 import OcorrenciaCard from '../components/Ocorrencias/OcorrenciaCard';
@@ -65,6 +66,7 @@ function PortariaPage() {
   const [currentEditData, setCurrentEditData] = useState({});
   const [eventoSelecionado, setEventoSelecionado] = useState(null);
   const [listaSelecionada, setListaSelecionada] = useState(null);
+  const [showQrScanner, setShowQrScanner] = useState(false);
   const [showAddOcorrencia, setShowAddOcorrencia] = useState(false);
   const [ocorrenciaSelecionada, setOcorrenciaSelecionada] = useState(null);
 
@@ -852,6 +854,19 @@ function PortariaPage() {
                   />
                   Somente hoje
                 </label>
+                <button
+                  onClick={() => setShowQrScanner(true)}
+                  className="qr-btn-mobile-only"
+                  style={{
+                    background: '#2abb98', color: '#fff', border: 'none',
+                    borderRadius: 7, padding: '7px 14px', cursor: 'pointer',
+                    fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6,
+                    marginLeft: 'auto', whiteSpace: 'nowrap',
+                  }}
+                  title="Confirmar entrada via QR Code"
+                >
+                  <FaQrcode size={14} /> Ler QR Code
+                </button>
               </div>
 
               <GenericTable
@@ -998,6 +1013,15 @@ function PortariaPage() {
           lista={listaSelecionada}
           readOnly={true}
           onClose={() => setListaSelecionada(null)}
+        />
+      )}
+
+      {showQrScanner && (
+        <QrCodeScanner
+          onClose={() => setShowQrScanner(false)}
+          onConfirmado={() => {
+            if (listaSelecionada) fetchData('lista_convidados', currentPage, searchTerm);
+          }}
         />
       )}
 

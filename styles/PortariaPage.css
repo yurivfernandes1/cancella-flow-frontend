@@ -418,3 +418,25 @@
     font-size: 0.9rem;
   }
 }
+
+/* Botão QR Code: visível apenas em mobile */
+.qr-btn-mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .qr-btn-mobile-only {
+    display: flex !important;
+  }
+}
+
+/* Botão QR Code: visível apenas em mobile */
+.qr-btn-mobile-only {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .qr-btn-mobile-only {
+    display: flex !important;
+  }
+}

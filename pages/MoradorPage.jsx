@@ -1072,6 +1072,7 @@ function MoradorPage() {
             setShowAddLista(false);
             fetchData('lista_convidados', 1, searchTerm);
           }}
+          moradorUnidadeId={user?.unidade_id}
         />
       )}
 
