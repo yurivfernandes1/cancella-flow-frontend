@@ -1,4 +1,4 @@
-const CACHE_NAME = 'gestao-condominios-v1';
+const CACHE_NAME = 'cancella-flow-v2';
 const urlsToCache = [
   '/',
   '/static/js/bundle.js',
