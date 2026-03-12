@@ -1,6 +1,6 @@
 {
-    "name": "Sistema de Gestão de Condomínios",
-    "short_name": "Gestão Condomínios",
+    "name": "Cancella Flow",
+    "short_name": "Cancella Flow",
     "description": "Sistema completo para gestão de condomínios, síndicos, funcionários e moradores",
     "start_url": "/",
     "display": "standalone",

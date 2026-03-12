@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Use Vite environment variable when available, fallback para localhost
-const baseURL = import.meta.env.VITE_API_URL || 'https://cancella-flow-backend.onrender.com/api';
+const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
 const api = axios.create({
   baseURL,
@@ -171,7 +171,9 @@ export const espacoReservaAPI = {
 // API de Dashboard
 export const dashboardAPI = {
   moradorStats: () => api.get('/cadastros/dashboard/morador-stats/'),
-  sindicoStats: () => api.get('/cadastros/dashboard/sindico-stats/')
+  sindicoStats: () => api.get('/cadastros/dashboard/sindico-stats/'),
+  portariaStats: () => api.get('/cadastros/dashboard/portaria-stats/'),
+  adminStats: () => api.get('/cadastros/dashboard/admin-stats/'),
 };
 
 // API de Eventos
@@ -185,6 +187,66 @@ export const eventoAPI = {
   update: (id, data) => api.put(`/cadastros/eventos/${id}/update/`, data),
   patch: (id, data) => api.patch(`/cadastros/eventos/${id}/update/`, data),
   delete: (id) => api.delete(`/cadastros/eventos/${id}/delete/`)
+};
+
+// API de Unidades
+export const unidadeAPI = {
+  list: (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    return api.get(`/cadastros/unidades/${queryParams ? `?${queryParams}` : ''}`);
+  },
+  create: (data) => api.post('/cadastros/unidades/create/', data),
+  get: (id) => api.get(`/cadastros/unidades/${id}/`),
+  update: (id, data) => api.put(`/cadastros/unidades/${id}/update/`, data),
+  patch: (id, data) => api.patch(`/cadastros/unidades/${id}/update/`, data),
+  delete: (id) => api.delete(`/cadastros/unidades/${id}/delete/`),
+  exportModelo: () => api.get('/cadastros/unidades/export-modelo/', { responseType: 'blob' }),
+  importExcel: (arquivo) => {
+    const formData = new FormData();
+    formData.append('arquivo', arquivo);
+    return api.post('/cadastros/unidades/import-excel/', formData);
+  },
+};
+
+// API de Lista de Convidados
+export const listaConvidadosAPI = {
+  getListas: (params) =>
+    api.get('/cadastros/listas-convidados/', { params }),
+  criarLista: (data) =>
+    api.post('/cadastros/listas-convidados/', data),
+  getLista: (listaId) =>
+    api.get(`/cadastros/listas-convidados/${listaId}/`),
+  atualizarLista: (listaId, data) =>
+    api.patch(`/cadastros/listas-convidados/${listaId}/`, data),
+  excluirLista: (listaId) =>
+    api.delete(`/cadastros/listas-convidados/${listaId}/`),
+  buscarCpf: (listaId, cpf) =>
+    api.post(`/cadastros/listas-convidados/${listaId}/buscar-cpf/`, { cpf }),
+  buscarCpfSimples: (cpf) =>
+    api.get('/cadastros/listas-convidados/buscar-cpf/', { params: { cpf } }),
+  adicionarConvidado: (listaId, cpf, nome, email = '') =>
+    api.post(`/cadastros/listas-convidados/${listaId}/adicionar-convidado/`, { cpf, nome, email }),
+  atualizarConvidado: (listaId, convidadoId, data) =>
+    api.patch(`/cadastros/listas-convidados/${listaId}/convidados/${convidadoId}/update/`, data),
+  removerConvidado: (listaId, convidadoId) =>
+    api.delete(`/cadastros/listas-convidados/${listaId}/convidados/${convidadoId}/delete/`),
+  confirmarEntrada: (listaId, convidadoId) =>
+    api.patch(`/cadastros/listas-convidados/${listaId}/convidados/${convidadoId}/confirmar-entrada/`),
+  enviarQrCode: (listaId, convidadoId) =>
+    api.post(`/cadastros/listas-convidados/${listaId}/convidados/${convidadoId}/enviar-qrcode/`),
+  confirmarPorQrCode: (token) =>
+    api.post('/cadastros/listas-convidados/confirmar-por-qrcode/', { token }),
+  buscarConvidadosAnteriores: (q = '') =>
+    api.get('/cadastros/listas-convidados/convidados-anteriores/', { params: { q } }),
+};
+
+// API de Ocorrências
+export const ocorrenciaAPI = {
+  list: (params) => api.get('/cadastros/ocorrencias/', { params }),
+  create: (data) => api.post('/cadastros/ocorrencias/create/', data),
+  get: (id) => api.get(`/cadastros/ocorrencias/${id}/`),
+  update: (id, data) => api.patch(`/cadastros/ocorrencias/${id}/update/`, data),
+  delete: (id) => api.delete(`/cadastros/ocorrencias/${id}/delete/`),
 };
 
 export default api;
