@@ -20,12 +20,31 @@ function GenericDropdown({
   const [dropdownStyle, setDropdownStyle] = useState({});
   const [rendered, setRendered] = useState(false);
 
+  const isCompactViewport = typeof window !== 'undefined' && window.innerWidth <= 768;
+
   // Função para calcular e definir a posição do dropdown
   const setDropdownPosition = () => {
     if (!dropdownRef.current || !isOpen) return;
     
     // Se tivermos uma referência ao elemento acionador e a posição for 'relative'
     if (position === 'relative' && triggerRef?.current) {
+      if (window.innerWidth <= 768) {
+        setDropdownStyle({
+          position: 'fixed',
+          top: '50%',
+          right: '8px',
+          left: '8px',
+          bottom: 'auto',
+          width: 'auto',
+          maxWidth: 'none',
+          maxHeight: 'calc(100dvh - 22px)',
+          transform: 'translateY(-50%)',
+          zIndex: 200101
+        });
+        setRendered(true);
+        return;
+      }
+
       const triggerRect = triggerRef.current.getBoundingClientRect();
       
       // Posicionar diretamente abaixo do botão que acionou
@@ -138,7 +157,7 @@ function GenericDropdown({
 
   return (
     <>
-      {position !== 'relative' && (
+      {(position !== 'relative' || isCompactViewport) && (
         <div
           className="dropdown-overlay"
           onClick={closeOnClickOutside ? (() => { if (typeof onClose === 'function') onClose(); }) : undefined}

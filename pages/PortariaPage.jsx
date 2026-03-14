@@ -487,6 +487,12 @@ function PortariaPage() {
       render: (value) => `R$ ${parseFloat(value || 0).toFixed(2)}`
     },
     {
+      key: 'created_on',
+      header: 'Criado em',
+      width: '15%',
+      render: (value) => formatDateTime(value)
+    },
+    {
       key: 'status',
       header: 'Status',
       width: '20%',

@@ -31,12 +31,19 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
   const [cpfIsValid, setCpfIsValid] = useState(null);
   const [phoneIsValid, setPhoneIsValid] = useState(null);
   const [showDropdown, setShowDropdown] = useState(true);
+  const [submitError, setSubmitError] = useState('');
   // Funcionários, síndicos e moradores têm os mesmos campos.
   // Removemos toda a lógica de Equipes.
   const [condominios, setCondominios] = useState([]);
   const [loadingCondominios, setLoadingCondominios] = useState(true);
   const [unidades, setUnidades] = useState([]);
   const [loadingUnidades, setLoadingUnidades] = useState(false);
+
+  useEffect(() => {
+    if (defaultUnidadeId) {
+      setFormData(prev => ({ ...prev, unidade_id: defaultUnidadeId }));
+    }
+  }, [defaultUnidadeId]);
 
   // Removido: carregamento de equipes
 
@@ -122,9 +129,20 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError('');
     
     if (userType === 'sindico' && !formData.condominio_id) {
       alert('Por favor, selecione um condomínio para o síndico');
+      return;
+    }
+
+    if (userType === 'morador' && !formData.unidade_id) {
+      alert('Por favor, selecione uma unidade para o morador.');
+      return;
+    }
+
+    if (userType === 'sindico' && isMoradorToo && !formData.unidade_id) {
+      alert('Por favor, selecione uma unidade para o síndico morador.');
       return;
     }
 
@@ -204,7 +222,12 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
       
     } catch (error) {
       console.error('Erro ao criar usuário:', error);
-      alert('Erro ao criar usuário: ' + (error.response?.data?.error || 'Erro desconhecido'));
+      const backendError = error.response?.data?.error || 'Erro desconhecido';
+      const normalized = String(backendError).toLowerCase();
+      if (normalized.includes('cpf')) {
+        setCpfIsValid(false);
+      }
+      setSubmitError(`Erro ao criar usuário: ${backendError}`);
     }
   };
 
@@ -226,8 +249,14 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
           position={position}
           triggerRef={triggerRef}
           isOpen={true}
+          closeOnClickOutside={false}
         >
           <form onSubmit={handleSubmit}>
+            {submitError && (
+              <div className="form-error" role="alert" style={{ marginBottom: '12px', color: '#b91c1c', fontWeight: 600 }}>
+                {submitError}
+              </div>
+            )}
             <div className="form-row">
               <div className="form-field">
                 <input
@@ -291,7 +320,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
 
               {userType === 'morador' ? (
                 <div className="form-field">
-                  <label>Unidade (Opcional)</label>
+                  <label>Unidade*</label>
                   {loadingUnidades ? (
                     <div style={{ padding: '10px', fontSize: '0.85rem' }}>Carregando...</div>
                   ) : (
@@ -308,8 +337,9 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
                         ...prev,
                         unidade_id: selectedOption?.value || ''
                       }))}
-                      placeholder="Selecione uma unidade"
-                      isClearable
+                      placeholder={defaultUnidadeId ? 'Unidade pré-selecionada' : 'Selecione uma unidade'}
+                      isClearable={!defaultUnidadeId}
+                      isDisabled={Boolean(defaultUnidadeId)}
                       className="unidade-select react-select-container"
                       classNamePrefix="react-select"
                       menuPortalTarget={typeof document !== 'undefined' ? document.body : null}

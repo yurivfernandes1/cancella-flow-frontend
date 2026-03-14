@@ -83,6 +83,44 @@
 }
 
 /* Cabeçalho do dropdown - Ajustando espaçamento */
+/* Mobile-specific adjustments para dropdowns que viram modal em telas pequenas */
+@media (max-width: 768px) {
+  .generic-dropdown {
+    padding: 0.75rem !important;
+    left: 10px !important;
+    right: 10px !important;
+    top: 10px !important;
+    bottom: 10px !important;
+    max-width: none !important;
+    width: auto !important;
+    border-radius: 8px !important;
+    overflow: hidden;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+  }
+
+  .generic-dropdown .dropdown-content {
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 6px;
+  }
+
+  /* Certificar que os botões do footer fiquem sempre visíveis */
+  .add-user-dropdown .form-actions {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 0.9rem 0.6rem;
+    z-index: 30;
+    justify-content: center;
+  }
+
+  /* Inputs e linhas devem quebrar verticalmente para economizar espaço */
+  .generic-dropdown .form-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
 .dropdown-header {
   display: flex;
   justify-content: space-between;
@@ -149,6 +187,43 @@
 .add-team-dropdown.generic-dropdown {
   /* Deixe o GenericDropdown (JS) controlar top/left; manter apenas fixo */
   position: fixed !important;
+}
+
+/* Mantém o cadastro de usuário/morador dentro da viewport em qualquer altura de tela */
+.add-user-dropdown.generic-dropdown {
+  max-height: calc(100dvh - 24px);
+  display: flex;
+  flex-direction: column;
+}
+
+.add-user-dropdown .dropdown-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* Sticky actions dentro da dropdown para manter os botões visíveis no mobile
+   Quando .dropdown-content for o container rolável, position: sticky funciona
+   e fixa a barra de ações ao fundo do container. */
+.add-user-dropdown .form-actions {
+  position: sticky;
+  bottom: 0;
+  background: white;
+  padding: 0.9rem 0.6rem;
+  margin: 0; /* o formulário já controla espaçamentos */
+  border-top: 1px solid rgba(14, 19, 24, 0.06);
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center; /* no mobile preferimos botões centralizados */
+  z-index: 20; /* acima do conteúdo rolável */
+}
+
+/* Garantir que o conteúdo acima do footer tenha espaço suficiente para o sticky */
+.add-user-dropdown .dropdown-content > form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* Estilos para botões de formulário */
@@ -318,7 +393,7 @@
 /* Quando usamos position="relative" com trigger, posicionamos abaixo do botão via inline JS (top/left). 
    O container continua fixo para não descer com a tela. */
 .generic-dropdown.dropdown-position-relative {
-  z-index: 1050 !important;
+  z-index: 200101 !important;
 }
 
 /* Estilos para estados de carregamento e erro no Select */
@@ -499,6 +574,64 @@
     width: 100%;
     justify-content: center;
   }
+
+  /* Ajustes específicos do cadastro de morador/usuário no mobile */
+  .add-user-dropdown.generic-dropdown {
+    left: 8px !important;
+    right: 8px !important;
+    top: 8px !important;
+    bottom: 8px !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0.9rem !important;
+    max-height: none;
+    transform: none !important;
+    overflow: hidden;
+  }
+
+  .add-user-dropdown .dropdown-content {
+    max-height: none;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding-right: 2px;
+  }
+
+  .add-user-dropdown .dropdown-content > form {
+    min-width: 0;
+  }
+
+  .add-user-dropdown .form-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 0.55rem !important;
+    margin-bottom: 0.25rem !important;
+    align-items: stretch !important;
+  }
+
+  .add-user-dropdown .form-field {
+    margin-bottom: 0.9rem !important;
+    width: 100%;
+  }
+
+  .add-user-dropdown .form-field input:not([type="checkbox"]),
+  .add-user-dropdown .form-field select,
+  .add-user-dropdown .form-field textarea,
+  .add-user-dropdown .form-field .react-select-container,
+  .add-user-dropdown .form-field .react-select__control {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .add-user-dropdown .react-select__value-container,
+  .add-user-dropdown .react-select__input-container {
+    min-width: 0 !important;
+  }
+
+  .add-user-dropdown .form-field label {
+    font-size: 0.85rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -515,5 +648,87 @@
   .form-field select,
   .form-field textarea {
     font-size: 16px; /* Evita zoom no iOS */
+  }
+
+  .add-user-dropdown.generic-dropdown {
+    left: 6px !important;
+    right: 6px !important;
+    top: 6px !important;
+    bottom: 6px !important;
+    width: auto !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0.75rem !important;
+    max-height: none;
+  }
+
+  .add-user-dropdown .dropdown-content {
+    max-height: none;
+  }
+
+  .add-user-dropdown .form-field {
+    margin-bottom: 0.8rem !important;
+  }
+}
+
+/* Overrides finais para o modal de Novo Morador no mobile */
+@media (max-width: 768px) {
+  .add-user-dropdown.generic-dropdown {
+    left: 8px !important;
+    right: 8px !important;
+    top: 50% !important;
+    bottom: auto !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: calc(100dvh - 22px) !important;
+    margin: 0 !important;
+    transform: translateY(-50%) !important;
+    overflow: hidden;
+  }
+
+  .add-user-dropdown .dropdown-content {
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    max-height: calc(100dvh - 190px) !important;
+    padding-right: 2px !important;
+  }
+
+  .add-user-dropdown .dropdown-content > form {
+    min-width: 0;
+  }
+
+  .add-user-dropdown .form-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 0.6rem !important;
+    align-items: stretch !important;
+  }
+
+  .add-user-dropdown .form-field,
+  .add-user-dropdown .form-field .react-select-container,
+  .add-user-dropdown .form-field .react-select__control,
+  .add-user-dropdown .form-field .react-select__value-container,
+  .add-user-dropdown .form-field .react-select__input-container,
+  .add-user-dropdown .form-field input,
+  .add-user-dropdown .form-field select,
+  .add-user-dropdown .form-field textarea {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 480px) {
+  .add-user-dropdown.generic-dropdown {
+    left: 6px !important;
+    right: 6px !important;
+    top: 50% !important;
+    max-height: calc(100dvh - 16px) !important;
+    transform: translateY(-50%) !important;
+  }
+
+  .add-user-dropdown .dropdown-content {
+    max-height: calc(100dvh - 175px) !important;
   }
 }

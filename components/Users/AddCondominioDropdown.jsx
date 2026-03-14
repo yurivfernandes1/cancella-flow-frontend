@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FaSave, FaTimes, FaPlus, FaUpload } from 'react-icons/fa';
 import { condominioAPI } from '../../services/api';
 import GenericDropdown from '../common/GenericDropdown';
@@ -21,7 +21,15 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
   const [validationErrors, setValidationErrors] = useState({});
   const [addressData, setAddressData] = useState(null);
   const [loadingCep, setLoadingCep] = useState(false);
-  // Removemos a pré-visualização para simplificar o layout
+  const [logoPreview, setLogoPreview] = useState(null);
+
+  useEffect(() => {
+    return () => {
+      if (logoPreview) {
+        URL.revokeObjectURL(logoPreview);
+      }
+    };
+  }, [logoPreview]);
 
   const buscarCep = async (cep) => {
     if (!validateCEP(cep)) {
@@ -136,6 +144,10 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
   const handleLogoChange = (e) => {
     const file = e.target.files[0];
     if (!file) {
+      if (logoPreview) {
+        URL.revokeObjectURL(logoPreview);
+      }
+      setLogoPreview(null);
       setFormData(prev => ({ ...prev, logo: null }));
       return;
     }
@@ -153,11 +165,18 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
       return;
     }
 
-    // Simplificação: sem preview; validações mínimas (dimensão já garantida pelo backend)
+    if (logoPreview) {
+      URL.revokeObjectURL(logoPreview);
+    }
+    setLogoPreview(URL.createObjectURL(file));
     setFormData(prev => ({ ...prev, logo: file }));
   };
 
   const handleRemoveLogo = () => {
+    if (logoPreview) {
+      URL.revokeObjectURL(logoPreview);
+    }
+    setLogoPreview(null);
     setFormData(prev => ({ ...prev, logo: null }));
     const fileInput = document.getElementById('logo-upload');
     if (fileInput) fileInput.value = '';
@@ -359,7 +378,7 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
                 onChange={handleLogoChange}
                 style={{ display: 'none' }}
               />
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '10px' }}>
                 <label
                   htmlFor="logo-upload"
                   title="Formatos: PNG, JPG, JPEG, SVG"
@@ -389,6 +408,31 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
                 >
                   <FaUpload /> Adicionar Logo
                 </label>
+                {logoPreview && (
+                  <div
+                    style={{
+                      width: '160px',
+                      height: '160px',
+                      borderRadius: '10px',
+                      border: '1px solid #e2e8f0',
+                      background: '#f8fafc',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <img
+                      src={logoPreview}
+                      alt="Pré-visualização da logo"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain'
+                      }}
+                    />
+                  </div>
+                )}
                 {formData.logo && (
                   <button
                     type="button"

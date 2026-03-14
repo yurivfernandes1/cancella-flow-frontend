@@ -21,7 +21,7 @@ export default function AddAvisoDropdown({ onClose, onSuccess, triggerRef }) {
   const [form, setForm] = useState({
     titulo: '',
     descricao: '',
-    grupo: null,
+    grupos: [],
     prioridade: 'media',
     status: 'ativo',
     data_inicio: new Date().toISOString().slice(0, 16),
@@ -36,7 +36,7 @@ export default function AddAvisoDropdown({ onClose, onSuccess, triggerRef }) {
         setLoadingGroups(true);
         const resp = await avisoAPI.groupsOptions();
         const opts = (resp.data || []).map(g => ({ value: g.id, label: g.name }));
-        setGroupOptions(opts);
+        setGroupOptions([{ value: '__all__', label: 'Enviar para todos os perfis' }, ...opts]);
       } catch (e) {
         setGroupOptions([]);
       } finally {
@@ -48,14 +48,22 @@ export default function AddAvisoDropdown({ onClose, onSuccess, triggerRef }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.titulo.trim()) return alert('Informe o título');
-    if (!form.grupo) return alert('Selecione o grupo destinatário');
+    if (!form.grupos.length) return alert('Selecione ao menos um grupo destinatário');
     if (!form.data_inicio) return alert('Informe a data de início');
 
     try {
+      const allGroupIds = groupOptions
+        .filter((opt) => opt.value !== '__all__')
+        .map((opt) => opt.value);
+      const enviarParaTodos =
+        allGroupIds.length > 0 && allGroupIds.every((id) => form.grupos.includes(id));
+
       const payload = {
         titulo: form.titulo.trim(),
         descricao: form.descricao?.trim() || '',
-        grupo: form.grupo,
+        grupo: form.grupos[0],
+        grupos: form.grupos,
+        enviar_para_todos: enviarParaTodos,
         prioridade: form.prioridade,
         status: form.status,
         data_inicio: new Date(form.data_inicio).toISOString(),
@@ -113,17 +121,42 @@ export default function AddAvisoDropdown({ onClose, onSuccess, triggerRef }) {
           <label>Descrição</label>
         </div>
         <div className="form-field">
-          <label>Grupo*</label>
+          <label>Grupos*</label>
           {loadingGroups ? (
             <div style={{ padding: 8 }}>Carregando grupos...</div>
           ) : (
             <Select
               options={groupOptions}
               classNamePrefix="react-select"
-              value={groupOptions.find(o => o.value === form.grupo) || null}
-              onChange={(opt) => setForm(prev => ({ ...prev, grupo: opt ? opt.value : null }))}
-              placeholder="Selecione o grupo"
-              isClearable
+              value={groupOptions.filter((opt) => {
+                if (opt.value === '__all__') {
+                  const ids = groupOptions
+                    .filter((item) => item.value !== '__all__')
+                    .map((item) => item.value);
+                  return ids.length > 0 && ids.every((id) => form.grupos.includes(id));
+                }
+                return form.grupos.includes(opt.value);
+              })}
+              onChange={(opts) => {
+                const selected = Array.isArray(opts) ? opts : [];
+                const hasAll = selected.some((opt) => opt.value === '__all__');
+
+                if (hasAll) {
+                  const allIds = groupOptions
+                    .filter((item) => item.value !== '__all__')
+                    .map((item) => item.value);
+                  setForm((prev) => ({ ...prev, grupos: allIds }));
+                  return;
+                }
+
+                setForm((prev) => ({
+                  ...prev,
+                  grupos: selected.map((item) => item.value),
+                }));
+              }}
+              placeholder="Selecione um ou mais grupos"
+              isMulti
+              closeMenuOnSelect={false}
               menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
               styles={selectStyles}
             />

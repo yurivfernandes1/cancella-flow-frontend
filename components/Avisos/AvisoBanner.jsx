@@ -25,6 +25,9 @@ export default function AvisoBanner({ aviso }) {
   const cfg = prioridadeConfig[aviso.prioridade] || prioridadeConfig.media;
   const inicio = formatDatePtBR(aviso.data_inicio);
   const fim = formatDatePtBR(aviso.data_fim);
+  const gruposNomes = Array.isArray(aviso.grupos_nomes) && aviso.grupos_nomes.length
+    ? aviso.grupos_nomes.join(', ')
+    : aviso.grupo_nome;
   return (
     <div className={`aviso-banner ${cfg.className}`}>
       <div className="aviso-icon">{cfg.icon}</div>
@@ -38,7 +41,7 @@ export default function AvisoBanner({ aviso }) {
         )}
         <div className="aviso-meta">
           <span className="aviso-chip">{(aviso.prioridade || '').toUpperCase()}</span>
-          {aviso.grupo_nome && <span className="aviso-chip light">{aviso.grupo_nome}</span>}
+          {gruposNomes && <span className="aviso-chip light">{gruposNomes}</span>}
         </div>
       </div>
     </div>

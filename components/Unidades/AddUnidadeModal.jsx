@@ -227,15 +227,15 @@ function AddUnidadeModal({ onClose, onSuccess }) {
               <table className="unidades-form-table">
                 <thead>
               <tr>
-                <th style={{ width: '38%' }}>Número*</th>
-                <th style={{ width: '38%' }}>Bloco</th>
-                <th style={{ width: '24%' }}>Ações</th>
+                <th>Número*</th>
+                <th>Bloco</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>
               {unidades.map((unidade, index) => (
                 <React.Fragment key={index}>
-                  <tr>
+                  <tr className="unidade-main-row">
                     <td>
                       <input
                         type="text"
@@ -256,7 +256,7 @@ function AddUnidadeModal({ onClose, onSuccess }) {
                       />
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                      <div className="unidade-actions" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                         <button
                           type="button"
                           onClick={() => handleToggleMorador(index)}
@@ -278,13 +278,13 @@ function AddUnidadeModal({ onClose, onSuccess }) {
                     </td>
                   </tr>
                   {unidade.addMorador && (
-                    <tr>
-                      <td colSpan={3} style={{ background: '#f8fafc', padding: '10px 16px 14px' }}>
+                    <tr className="unidade-morador-row">
+                      <td className="unidade-morador-cell" colSpan={3} style={{ background: '#f8fafc', padding: '10px 16px 14px' }}>
                         <p style={{ fontSize: '0.78rem', color: '#2abb98', fontWeight: 600, marginBottom: 8, marginTop: 0 }}>
                           <FaUserPlus style={{ marginRight: 5 }} />
                           Morador para a unidade {unidade.numero || ''}
                         </p>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div className="morador-grid">
                           <div>
                             <label style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', marginBottom: 3 }}>Nome*</label>
                             <input
@@ -349,7 +349,7 @@ function AddUnidadeModal({ onClose, onSuccess }) {
             </div>
 
             <div className="add-row-section" style={{ gap: '0.75rem', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div className="add-row-controls" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <input
                   type="number"
                   min={1}
@@ -357,6 +357,7 @@ function AddUnidadeModal({ onClose, onSuccess }) {
                   defaultValue={1}
                   placeholder="Qtd. de linhas"
                   id="bulk-add-count"
+                  className="add-row-count"
                   style={{ width: 110, padding: '0.8rem', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: '1rem' }}
                 />
                 <button

@@ -79,10 +79,8 @@
 
 .condo-logo {
   display: block;
-  max-width: 130px; /* reduzido para quase metade */
-  max-height: 130px; /* reduzido para quase metade */
-  width: auto;
-  height: auto;
+  width: clamp(120px, 16vw, 220px);
+  height: clamp(120px, 16vw, 220px);
   object-fit: contain; /* preserva proporção */
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -286,6 +284,11 @@
     text-align: center;
   }
 
+  .condo-logo {
+    width: clamp(110px, 34vw, 170px);
+    height: clamp(110px, 34vw, 170px);
+  }
+
   .welcome-card {
     padding: 1.5rem;
   }
@@ -312,6 +315,11 @@
 
   .welcome-header .welcome-subtitle {
     font-size: 0.95rem;
+  }
+
+  .condo-logo {
+    width: clamp(96px, 40vw, 140px);
+    height: clamp(96px, 40vw, 140px);
   }
 
   .welcome-card {

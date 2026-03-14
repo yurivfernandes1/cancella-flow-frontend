@@ -9,7 +9,9 @@ export default function EditAvisoModal({ aviso, onClose, onSaved, onDeleted }) {
     id: aviso?.id,
     titulo: aviso?.titulo || '',
     descricao: aviso?.descricao || '',
-    grupo: aviso?.grupo || null,
+    grupos: Array.isArray(aviso?.grupos) && aviso.grupos.length
+      ? aviso.grupos
+      : (aviso?.grupo ? [aviso.grupo] : []),
     prioridade: aviso?.prioridade || 'media',
     status: aviso?.status || 'ativo',
     data_inicio: aviso?.data_inicio || '',
@@ -34,7 +36,7 @@ export default function EditAvisoModal({ aviso, onClose, onSaved, onDeleted }) {
       try {
         const resp = await avisoAPI.groupsOptions();
         const opts = (resp.data || []).map(g => ({ value: g.id, label: g.name }));
-        setGroups(opts);
+        setGroups([{ value: '__all__', label: 'Enviar para todos os perfis' }, ...opts]);
       } catch (e) {
         setGroups([]);
       }
@@ -43,12 +45,23 @@ export default function EditAvisoModal({ aviso, onClose, onSaved, onDeleted }) {
 
   const handleSave = async (e) => {
     e?.preventDefault?.();
+    if (!form.grupos.length) {
+      alert('Selecione ao menos um grupo destinatário.');
+      return;
+    }
     try {
       setLoading(true);
+      const realGroupOptions = groups.filter((opt) => opt.value !== '__all__');
+      const enviarParaTodos =
+        realGroupOptions.length > 0 &&
+        realGroupOptions.every((opt) => form.grupos.includes(opt.value));
+
       const payload = {
         titulo: form.titulo?.trim() || '',
         descricao: form.descricao?.trim() || '',
-        grupo: form.grupo,
+        grupo: form.grupos[0],
+        grupos: form.grupos,
+        enviar_para_todos: enviarParaTodos,
         prioridade: form.prioridade,
         status: form.status,
         data_inicio: form.data_inicio ? new Date(form.data_inicio).toISOString() : null,
@@ -116,13 +129,38 @@ export default function EditAvisoModal({ aviso, onClose, onSaved, onDeleted }) {
 
             <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div className="form-field">
-                <label>Grupo*</label>
+                <label>Grupos*</label>
                 <Select
                   options={groups}
-                  value={groups.find(o => o.value === form.grupo) || null}
-                  onChange={(opt) => setForm(prev => ({ ...prev, grupo: opt ? opt.value : null }))}
-                  placeholder="Selecione o grupo"
-                  isClearable
+                  value={groups.filter((opt) => {
+                    if (opt.value === '__all__') {
+                      const ids = groups
+                        .filter((item) => item.value !== '__all__')
+                        .map((item) => item.value);
+                      return ids.length > 0 && ids.every((id) => form.grupos.includes(id));
+                    }
+                    return form.grupos.includes(opt.value);
+                  })}
+                  onChange={(opts) => {
+                    const selected = Array.isArray(opts) ? opts : [];
+                    const hasAll = selected.some((opt) => opt.value === '__all__');
+
+                    if (hasAll) {
+                      const allIds = groups
+                        .filter((item) => item.value !== '__all__')
+                        .map((item) => item.value);
+                      setForm((prev) => ({ ...prev, grupos: allIds }));
+                      return;
+                    }
+
+                    setForm((prev) => ({
+                      ...prev,
+                      grupos: selected.map((item) => item.value),
+                    }));
+                  }}
+                  placeholder="Selecione um ou mais grupos"
+                  isMulti
+                  closeMenuOnSelect={false}
                   menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
                   styles={{
                     control: (base, state) => ({

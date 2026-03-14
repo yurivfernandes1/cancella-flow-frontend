@@ -45,6 +45,17 @@ export default function ReservasPage() {
     }
   };
 
+  const formatDateTime = (value) => {
+    if (!value) return '-';
+    return new Date(value).toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   const colunas = [
     { 
       key: 'espaco_nome', 
@@ -68,13 +79,19 @@ export default function ReservasPage() {
     { 
       key: 'valor_cobrado', 
       header: 'Valor',
-      width: '20%',
+      width: '15%',
       render: (value) => `R$ ${parseFloat(value || 0).toFixed(2)}`
+    },
+    {
+      key: 'created_on',
+      header: 'Criado em',
+      width: '20%',
+      render: (value) => formatDateTime(value)
     },
     { 
       key: 'status', 
       header: 'Status',
-      width: '15%',
+      width: '10%',
       render: (value) => (
         <span style={{
           padding: '4px 12px',

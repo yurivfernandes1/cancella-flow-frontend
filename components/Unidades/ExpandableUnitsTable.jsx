@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FaChevronDown, FaChevronRight, FaEdit, FaCheck, FaTimes, FaKey, FaUserPlus } from 'react-icons/fa';
+import { FaChevronDown, FaChevronRight, FaEdit, FaCheck, FaTimes, FaKey, FaUserPlus, FaTrash } from 'react-icons/fa';
 import api from '../../services/api';
 import { formatCPF, formatTelefone } from '../../utils/formatters';
 import { validateCPF, validatePhone } from '../../utils/validators';
@@ -356,6 +356,9 @@ function ExpandableUnitsTable({
                                   {onResetPassword && (
                                     <button className="reset-button" onClick={() => onResetPassword(morador.id)} title="Resetar senha" style={{ flex: 1, minHeight: 44 }}><FaKey style={{ marginRight: 4 }} /> Resetar senha</button>
                                   )}
+                                  {onDeleteMorador && (
+                                    <button className="delete-button" onClick={() => onDeleteMorador(morador.id)} title="Remover morador" style={{ flex: 1, minHeight: 44 }}><FaTrash style={{ marginRight: 4 }} /> Remover</button>
+                                  )}
                                 </>
                               )}
                             </div>
@@ -662,6 +665,9 @@ function ExpandableUnitsTable({
                                                 <button className="edit-button" onClick={() => startEditMorador(morador)} title="Editar morador"><FaEdit /></button>
                                                 {onResetPassword && (
                                                   <button className="reset-button" onClick={() => onResetPassword(morador.id)} title="Resetar senha"><FaKey /></button>
+                                                )}
+                                                {onDeleteMorador && (
+                                                  <button className="delete-button" onClick={() => onDeleteMorador(morador.id)} title="Remover morador"><FaTrash /></button>
                                                 )}
                                               </>
                                             )}

@@ -42,6 +42,11 @@ function WelcomePage() {
   const [adminStats, setAdminStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
 
+  const formatCondominioName = (value) => {
+    if (!value || typeof value !== 'string') return '';
+    return value.toLocaleUpperCase('pt-BR');
+  };
+
   useEffect(() => {
     document.title = 'Cancella Flow | Home';
   }, []);
@@ -269,6 +274,11 @@ function WelcomePage() {
     // Síndicos podem ver Funcionários e Moradores
     if (user?.groups?.some(group => group.name === 'Síndicos')) {
       systemSubItems.push(
+        {
+          name: 'Meu Condomínio',
+          icon: <FaBuilding size={16} />,
+          path: '/gestao-usuarios?tab=meu_condominio'
+        },
         { 
           name: 'Gestão de Funcionários', 
           icon: <FaUsers size={16} />, 
@@ -486,15 +496,15 @@ function WelcomePage() {
                 </p>
               ) : isSindico ? (
                 <p className="welcome-subtitle">
-                  Dashboard do Síndico - Visão geral do condomínio{condominioName ? `: ${condominioName}` : ''}
+                  Dashboard do Síndico - Visão geral do condomínio{condominioName ? `: ${formatCondominioName(condominioName)}` : ''}
                 </p>
               ) : isPortaria ? (
                 <p className="welcome-subtitle">
-                  Dashboard da Portaria - Gestão de encomendas e visitantes{condominioName ? ` - ${condominioName}` : ''}
+                  Dashboard da Portaria - Gestão de encomendas e visitantes{condominioName ? ` - ${formatCondominioName(condominioName)}` : ''}
                 </p>
               ) : isMorador ? (
                 <p className="welcome-subtitle">
-                  Minha Área - Acompanhe suas encomendas e visitantes{condominioName ? ` - ${condominioName}` : ''}
+                  Minha Área - Acompanhe suas encomendas e visitantes{condominioName ? ` - ${formatCondominioName(condominioName)}` : ''}
                 </p>
               ) : (
                 <p className="welcome-subtitle">
@@ -561,7 +571,7 @@ function WelcomePage() {
                           className="clickable"
                           onClick={() => navigate('/gestao-usuarios?tab=condominios')}
                         >
-                          <td>{c.nome}</td>
+                          <td>{formatCondominioName(c.nome)}</td>
                           <td>{c.total_moradores}</td>
                           <td>{c.total_unidades}</td>
                         </tr>

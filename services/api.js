@@ -71,6 +71,10 @@ export const condominioAPI = {
   
   // Atualização parcial
   patch: (id, data) => api.patch(`/cadastros/condominios/${id}/update/`, data),
+
+  // Upload da logo em BLOB
+  uploadLogoDb: (id, formData) =>
+    api.post(`/cadastros/condominios/${id}/logo-db/upload/`, formData),
   
   // Excluir condomínio
   delete: (id) => api.delete(`/cadastros/condominios/${id}/delete/`),

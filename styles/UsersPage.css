@@ -189,7 +189,8 @@
 /* Edit controls */
 .edit-button,
 .save-button,
-.cancel-button {
+.cancel-button,
+.delete-button {
   padding: 0.5rem;
   border: none;
   background: transparent;
@@ -281,6 +282,25 @@
 
 .actions-column .cancel-button:hover {
   background: rgba(220, 38, 38, 0.1);
+  transform: scale(1.1);
+}
+
+.actions-column .delete-button {
+  color: #ef4444;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.actions-column .delete-button:hover {
+  background: rgba(239, 68, 68, 0.1);
   transform: scale(1.1);
 }
 

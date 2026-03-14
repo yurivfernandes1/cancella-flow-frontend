@@ -327,6 +327,22 @@ select.mobile-edit-input {
   transform: translateY(-1px);
 }
 
+.mobile-card-actions .delete-button,
+.mobile-card-actions .mobile-action-button.delete-button {
+  background: #ef4444 !important;
+  color: white !important;
+  padding: 0.75rem 1rem !important;
+  width: auto !important;
+  height: auto !important;
+}
+
+.mobile-card-actions .delete-button:hover,
+.mobile-card-actions .mobile-action-button.delete-button:hover {
+  background: #dc2626 !important;
+  box-shadow: 0 3px 8px rgba(239, 68, 68, 0.3);
+  transform: translateY(-1px);
+}
+
 /* Garantir que todos os botões dentro de mobile-card-actions tenham altura consistente */
 .mobile-card-actions > button,
 .mobile-card-actions .mobile-action-button {
@@ -406,7 +422,8 @@ select.mobile-edit-input {
 .mobile-cards-container .save-button,
 .mobile-cards-container .cancel-button,
 .mobile-cards-container .edit-button,
-.mobile-cards-container .reset-button {
+.mobile-cards-container .reset-button,
+.mobile-cards-container .delete-button {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -458,6 +475,15 @@ select.mobile-edit-input {
 
 .mobile-cards-container .reset-button:hover {
   background: #d97706 !important;
+}
+
+.mobile-cards-container .delete-button {
+  background: #ef4444 !important;
+  color: white !important;
+}
+
+.mobile-cards-container .delete-button:hover {
+  background: #dc2626 !important;
 }
 
 /* Otimizações para telas muito pequenas */

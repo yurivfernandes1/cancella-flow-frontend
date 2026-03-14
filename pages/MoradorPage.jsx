@@ -533,9 +533,15 @@ function MoradorPage() {
       render: (value) => `R$ ${parseFloat(value || 0).toFixed(2)}`
     },
     {
+      key: 'created_on',
+      header: 'Criado em',
+      width: '15%',
+      render: (value) => formatDateTime(value)
+    },
+    {
       key: 'status',
       header: 'Status',
-      width: '15%',
+      width: '10%',
       editable: false,
       render: (value) => (
         <span style={{
@@ -554,7 +560,7 @@ function MoradorPage() {
     {
       key: 'actions',
       header: 'Ações',
-      width: '15%',
+      width: '10%',
       render: (row) => (
         <div className="actions-column">
           <button

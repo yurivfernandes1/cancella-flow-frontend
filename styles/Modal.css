@@ -8,16 +8,16 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 210000;
   backdrop-filter: blur(4px);
   padding: 70px 10px 10px 10px; /* Reduzido para mobile */
   box-sizing: border-box;
   overflow-y: auto; /* permite scroll se modal for maior que viewport */
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .modal-overlay {
-    padding: 60px 5px 5px 5px;
+    padding: 16px 6px 10px 6px;
     align-items: flex-start;
   }
 }
@@ -40,12 +40,12 @@
   max-width: 580px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .modal-container {
     width: 100%;
     max-width: 100%;
-    max-height: calc(100vh - 60px);
-    border-radius: 8px;
+    max-height: calc(100vh - 32px);
+    border-radius: 10px;
     margin: 0;
   }
   
@@ -135,7 +135,7 @@
   -webkit-overflow-scrolling: touch;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .modal-content {
     padding: 0.75rem;
   }
@@ -147,6 +147,216 @@
   flex: 1 1 auto;
   min-height: 0; /* importante para o flex permitir shrink e scroll */
   display: flex;
+}
+
+/* Ajustes para modais grandes (ex.: cadastro de unidades) */
+.modal-container.modal-large {
+  max-width: 920px;
+}
+
+.unidades-table-container {
+  overflow-x: auto;
+}
+
+/* Tornar tabelas/formulários mais responsivos dentro da modal */
+.modal-content .unidades-form-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto; /* permitir colunas flexíveis */
+}
+
+.modal-content .unidades-form-table td {
+  word-break: break-word;
+}
+
+.modal-content .unidades-form-table input.form-input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.morador-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* Ajustes para a seção de adicionar linhas dentro da modal de unidades */
+.add-row-section {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+}
+
+@media (max-width: 768px) {
+  .modal-content {
+    padding: 0.75rem;
+  }
+
+  .modal-container.modal-large {
+    width: 100%;
+    max-width: 100%;
+    max-height: calc(100vh - 48px);
+    border-radius: 8px;
+    margin: 0;
+  }
+
+  .modal-container.modal-large .modal-content {
+    padding-bottom: 6rem;
+  }
+
+  /* Garantir que o footer fique acessível (sticky) e que a área de conteúdo role por baixo */
+  .modal-container .modal-footer {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #e2e8f0;
+    z-index: 6;
+  }
+
+  /* Espaço extra no conteúdo para não ficar oculto atrás do footer */
+  .modal-container .modal-content {
+    padding-bottom: 5.5rem;
+  }
+
+  /* Tornar add-row-section em coluna no mobile para evitar overflow horizontal */
+  .add-row-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .add-row-section .add-row-button {
+    width: 100%;
+  }
+
+  .add-row-count {
+    width: 100% !important;
+  }
+
+  .morador-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .modal-container.modal-large form .unidade-morador-cell .morador-grid {
+    max-width: 430px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .modal-container.modal-large form .unidade-morador-cell .form-input {
+    padding: 0.58rem 0.62rem;
+  }
+
+  .add-row-controls {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+  }
+
+  .add-row-controls .add-row-button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Layout mobile em cards para melhorar leitura da tabela de unidades */
+  .modal-container.modal-large form .unidades-form-table thead {
+    display: none;
+  }
+
+  .modal-container.modal-large form .unidades-form-table,
+  .modal-container.modal-large form .unidades-form-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .modal-container.modal-large form .unidade-main-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.7rem;
+    margin-bottom: 0.55rem;
+  }
+
+  .modal-container.modal-large form .unidade-main-row > td {
+    display: block;
+    padding: 0;
+    border: none;
+  }
+
+  .modal-container.modal-large form .unidade-main-row > td:nth-child(1)::before {
+    content: 'Numero*';
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.3rem;
+  }
+
+  .modal-container.modal-large form .unidade-main-row > td:nth-child(2)::before {
+    content: 'Bloco';
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.3rem;
+  }
+
+  .modal-container.modal-large form .unidade-main-row > td:nth-child(3)::before {
+    content: 'Acoes';
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.3rem;
+  }
+
+  .unidade-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+  }
+
+  .unidade-actions .action-button {
+    width: 100%;
+    min-height: 44px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .modal-container.modal-large form .unidade-morador-row {
+    display: block;
+    margin-bottom: 0.8rem;
+  }
+
+  .modal-container.modal-large form .unidade-morador-cell {
+    display: block;
+    width: 100%;
+    padding: 0.65rem !important;
+    border-radius: 10px;
+  }
+
+  .modal-container.modal-large form .unidade-morador-cell * {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+}
+
+@media (max-width: 520px) {
+  .morador-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .modal-container.modal-large form .unidade-morador-cell .morador-grid {
+    max-width: 100%;
+  }
 }
 
 .modal-content .modal-table-area .table-container {

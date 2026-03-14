@@ -105,6 +105,18 @@
   height: 28px;
 }
 
+/* Quando a tabela usa classe allow-horizontal-scroll, permitir largura além do container
+   e exibir barra horizontal para colunas largas. */
+.table-container.allow-horizontal-scroll .table-scroll {
+  overflow-x: auto;
+}
+
+.table-container.allow-horizontal-scroll .generic-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+}
+
 /* Conteúdo da célula - modificado para evitar quebra de linha em e-mails e telefones */
 .cell-content {
   width: 100%;
@@ -117,6 +129,14 @@
 .generic-table td[data-column="endereco_completo"] .cell-content {
   white-space: normal; /* pode quebrar linha */
   overflow: hidden; /* ainda evita estourar a célula */
+}
+
+/* Evitar quebra em CNPJ e Telefone; a tabela pode rolar horizontalmente. */
+.generic-table td[data-column="cnpj"] .cell-content,
+.generic-table th[data-key="cnpj"] .header-content,
+.generic-table td[data-column="telefone"] .cell-content,
+.generic-table th[data-key="telefone"] .header-content {
+  white-space: nowrap;
 }
 
 /* Quando a célula está em edição, liberar layout para inputs */
@@ -162,8 +182,8 @@
 
 /* Compactar inputs de CNPJ e Telefone no modo edição */
 /* As regras globais definem min-width:220px para inputs em edição; aqui sobrescrevemos para CNPJ/Telefone */
-.generic-table td[data-column="cnpj"].editing .edit-input { width: 180px !important; min-width: 0 !important; }
-.generic-table td[data-column="telefone"].editing .edit-input { width: 140px !important; min-width: 0 !important; }
+.generic-table td[data-column="cnpj"].editing .edit-input { width: 205px !important; min-width: 0 !important; }
+.generic-table td[data-column="telefone"].editing .edit-input { width: 165px !important; min-width: 0 !important; }
 
 .generic-table td.editing .cell-content {
   white-space: normal;
@@ -282,7 +302,8 @@
 @media screen and (min-width: 769px) {
   .edit-button,
   .save-button,
-  .cancel-button {
+  .cancel-button,
+  .delete-button {
     padding: 0.5rem;
     border: none;
     background: transparent;
@@ -325,7 +346,8 @@
 
   .inactivate-button,
   .activate-button,
-  .reset-button {
+  .reset-button,
+  .delete-button {
     padding: 0.5rem;
     border: none;
     background: transparent;
@@ -363,6 +385,15 @@
 
   .reset-button:hover {
     background: rgba(245, 158, 11, 0.1);
+    transform: scale(1.05);
+  }
+
+  .delete-button {
+    color: #ef4444;
+  }
+
+  .delete-button:hover {
+    background: rgba(239, 68, 68, 0.1);
     transform: scale(1.05);
   }
 }

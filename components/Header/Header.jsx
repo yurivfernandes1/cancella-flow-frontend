@@ -152,6 +152,12 @@ function Header() {
                   {isSindico && (
                     <>
                       <li>
+                        <Link to="/gestao-usuarios?tab=meu_condominio" onClick={closeMenu}>
+                          <FaBuilding />
+                          <span>Meu Condomínio</span>
+                        </Link>
+                      </li>
+                      <li>
                         <Link to="/gestao-usuarios?tab=unidades_moradores" onClick={closeMenu}>
                           <FaBuilding />
                           <span>Unidades e Moradores</span>
