@@ -1,7 +1,12 @@
 import axios from 'axios';
 
-// Use Vite environment variable when available, fallback para localhost
-const baseURL = import.meta.env.VITE_API_URL || 'https://cancella-flow-backend.onrender.com/api';
+// Use Vite environment variable when available, fallback para localhost.
+// Se a página estiver em HTTPS, faz upgrade automático para evitar mixed-content.
+const rawBaseURL = import.meta.env.VITE_API_URL || 'https://cancella-flow-backend.onrender.com/api';
+const baseURL =
+  typeof window !== 'undefined' && window.location.protocol === 'https:'
+    ? rawBaseURL.replace(/^http:\/\//, 'https://')
+    : rawBaseURL;
 
 const api = axios.create({
   baseURL,
