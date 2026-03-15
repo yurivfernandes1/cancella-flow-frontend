@@ -489,7 +489,7 @@ function WelcomePage() {
             )}
 
             <div className="welcome-text">
-              <h1>Bem-vindo ao Cancella Flow{user?.first_name ? `, ${user.first_name}` : ''}!</h1>
+              <h1>Bem-vindo ao {condominioName ? `Condomínio ${formatCondominioName(condominioName)}` : ''} {user?.first_name ? `, ${user.first_name}` : ''}!</h1>
               {isAdmin ? (
                 <p className="welcome-subtitle">
                   Dashboard Administrativo - Visão geral do sistema
