@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import Header from '../components/Header/Header';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -63,7 +62,6 @@ function PasswordPage() {
 
   return (
     <>
-      <Header />
       <div className="password-container">
         <div className="background-shapes">
           <div className="shape shape-1"></div>

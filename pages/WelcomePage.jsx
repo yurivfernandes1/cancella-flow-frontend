@@ -1,12 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import Header from '../components/Header/Header';
 import '../styles/WelcomePage.css';
 import ProtectedImage from '../components/common/ProtectedImage';
 import AvisoBanner from '../components/Avisos/AvisoBanner';
 import { avisoAPI, dashboardAPI } from '../services/api';
-import { condominioAPI } from '../services/api';
 import { 
   FaUserCog, 
   FaUsers,
@@ -32,7 +30,7 @@ import QrCodeScanner from '../components/Eventos/QrCodeScanner';
 
 
 function WelcomePage() {
-  const { user } = useAuth();
+  const { user, condominioData, condominioLogoUrl } = useAuth();
   const navigate = useNavigate();
   const [avisosHome, setAvisosHome] = useState([]);
   const [showQrScanner, setShowQrScanner] = useState(false);
@@ -82,19 +80,6 @@ function WelcomePage() {
           setLoadingStats(false);
         }
       })();
-    } else if (isMoradorGroup) {
-      (async () => {
-        try {
-          setLoadingStats(true);
-          const resp = await dashboardAPI.moradorStats();
-          setMoradorStats(resp.data);
-        } catch (e) {
-          console.error('Erro ao carregar estatísticas do morador:', e);
-          setMoradorStats(null);
-        } finally {
-          setLoadingStats(false);
-        }
-      })();
     } else if (isSindicoGroup) {
       (async () => {
         try {
@@ -104,6 +89,19 @@ function WelcomePage() {
         } catch (e) {
           console.error('Erro ao carregar estatísticas do síndico:', e);
           setSindicoStats(null);
+        } finally {
+          setLoadingStats(false);
+        }
+      })();
+    } else if (isMoradorGroup) {
+      (async () => {
+        try {
+          setLoadingStats(true);
+          const resp = await dashboardAPI.moradorStats();
+          setMoradorStats(resp.data);
+        } catch (e) {
+          console.error('Erro ao carregar estatísticas do morador:', e);
+          setMoradorStats(null);
         } finally {
           setLoadingStats(false);
         }
@@ -148,7 +146,7 @@ function WelcomePage() {
         if (dias === 1) return 'Mais antiga há 1 dia';
         return `Mais antiga há ${dias} dias`;
       })(),
-      link: '/minha-area?tab=encomendas'
+      link: '/gestao-usuarios?tab=encomendas'
     },
     {
       title: 'Reservas (Próximos 7 dias)',
@@ -320,35 +318,8 @@ function WelcomePage() {
   const isPortaria = user?.groups?.some(group => group.name === 'Portaria');
   const showDashboard = isAdmin || isSindico || isMorador || isPortaria;
 
-  const [condominioName, setCondominioName] = useState(null);
-  const [condominioLogo, setCondominioLogo] = useState(null);
-
-  useEffect(() => {
-    if (!user) return;
-
-    // Tentar extrair nome do condomínio direto do objeto user
-    const nameFromUser = user.condominio_nome || user.condominio?.nome || user.condominio?.name || user.condominio_name || null;
-    if (nameFromUser) {
-      setCondominioName(nameFromUser);
-    }
-
-    const condominioId = user.condominio_id || user.condominio?.id || null;
-    if (condominioId) {
-      // Dispara o fetch da logo imediatamente (sem esperar a chamada do condomínio)
-      setCondominioLogo(`/cadastros/condominios/${condominioId}/logo-db/`);
-
-      // Busca o nome do condomínio em paralelo
-      (async () => {
-        try {
-          const resp = await condominioAPI.get(condominioId);
-          const nome = resp?.data?.nome || resp?.data?.name || null;
-          if (nome) setCondominioName(nome);
-        } catch (err) {
-          // silencioso — não quebrar a tela principal
-        }
-      })();
-    }
-  }, [user]);
+  // Nome e logo do condomínio vêm do contexto — sem fetch adicional
+  const condominioName = condominioData?.nome || null;
 
   // Debug para verificar grupos
   React.useEffect(() => {
@@ -462,7 +433,6 @@ function WelcomePage() {
 
   return (
     <>
-      <Header />
       <div className="welcome-container">
         <div className="background-shapes">
           <div className="shape shape-1"></div>
@@ -472,18 +442,12 @@ function WelcomePage() {
         <header className="welcome-header">
           <div className="welcome-header-inner">
             {/* Logo do Condomínio à esquerda para Síndicos, Moradores e Porteiros */}
-            {(isSindico || isMorador || isPortaria) && condominioLogo && (
+            {(isSindico || isMorador || isPortaria) && condominioLogoUrl && (
               <div className="condo-logo-wrapper condo-logo-left">
                 <ProtectedImage
-                  src={condominioLogo}
+                  src={condominioLogoUrl}
                   alt="Logo do Condomínio"
                   className="condo-logo"
-                  onError={(e) => {
-                    console.error('Erro ao carregar logo do condomínio:', condominioLogo);
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><rect width="200" height="200" fill="%23f1f5f9"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="Arial" font-size="20">Logo indisponível</text></svg>';
-                    e.currentTarget.style.objectFit = 'contain';
-                  }}
                 />
               </div>
             )}

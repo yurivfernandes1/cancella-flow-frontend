@@ -1,0 +1,427 @@
+/* ─── Root ───────────────────────────────────────────────── */
+.cp-root {
+  max-width: 860px;
+  margin: 2rem auto;
+  padding: 0 1.25rem 3rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* ─── Loading / Empty ────────────────────────────────────── */
+.cp-loading,
+.cp-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  min-height: 260px;
+  color: #94a3b8;
+  font-size: 0.95rem;
+}
+
+.cp-empty svg {
+  font-size: 2.5rem;
+}
+
+.cp-spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #2abb98;
+  border-radius: 50%;
+  animation: cp-spin 0.7s linear infinite;
+}
+
+@keyframes cp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ─── Hero ───────────────────────────────────────────────── */
+.cp-hero {
+  background: linear-gradient(135deg, #19294a 0%, #1e3a5f 100%);
+  border-radius: 16px;
+  padding: 2rem 2rem 2rem 2.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(25, 41, 74, 0.18);
+  flex-wrap: wrap;
+}
+
+.cp-hero::before {
+  content: '';
+  position: absolute;
+  top: -60px;
+  right: -60px;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  pointer-events: none; /* não intercepta cliques */
+}
+
+/* ─── Logo wrapper ───────────────────────────────────────── */
+.cp-logo-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.cp-logo {
+  width: 96px;
+  height: 96px;
+  border-radius: 16px;
+  object-fit: cover;
+  background: #fff;
+  border: 3px solid rgba(255, 255, 255, 0.25);
+}
+
+.cp-logo-placeholder {
+  width: 96px;
+  height: 96px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 2rem;
+}
+
+.cp-logo-camera {
+  position: absolute;
+  bottom: -6px;
+  right: -6px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: #2abb98;
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.cp-logo-camera:hover:not(:disabled) {
+  background: #1e9a7e;
+}
+
+.cp-logo-camera:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ─── Hero info ──────────────────────────────────────────── */
+.cp-hero-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cp-hero-name {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.cp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  width: fit-content;
+}
+
+.cp-badge--active {
+  background: rgba(42, 187, 152, 0.2);
+  color: #2abb98;
+  border: 1px solid rgba(42, 187, 152, 0.4);
+}
+
+.cp-badge--inactive {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+/* ─── Logo action buttons (após selecionar arquivo) ──────── */
+/* Removido: cp-logo-actions foi substituído por cp-photo-confirm */
+
+/* ─── Barra de confirmação de nova foto ──────────────────── */
+.cp-photo-confirm {
+  background: #fff;
+  border: 1.5px solid #2abb98;
+  border-radius: 12px;
+  padding: 1rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.cp-photo-confirm-preview {
+  flex-shrink: 0;
+}
+
+.cp-photo-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 2px solid #e9ecef;
+}
+
+.cp-photo-confirm-label {
+  flex: 1;
+  font-size: 0.875rem;
+  color: #475569;
+  min-width: 0;
+}
+
+.cp-photo-confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* ─── Buttons ────────────────────────────────────────────── */
+.cp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 20px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: background 0.2s, opacity 0.2s;
+}
+
+.cp-btn--sm {
+  padding: 7px 14px;
+  font-size: 0.8rem;
+}
+
+.cp-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cp-btn--primary {
+  background: #2abb98;
+  color: #fff;
+}
+
+.cp-btn--primary:hover:not(:disabled) {
+  background: #1e9a7e;
+}
+
+.cp-btn--outline {
+  background: #fff;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.cp-btn--outline:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+/* ─── Info Cards ─────────────────────────────────────────── */
+.cp-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.cp-card {
+  background: #fff;
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  transition: box-shadow 0.2s;
+}
+
+.cp-card:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+}
+
+.cp-card--full {
+  grid-column: 1 / -1;
+}
+
+.cp-card-icon {
+  font-size: 1.15rem;
+  color: #2abb98;
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.cp-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+/* Header da card: label + botão lápis lado a lado */
+.cp-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cp-card-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.cp-card-value {
+  font-size: 0.925rem;
+  color: #1e293b;
+  font-weight: 500;
+  word-break: break-word;
+}
+
+/* ─── Inline edit ────────────────────────────────────────── */
+.cp-inline-edit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  padding: 3px 5px;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+
+.cp-card:hover .cp-inline-edit-btn {
+  color: #2abb98;
+}
+
+.cp-inline-edit-btn:hover {
+  background: rgba(42, 187, 152, 0.1);
+  color: #2abb98;
+}
+
+.cp-inline-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.cp-inline-input {
+  flex: 1;
+  padding: 7px 10px;
+  border: 1.5px solid #2abb98;
+  border-radius: 7px;
+  font-size: 0.9rem;
+  color: #1e293b;
+  background: #f8fafc;
+  outline: none;
+  min-width: 0;
+}
+
+.cp-inline-input:disabled {
+  opacity: 0.6;
+}
+
+.cp-inline-action {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.cp-inline-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.cp-inline-action--save {
+  background: #2abb98;
+  color: #fff;
+}
+
+.cp-inline-action--save:hover:not(:disabled) {
+  background: #1e9a7e;
+}
+
+.cp-inline-action--cancel {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.cp-inline-action--cancel:hover:not(:disabled) {
+  background: #e2e8f0;
+}
+
+/* ─── Responsive ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .cp-root {
+    margin: 1rem auto;
+    padding: 0 1rem 2rem;
+  }
+
+  .cp-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1.5rem;
+    gap: 1rem;
+  }
+
+  .cp-photo-confirm {
+    flex-direction: column;
+  }
+
+  .cp-photo-confirm-actions {
+    width: 100%;
+  }
+
+  .cp-photo-confirm-actions .cp-btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .cp-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .cp-card--full {
+    grid-column: 1;
+  }
+}

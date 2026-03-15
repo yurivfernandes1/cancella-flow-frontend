@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import './index.css';
 import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
@@ -8,36 +8,44 @@ import SignupPage from './pages/SignupPage';
 import WelcomePage from './pages/WelcomePage';
 import PasswordPage from './pages/PasswordPage';
 import UsersPage from './pages/UsersPage';
-// EncomendasPage and VisitantesPage imports removed (not used in this router)
 import MoradorPage from './pages/MoradorPage';
 import PortariaPage from './pages/PortariaPage';
 
+import SidebarLayout from './components/Layout/SidebarLayout';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
 
-const ProtectedGestaoUsuariosRoute = ({ children }) => {
-  const { user } = useAuth();
-  // Permite acesso para admins, gestores e síndicos
-  const hasAccess = user?.is_staff || 
-                    user?.is_gestor || 
-                    user?.groups?.some(group => ['admin', 'Síndicos'].includes(group.name));
-  
-  if (!hasAccess) {
-    return <Navigate to="/welcome" replace />;
-  }
-  return children;
-};
+// ─── Layout autenticado compartilhado ─────────────────────────
+// Fica montado UMA ÚNICA VEZ durante toda a sessão autenticada.
+// Isso evita que a Sidebar (e sua logo) recarreguem a cada navegação.
+const AuthenticatedLayout = () => {
+  const { user, loading } = useAuth();
+  const location = useLocation();
+  const token = localStorage.getItem('token');
 
-// ProtectedStaffRoute removed (não utilizado)
+  if (loading) return null;
+  if (!token || !user) return <Navigate to="/login" replace />;
 
-const FirstAccessRoute = ({ children }) => {
-  const { user } = useAuth();
-  if (user?.first_access) {
+  // Força troca de senha no primeiro acesso (exceto na própria tela)
+  if (user?.first_access && location.pathname !== '/perfil/senha') {
     return <Navigate to="/perfil/senha" replace />;
   }
+
+  return <SidebarLayout />;
+};
+
+// ─── Guard extra: só síndico / admin acessa gestao-usuarios ───
+const ProtectedGestaoUsuariosRoute = ({ children }) => {
+  const { user } = useAuth();
+  const hasAccess =
+    user?.is_staff ||
+    user?.is_gestor ||
+    user?.groups?.some((g) => ['admin', 'Síndicos'].includes(g.name));
+
+  if (!hasAccess) return <Navigate to="/welcome" replace />;
   return children;
 };
 
+// ─── Root ──────────────────────────────────────────────────────
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
 root.render(
@@ -45,61 +53,26 @@ root.render(
     <AuthProvider>
       <Router>
         <Routes>
+          {/* Rotas públicas */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
-          <Route
-            path="/welcome"
-            element={
-              <ProtectedRoute>
-                <FirstAccessRoute>
-                  <WelcomePage />
-                </FirstAccessRoute>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/gestao-usuarios"
-            element={
-              <ProtectedRoute>
-                <FirstAccessRoute>
-                  <ProtectedGestaoUsuariosRoute>
-                    <UsersPage />
-                  </ProtectedGestaoUsuariosRoute>
-                </FirstAccessRoute>
-              </ProtectedRoute>
-            }
-          />
 
-          <Route
-            path="/minha-area"
-            element={
-              <ProtectedRoute>
-                <FirstAccessRoute>
-                  <MoradorPage />
-                </FirstAccessRoute>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/portaria"
-            element={
-              <ProtectedRoute>
-                <FirstAccessRoute>
-                  <PortariaPage />
-                </FirstAccessRoute>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/perfil/senha"
-            element={
-              <ProtectedRoute>
-                <PasswordPage />
-              </ProtectedRoute>
-            }
-          />
-
+          {/* Rotas autenticadas — SidebarLayout monta UMA VEZ */}
+          <Route element={<AuthenticatedLayout />}>
+            <Route path="/welcome" element={<WelcomePage />} />
+            <Route
+              path="/gestao-usuarios"
+              element={
+                <ProtectedGestaoUsuariosRoute>
+                  <UsersPage />
+                </ProtectedGestaoUsuariosRoute>
+              }
+            />
+            <Route path="/minha-area"   element={<MoradorPage />} />
+            <Route path="/portaria"     element={<PortariaPage />} />
+            <Route path="/perfil/senha" element={<PasswordPage />} />
+          </Route>
         </Routes>
       </Router>
     </AuthProvider>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
-import Header from '../components/Header/Header';
 import EncomendaBadge from '../components/Encomendas/EncomendaBadge';
 import GenericTable from '../components/GenericTable';
 import AddVisitanteDropdown from '../components/Visitantes/AddVisitanteDropdown';
@@ -20,7 +19,6 @@ import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaTrash, FaCar, FaEye } fro
 import AddOcorrenciaModal from '../components/Ocorrencias/AddOcorrenciaModal';
 import OcorrenciaDetalheModal from '../components/Ocorrencias/OcorrenciaDetalheModal';
 import OcorrenciaCard from '../components/Ocorrencias/OcorrenciaCard';
-import ScrollableTabs from '../components/common/ScrollableTabs';
 
 const tabs = [
   { id: 'encomendas', label: 'Minhas Encomendas' },
@@ -223,7 +221,7 @@ function MoradorPage() {
   // Sincronizar tab da URL com estado
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab');
-    if (tabFromUrl && ['encomendas', 'visitantes', 'veiculos', 'reservas', 'eventos', 'avisos', 'ocorrencias'].includes(tabFromUrl)) {
+    if (tabFromUrl && ['encomendas', 'visitantes', 'veiculos', 'reservas', 'eventos', 'lista_convidados', 'avisos', 'ocorrencias'].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl);
     }
   }, [searchParams]);
@@ -593,7 +591,7 @@ function MoradorPage() {
       key: 'actions',
       header: 'Ações',
       width: '10%',
-      render: (row) => (
+      render: (_, row) => (
         <div className="actions-column">
           <button
             className="delete-button"
@@ -940,7 +938,6 @@ function MoradorPage() {
 
   return (
     <div className="morador-page">
-      <Header />
 
       <main className="morador-content">
         {isMorador && user?.unidade_id && (
@@ -952,19 +949,6 @@ function MoradorPage() {
             <EncomendaBadge unidadeId={user.unidade_id} />
           </div>
         )}
-        <ScrollableTabs>
-          <div className="tabs">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                className={`tab ${activeTab === tab.id ? 'active' : ''}`}
-                onClick={() => handleTabChange(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-        </ScrollableTabs>
 
         <div className="page-header">
           <div className="page-actions">

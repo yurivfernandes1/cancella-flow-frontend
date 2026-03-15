@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
-import Header from '../components/Header/Header';
 import GenericTable from '../components/GenericTable';
 import AddEncomendaDropdown from '../components/Encomendas/AddEncomendaDropdown';
 import ExpandableUnitsTable from '../components/Unidades/ExpandableUnitsTable';
@@ -17,7 +16,6 @@ import QrCodeScanner from '../components/Eventos/QrCodeScanner';
 import AddOcorrenciaModal from '../components/Ocorrencias/AddOcorrenciaModal';
 import OcorrenciaDetalheModal from '../components/Ocorrencias/OcorrenciaDetalheModal';
 import OcorrenciaCard from '../components/Ocorrencias/OcorrenciaCard';
-import ScrollableTabs from '../components/common/ScrollableTabs';
 
 const tabs = [
   { id: 'unidades_moradores', label: 'Unidades e Moradores' },
@@ -641,22 +639,8 @@ function PortariaPage() {
 
   return (
     <>
-      <Header />
       <div className="portaria-page">
         <div className="portaria-content">
-          <ScrollableTabs>
-            <div className="tabs">
-              {tabs.map(tab => (
-                <button
-                  key={tab.id}
-                  className={`tab ${activeTab === tab.id ? 'active' : ''}`}
-                  onClick={() => handleTabChange(tab.id)}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </ScrollableTabs>
           {/* Aba de Unidades e Moradores */}
           {activeTab === 'unidades_moradores' && (
             <>

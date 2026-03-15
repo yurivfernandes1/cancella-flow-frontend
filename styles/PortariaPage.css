@@ -1,7 +1,7 @@
 /* Página principal */
 .portaria-page {
   min-height: 100vh;
-  padding-top: 64px !important;
+  padding-top: 0;
   background: #f8fafc;
   overflow-x: hidden;
 }

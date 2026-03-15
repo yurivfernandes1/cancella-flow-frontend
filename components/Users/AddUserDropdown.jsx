@@ -10,7 +10,7 @@ import { validateCPF, validatePhone } from '../../utils/validators';
 import PasswordResetModal from './PasswordResetModal';
 import GenericDropdown from '../common/GenericDropdown';
 
-function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionario', defaultUnidadeId = null, position = 'relative' }) {
+function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionario', defaultUnidadeId = null, defaultCondominioId = null, position = 'relative' }) {
   const { user: currentUser } = useAuth();
   const [formData, setFormData] = useState({
     username: '',
@@ -21,7 +21,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
     cpf: '',
     phone: '',
     team_id: '',
-    condominio_id: '',
+    condominio_id: defaultCondominioId || '',
     unidade_id: defaultUnidadeId || '',
     is_active: true,
   });
@@ -44,6 +44,12 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
       setFormData(prev => ({ ...prev, unidade_id: defaultUnidadeId }));
     }
   }, [defaultUnidadeId]);
+
+  useEffect(() => {
+    if (defaultCondominioId) {
+      setFormData(prev => ({ ...prev, condominio_id: defaultCondominioId }));
+    }
+  }, [defaultCondominioId]);
 
   // Removido: carregamento de equipes
 
@@ -367,8 +373,9 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
                         ...prev,
                         condominio_id: selectedOption?.value || ''
                       }))}
-                      placeholder="Selecione um condomínio"
-                      isClearable
+                      placeholder={defaultCondominioId ? 'Condomínio pré-selecionado' : 'Selecione um condomínio'}
+                      isClearable={!defaultCondominioId}
+                      isDisabled={Boolean(defaultCondominioId)}
                       className="condominio-select"
                       menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
                       menuPosition="fixed"

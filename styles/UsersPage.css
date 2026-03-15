@@ -1,7 +1,7 @@
 /* Página principal */
 .tecnicos-page {
   min-height: 100vh;
-  padding-top: 64px !important; /* Forçamos o padding-top correto */
+  padding-top: 0;
   background: #f8fafc;
   overflow-x: hidden;
 }
@@ -1059,7 +1059,7 @@
 /* Reset e isolamento do container principal */
 .tecnicos-page {
   min-height: 100vh;
-  padding-top: 64px !important; /* Forçamos o padding-top correto */
+  padding-top: 0;
   background: #f8fafc;
 }
 

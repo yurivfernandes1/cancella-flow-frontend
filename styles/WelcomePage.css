@@ -3,7 +3,7 @@
   background: #ffffff;
   color: #333;
   padding: 2rem;
-  padding-top: calc(64px + 2rem); /* Adiciona espaço para o header fixo */
+  padding-top: 2rem;
   position: relative;
   overflow: hidden;
 }
@@ -261,7 +261,7 @@
 @media (max-width: 768px) {
   .welcome-container {
     padding: 1rem;
-    padding-top: calc(64px + 1rem);
+    padding-top: 1rem;
   }
 
   .welcome-cards-grid {
@@ -306,7 +306,7 @@
 @media (max-width: 480px) {
   .welcome-container {
     padding: 0.5rem;
-    padding-top: calc(64px + 0.5rem);
+    padding-top: 0.5rem;
   }
 
   .welcome-header h1 {
@@ -338,7 +338,7 @@
 /* PWA specific styles */
 @media (display-mode: standalone) {
   .welcome-container {
-    padding-top: calc(64px + env(safe-area-inset-top) + 2rem);
+    padding-top: calc(env(safe-area-inset-top) + 2rem);
     padding-bottom: env(safe-area-inset-bottom);
   }
 }

@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { FaSave, FaTimes, FaPlus, FaUpload } from 'react-icons/fa';
-import { condominioAPI } from '../../services/api';
+import { FaSave, FaTimes, FaPlus, FaUpload, FaChevronDown } from 'react-icons/fa';
+import api, { condominioAPI } from '../../services/api';
 import GenericDropdown from '../common/GenericDropdown';
+import PasswordResetModal from './PasswordResetModal';
 import { validateCEP, formatCEP, fetchCEPData } from '../../utils/validators';
+import { generateStrongPassword } from '../../utils/passwordGenerator';
+import { formatUsername } from '../../utils/stringUtils';
 
 function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
   
@@ -17,6 +20,14 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
     logo: null
   });
   
+  const [sindicoData, setSindicoData] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+  });
+  const [showSindicoSection, setShowSindicoSection] = useState(false);
+  const [sindicoCreated, setSindicoCreated] = useState(null);
+
   const [showDropdown, setShowDropdown] = useState(true);
   const [validationErrors, setValidationErrors] = useState({});
   const [addressData, setAddressData] = useState(null);
@@ -235,14 +246,41 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
       }
 
       console.log('Criando condomínio com logo');
-      
+
       const response = await condominioAPI.create(formDataToSend);
       console.log('Condomínio criado:', response.data);
-      
+
+      // Criar síndico opcionalmente
+      if (showSindicoSection && sindicoData.first_name.trim() && sindicoData.email.trim()) {
+        const password = generateStrongPassword();
+        const username = formatUsername(sindicoData.first_name, sindicoData.last_name);
+        try {
+          await api.post('/access/create/', {
+            user_type: 'sindico',
+            condominio_id: response.data.id,
+            first_name: sindicoData.first_name.trim(),
+            last_name: sindicoData.last_name.trim(),
+            full_name: `${sindicoData.first_name.trim()} ${sindicoData.last_name.trim()}`,
+            email: sindicoData.email.trim(),
+            username,
+            password,
+          });
+          setShowDropdown(false);
+          setSindicoCreated({ username, password, condominioData: response.data });
+          return; // onSuccess chamado ao fechar o modal
+        } catch (sindicoError) {
+          console.error('Erro ao criar síndico:', sindicoError);
+          const msg = sindicoError.response?.data?.error ||
+                      sindicoError.response?.data?.message ||
+                      'Condomínio criado, mas houve um erro ao criar o síndico.';
+          alert(msg);
+        }
+      }
+
       if (onSuccess) {
         onSuccess(response.data);
       }
-      
+
       handleClose();
       
     } catch (error) {
@@ -452,6 +490,75 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
             </div>
           </div>
 
+          {/* ── Síndico Responsável (opcional) ── */}
+          <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
+            <button
+              type="button"
+              onClick={() => setShowSindicoSection((v) => !v)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#374151',
+                fontWeight: 500,
+                fontSize: '0.9rem',
+                padding: 0,
+                marginBottom: showSindicoSection ? '0.75rem' : 0,
+              }}
+            >
+              <FaChevronDown
+                style={{
+                  transition: 'transform 0.2s',
+                  transform: showSindicoSection ? 'rotate(0deg)' : 'rotate(-90deg)',
+                  fontSize: '0.75rem',
+                }}
+              />
+              Síndico Responsável <span style={{ fontWeight: 400, fontSize: '0.8rem', color: '#6b7280' }}>(opcional)</span>
+            </button>
+
+            {showSindicoSection && (
+              <>
+                <div className="form-row">
+                  <div className="form-field">
+                    <input
+                      type="text"
+                      value={sindicoData.first_name}
+                      onChange={(e) => setSindicoData((p) => ({ ...p, first_name: e.target.value }))}
+                      placeholder="Nome"
+                      maxLength={150}
+                    />
+                    <label>Nome</label>
+                  </div>
+                  <div className="form-field">
+                    <input
+                      type="text"
+                      value={sindicoData.last_name}
+                      onChange={(e) => setSindicoData((p) => ({ ...p, last_name: e.target.value }))}
+                      placeholder="Sobrenome"
+                      maxLength={150}
+                    />
+                    <label>Sobrenome</label>
+                  </div>
+                </div>
+                <div className="form-row">
+                  <div className="form-field">
+                    <input
+                      type="email"
+                      value={sindicoData.email}
+                      onChange={(e) => setSindicoData((p) => ({ ...p, email: e.target.value }))}
+                      placeholder="email@exemplo.com"
+                      maxLength={254}
+                    />
+                    <label>E-mail</label>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
             <div className="form-actions">
               <button type="button" className="button-secondary" onClick={handleClose}>
                 <FaTimes /> Cancelar
@@ -462,6 +569,19 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
             </div>
           </form>
         </GenericDropdown>
+      )}
+      {sindicoCreated && (
+        <PasswordResetModal
+          title="Síndico Criado"
+          subtitle={`Usuário: ${sindicoCreated.username}`}
+          password={sindicoCreated.password}
+          onClose={() => {
+            const data = sindicoCreated.condominioData;
+            setSindicoCreated(null);
+            if (onSuccess) onSuccess(data);
+            if (typeof onClose === 'function') onClose();
+          }}
+        />
       )}
     </>
   );

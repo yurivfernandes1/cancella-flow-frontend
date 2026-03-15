@@ -1,7 +1,7 @@
 /* Página principal */
 .morador-page {
   min-height: 100vh;
-  padding-top: 64px;
+  padding-top: 0;
   background: #f8fafc;
   overflow-x: hidden;
 }

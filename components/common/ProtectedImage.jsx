@@ -1,17 +1,44 @@
 import React, { useEffect, useState } from 'react';
 import api from '../../services/api';
 
+// Cache de blob URLs por src — evita re-fetches para a mesma URL na mesma sessão
+const blobCache = new Map();
+
+// Promises em andamento — deduplica requests simultâneos para a mesma URL
+const pendingFetches = new Map();
+
+// Chame antes de re-exibir uma logo que acabou de ser sobrescrita no servidor
+export function invalidateBlobCache(url) {
+  if (!url) return;
+  // Também invalida versões com cache-busting (?t=...)
+  const base = url.split('?')[0];
+  for (const key of blobCache.keys()) {
+    if (key === url || key.startsWith(base)) {
+      URL.revokeObjectURL(blobCache.get(key));
+      blobCache.delete(key);
+    }
+  }
+  // Cancela qualquer fetch em andamento para esta URL
+  for (const key of pendingFetches.keys()) {
+    if (key === url || key.startsWith(base)) {
+      pendingFetches.delete(key);
+    }
+  }
+}
+
 // Componente que carrega imagens protegidas (endpoint que exige token) retornando um blob URL.
 // Exibe spinner durante o carregamento e fallback após erro definitivo.
 // Uso: <ProtectedImage src={url} alt="..." className="..." style={{}} />
 export default function ProtectedImage({ src, alt, fallbackSrc, ...rest }) {
-  const [blobUrl, setBlobUrl] = useState(null);
-  const [loading, setLoading] = useState(() => !!(src && src.includes('/logo-db/')));
+  const cached = src ? blobCache.get(src) : null;
+  const [blobUrl, setBlobUrl] = useState(cached || null);
+  const [loading, setLoading] = useState(
+    () => !!(src && src.includes('/logo-db/') && !cached)
+  );
   const [error, setError] = useState(false);
 
   useEffect(() => {
     let mounted = true;
-    let objectUrl = null;
 
     const shouldFetch = src && src.includes('/logo-db/');
 
@@ -22,15 +49,33 @@ export default function ProtectedImage({ src, alt, fallbackSrc, ...rest }) {
       return () => {};
     }
 
+    // Serve do cache se disponível
+    if (blobCache.has(src)) {
+      setBlobUrl(blobCache.get(src));
+      setLoading(false);
+      return () => {};
+    }
+
     setLoading(true);
     setError(false);
     setBlobUrl(null);
 
     const fetchBlob = async () => {
       try {
-        const resp = await api.get(src, { responseType: 'blob' });
+        // Reutiliza a promise em andamento se outro componente já iniciou o fetch
+        let promise = pendingFetches.get(src);
+        if (!promise) {
+          promise = api.get(src, { responseType: 'blob' }).then((resp) => {
+            const objectUrl = URL.createObjectURL(resp.data);
+            blobCache.set(src, objectUrl);
+            return objectUrl;
+          }).finally(() => {
+            pendingFetches.delete(src);
+          });
+          pendingFetches.set(src, promise);
+        }
+        const objectUrl = await promise;
         if (!mounted) return;
-        objectUrl = URL.createObjectURL(resp.data);
         setBlobUrl(objectUrl);
       } catch (e) {
         console.error('Erro ao carregar imagem protegida:', e);
@@ -42,10 +87,8 @@ export default function ProtectedImage({ src, alt, fallbackSrc, ...rest }) {
 
     fetchBlob();
 
-    return () => {
-      mounted = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
+    // Não revogamos URL ao desmontar — está no cache para reutilização
+    return () => { mounted = false; };
   }, [src]);
 
   if (loading) {
