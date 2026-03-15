@@ -4,9 +4,9 @@ import Header from '../components/Header/Header';
 import GenericTable from '../components/GenericTable';
 import AddVisitanteDropdown from '../components/Visitantes/AddVisitanteDropdown';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
+import api, { visitanteAPI } from '../services/api';
 import '../styles/VisitantesPage.css';
-import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaCopy } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaCopy, FaEnvelope } from 'react-icons/fa';
 
 function VisitantesPage() {
   const { user } = useAuth();
@@ -20,6 +20,7 @@ function VisitantesPage() {
   const [editingRowId, setEditingRowId] = useState(null);
   const [currentEditData, setCurrentEditData] = useState({});
   const [qrCopyStatus, setQrCopyStatus] = useState({});
+  const [qrEmailStatus, setQrEmailStatus] = useState({});
 
   // Verificar se o usuário tem acesso
   const isPortaria = user?.groups?.some(group => group.name === 'Portaria');
@@ -92,6 +93,19 @@ function VisitantesPage() {
     } catch {
       setQrCopyStatus(prev => ({ ...prev, [id]: 'error' }));
       setTimeout(() => setQrCopyStatus(prev => ({ ...prev, [id]: 'idle' })), 2500);
+    }
+  };
+
+  const handleSendEmail = async (id, email) => {
+    if (!email) return;
+    setQrEmailStatus(prev => ({ ...prev, [id]: 'sending' }));
+    try {
+      await visitanteAPI.enviarQrCode(id);
+      setQrEmailStatus(prev => ({ ...prev, [id]: 'sent' }));
+      setTimeout(() => setQrEmailStatus(prev => ({ ...prev, [id]: 'idle' })), 3000);
+    } catch {
+      setQrEmailStatus(prev => ({ ...prev, [id]: 'error' }));
+      setTimeout(() => setQrEmailStatus(prev => ({ ...prev, [id]: 'idle' })), 3000);
     }
   };
 
@@ -223,10 +237,11 @@ function VisitantesPage() {
   columns.push({
     key: 'actions',
     header: 'Ações',
-    width: '8%',
+    width: '10%',
     render: (row) => {
       const isEditing = editingRowId === row.id;
       const copyStatus = qrCopyStatus[row.id] || 'idle';
+      const emailStatus = qrEmailStatus[row.id] || 'idle';
 
       return (
         <div className="actions-column">
@@ -266,6 +281,21 @@ function VisitantesPage() {
                 style={{ color: copyStatus === 'copied' ? '#2abb98' : copyStatus === 'error' ? '#dc2626' : undefined }}
               >
                 {copyStatus === 'copied' ? <FaCheck /> : <FaCopy />}
+              </button>
+              <button
+                className={`edit-button${emailStatus === 'sent' ? ' save-button' : emailStatus === 'error' ? ' cancel-button' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSendEmail(row.id, row.email);
+                }}
+                title={row.email ? 'Enviar QR por e-mail' : 'Cadastre um e-mail para enviar o QR'}
+                disabled={!row.email || emailStatus === 'sending'}
+                style={{
+                  color: emailStatus === 'sent' ? '#2abb98' : emailStatus === 'error' ? '#dc2626' : undefined,
+                  opacity: !row.email ? 0.4 : 1,
+                }}
+              >
+                {emailStatus === 'sent' ? <FaCheck /> : <FaEnvelope />}
               </button>
               <button
                 className="edit-button"
