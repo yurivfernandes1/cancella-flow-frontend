@@ -6,7 +6,7 @@ import AddEncomendaDropdown from '../components/Encomendas/AddEncomendaDropdown'
 import ExpandableUnitsTable from '../components/Unidades/ExpandableUnitsTable';
 
 import { useAuth } from '../context/AuthContext';
-import api, { espacoReservaAPI, listaConvidadosAPI, ocorrenciaAPI } from '../services/api';
+import api, { espacoReservaAPI, listaConvidadosAPI, ocorrenciaAPI, eventoAPI } from '../services/api';
 import ListaConvidadosModal from '../components/Eventos/ListaConvidadosModal';
 import { formatPlaca } from '../utils/placaValidator';
 import '../styles/PortariaPage.css';
@@ -175,6 +175,14 @@ function PortariaPage() {
         const data = Array.isArray(response.data) ? response.data : (response.data.results || []);
         setTableData(prev => ({ ...prev, ocorrencias: data }));
         setTotalPages(prev => ({ ...prev, ocorrencias: 1 }));
+      } else if (type === 'eventos') {
+        const response = await eventoAPI.list({ page, search });
+        const eventosData = response.data.results !== undefined ? response.data.results : response.data;
+        setTableData(prev => ({ ...prev, eventos: Array.isArray(eventosData) ? eventosData : [] }));
+        setTotalPages(prev => ({
+          ...prev,
+          eventos: response.data.num_pages || Math.ceil((response.data.count || 1) / 10)
+        }));
       }
     } catch (error) {
       console.error('Erro ao buscar dados:', error);

@@ -131,6 +131,11 @@ function AddListaConvidadosModal({ onClose, onSuccess, moradorUnidadeId }) {
       return;
     }
 
+    if (!dataEvento) {
+      setErro('Informe a data do evento.');
+      return;
+    }
+
     if (localTipo === 'espaco' && !espacoId) {
       setErro('Selecione o espaço do condomínio.');
       return;
@@ -223,7 +228,7 @@ function AddListaConvidadosModal({ onClose, onSuccess, moradorUnidadeId }) {
               />
             </div>
             <div style={{ width: 170 }}>
-              <label style={s.label}>Data do evento</label>
+              <label style={s.label}>Data do evento *</label>
               <input
                 type="date"
                 value={dataEvento}
