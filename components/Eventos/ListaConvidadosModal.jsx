@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FaCheck, FaCheckCircle, FaClock, FaCopy, FaEnvelope, FaPencilAlt, FaPlus, FaTimes, FaTrash, FaUsers } from 'react-icons/fa';
+import { FaCheck, FaCheckCircle, FaClock, FaCopy, FaDownload, FaEnvelope, FaPencilAlt, FaPlus, FaTimes, FaTrash, FaUsers } from 'react-icons/fa';
 import { espacoAPI, listaConvidadosAPI } from '../../services/api';
+import { downloadQrCode } from '../../utils/qrUtils';
 
 /**
  * ListaConvidadosModal
@@ -36,6 +37,7 @@ function ListaConvidadosModal({ lista: listaInicial, onClose, readOnly = false, 
   const [qrStatus, setQrStatus] = useState({});
   const [qrErro, setQrErro] = useState({});
   const [qrCopyStatus, setQrCopyStatus] = useState({});
+  const [qrDownloadStatus, setQrDownloadStatus] = useState({});
 
   // Edição do cabeçalho (título / data)
   const [editandoCabecalho, setEditandoCabecalho] = useState(false);
@@ -230,6 +232,19 @@ function ListaConvidadosModal({ lista: listaInicial, onClose, readOnly = false, 
     } catch {
       setQrCopyStatus(prev => ({ ...prev, [convidadoId]: 'error' }));
       setTimeout(() => setQrCopyStatus(prev => ({ ...prev, [convidadoId]: 'idle' })), 2500);
+    }
+  };
+
+  const handleDownloadQr = async (convidadoId, qrToken, nome) => {
+    if (!qrToken) return;
+    setQrDownloadStatus(prev => ({ ...prev, [convidadoId]: 'downloading' }));
+    try {
+      await downloadQrCode(qrToken, nome);
+      setQrDownloadStatus(prev => ({ ...prev, [convidadoId]: 'done' }));
+      setTimeout(() => setQrDownloadStatus(prev => ({ ...prev, [convidadoId]: 'idle' })), 2000);
+    } catch {
+      setQrDownloadStatus(prev => ({ ...prev, [convidadoId]: 'error' }));
+      setTimeout(() => setQrDownloadStatus(prev => ({ ...prev, [convidadoId]: 'idle' })), 2500);
     }
   };
 
@@ -626,6 +641,18 @@ function ListaConvidadosModal({ lista: listaInicial, onClose, readOnly = false, 
                                   >
                                     {qrCopyStatus[c.id] === 'copied' ? <FaCheck size={11} /> : <FaCopy size={11} />}
                                   </button>
+                                  <button
+                                    onClick={() => handleDownloadQr(c.id, c.qr_token, c.nome)}
+                                    disabled={!c.qr_token || qrDownloadStatus[c.id] === 'downloading'}
+                                    title="Baixar QR Code"
+                                    style={{
+                                      ...iconBtn,
+                                      color: qrDownloadStatus[c.id] === 'done' ? '#059669' : qrDownloadStatus[c.id] === 'error' ? '#dc2626' : '#374151',
+                                      borderColor: qrDownloadStatus[c.id] === 'done' ? '#86efac' : qrDownloadStatus[c.id] === 'error' ? '#fca5a5' : '#e5e7eb',
+                                    }}
+                                  >
+                                    {qrDownloadStatus[c.id] === 'done' ? <FaCheck size={11} /> : <FaDownload size={11} />}
+                                  </button>
                                 </>
                               ) : (
                                 <>
@@ -653,6 +680,18 @@ function ListaConvidadosModal({ lista: listaInicial, onClose, readOnly = false, 
                                     }}
                                   >
                                     {qrStatus[c.id] === 'ok' ? <FaCheckCircle size={11} /> : <FaEnvelope size={11} />}
+                                  </button>
+                                  <button
+                                    onClick={() => handleDownloadQr(c.id, c.qr_token, c.nome)}
+                                    disabled={!c.qr_token || qrDownloadStatus[c.id] === 'downloading'}
+                                    title="Baixar QR Code"
+                                    style={{
+                                      ...iconBtn,
+                                      color: qrDownloadStatus[c.id] === 'done' ? '#059669' : qrDownloadStatus[c.id] === 'error' ? '#dc2626' : '#374151',
+                                      borderColor: qrDownloadStatus[c.id] === 'done' ? '#86efac' : qrDownloadStatus[c.id] === 'error' ? '#fca5a5' : '#e5e7eb',
+                                    }}
+                                  >
+                                    {qrDownloadStatus[c.id] === 'done' ? <FaCheck size={11} /> : <FaDownload size={11} />}
                                   </button>
                                   <button onClick={() => startEdit(c)} title="Editar" style={{ ...iconBtn, color: '#6b7280' }}>
                                     <FaPencilAlt size={11} />

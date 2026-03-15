@@ -6,7 +6,7 @@ import AddVisitanteDropdown from '../components/Visitantes/AddVisitanteDropdown'
 import AddVeiculoDropdown from '../components/Veiculos/AddVeiculoDropdown';
 
 import { useAuth } from '../context/AuthContext';
-import api, { avisoAPI, espacoReservaAPI, listaConvidadosAPI, ocorrenciaAPI, eventoAPI } from '../services/api';
+import api, { avisoAPI, espacoReservaAPI, listaConvidadosAPI, ocorrenciaAPI, eventoAPI, visitanteAPI } from '../services/api';
 import ListaConvidadosModal from '../components/Eventos/ListaConvidadosModal';
 import AddListaConvidadosModal from '../components/Eventos/AddListaConvidadosModal';
 import EventoModal from '../components/Eventos/EventoModal';
@@ -15,7 +15,8 @@ import AvisoBanner from '../components/Avisos/AvisoBanner';
 import ReservaModal from '../components/Reservas/ReservaModal';
 import { validatePlaca, formatPlaca, normalizePlaca, maskPlaca } from '../utils/placaValidator';
 import '../styles/MoradorPage.css';
-import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaTrash, FaCar, FaEye } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaTrash, FaCar, FaEye, FaCopy, FaEnvelope, FaDownload } from 'react-icons/fa';
+import { downloadQrCode } from '../utils/qrUtils';
 import AddOcorrenciaModal from '../components/Ocorrencias/AddOcorrenciaModal';
 import OcorrenciaDetalheModal from '../components/Ocorrencias/OcorrenciaDetalheModal';
 import OcorrenciaCard from '../components/Ocorrencias/OcorrenciaCard';
@@ -77,6 +78,9 @@ function MoradorPage() {
   const [showAddLista, setShowAddLista] = useState(false);
   const [showEventoModal, setShowEventoModal] = useState(false);
   const [editingEvento, setEditingEvento] = useState(null);
+  const [qrCopyStatus, setQrCopyStatus] = useState({});
+  const [qrEmailStatus, setQrEmailStatus] = useState({});
+  const [qrDownloadStatus, setQrDownloadStatus] = useState({});
 
   // Verificar se o usuário tem acesso
   const isMorador = user?.groups?.some(group => group.name === 'Moradores');
@@ -374,6 +378,44 @@ function MoradorPage() {
     // Nenhuma coluna editável
   ];
 
+  const handleCopyQrVisitante = async (id, token) => {
+    if (!token) return;
+    try {
+      await navigator.clipboard.writeText(String(token));
+      setQrCopyStatus(prev => ({ ...prev, [id]: 'copied' }));
+      setTimeout(() => setQrCopyStatus(prev => ({ ...prev, [id]: 'idle' })), 2000);
+    } catch {
+      setQrCopyStatus(prev => ({ ...prev, [id]: 'error' }));
+      setTimeout(() => setQrCopyStatus(prev => ({ ...prev, [id]: 'idle' })), 2500);
+    }
+  };
+
+  const handleSendEmailVisitante = async (id, email) => {
+    if (!email) return;
+    setQrEmailStatus(prev => ({ ...prev, [id]: 'sending' }));
+    try {
+      await visitanteAPI.enviarQrCode(id);
+      setQrEmailStatus(prev => ({ ...prev, [id]: 'sent' }));
+      setTimeout(() => setQrEmailStatus(prev => ({ ...prev, [id]: 'idle' })), 3000);
+    } catch {
+      setQrEmailStatus(prev => ({ ...prev, [id]: 'error' }));
+      setTimeout(() => setQrEmailStatus(prev => ({ ...prev, [id]: 'idle' })), 3000);
+    }
+  };
+
+  const handleDownloadQrVisitante = async (id, token, nome) => {
+    if (!token) return;
+    setQrDownloadStatus(prev => ({ ...prev, [id]: 'downloading' }));
+    try {
+      await downloadQrCode(token, nome);
+      setQrDownloadStatus(prev => ({ ...prev, [id]: 'done' }));
+      setTimeout(() => setQrDownloadStatus(prev => ({ ...prev, [id]: 'idle' })), 2000);
+    } catch {
+      setQrDownloadStatus(prev => ({ ...prev, [id]: 'error' }));
+      setTimeout(() => setQrDownloadStatus(prev => ({ ...prev, [id]: 'idle' })), 2500);
+    }
+  };
+
   const visitantesColumns = [
     {
       key: 'nome',
@@ -392,7 +434,7 @@ function MoradorPage() {
     {
       key: 'documento',
       header: 'Documento',
-      width: '15%',
+      width: '13%',
       editable: true,
       editComponent: (editData, handleInputChange) => (
         <input
@@ -404,9 +446,25 @@ function MoradorPage() {
       )
     },
     {
+      key: 'email',
+      header: 'E-mail',
+      width: '15%',
+      editable: true,
+      render: (value) => value || '-',
+      editComponent: (editData, handleInputChange) => (
+        <input
+          className="edit-input"
+          type="email"
+          value={editData.email || ''}
+          onChange={(e) => handleInputChange('email', e.target.value)}
+          placeholder="email@exemplo.com"
+        />
+      )
+    },
+    {
       key: 'data_entrada',
       header: 'Data Entrada',
-      width: '18%',
+      width: '16%',
       editable: true,
       render: (value) => formatDateTime(value),
       editComponent: (editData, handleInputChange) => (
@@ -421,7 +479,7 @@ function MoradorPage() {
     {
       key: 'data_saida',
       header: 'Data Saída',
-      width: '18%',
+      width: '16%',
       editable: true,
       render: (value) => formatDateTime(value),
       editComponent: (editData, handleInputChange) => (
@@ -474,9 +532,12 @@ function MoradorPage() {
     {
       key: 'actions',
       header: 'Ações',
-      width: '9%',
-      render: (row) => {
+      width: '14%',
+      render: (value, row) => {
         const isEditing = editingRowId === row.id;
+        const copyStatus = qrCopyStatus[row.id] || 'idle';
+        const emailStatus = qrEmailStatus[row.id] || 'idle';
+        const downloadStatus = qrDownloadStatus[row.id] || 'idle';
 
         return (
           <div className="actions-column">
@@ -506,21 +567,42 @@ function MoradorPage() {
             ) : (
               <>
                 <button
+                  className={`edit-button${copyStatus === 'copied' ? ' save-button' : copyStatus === 'error' ? ' cancel-button' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); handleCopyQrVisitante(row.id, row.qr_token); }}
+                  title={row.qr_token ? 'Copiar QR Code' : 'QR indisponível'}
+                  disabled={!row.qr_token}
+                  style={{ color: copyStatus === 'copied' ? '#2abb98' : copyStatus === 'error' ? '#dc2626' : undefined }}
+                >
+                  {copyStatus === 'copied' ? <FaCheck /> : <FaCopy />}
+                </button>
+                <button
+                  className={`edit-button${emailStatus === 'sent' ? ' save-button' : emailStatus === 'error' ? ' cancel-button' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); handleSendEmailVisitante(row.id, row.email); }}
+                  title={row.email ? 'Reenviar QR por e-mail' : 'Cadastre um e-mail para enviar o QR'}
+                  disabled={!row.email || emailStatus === 'sending'}
+                  style={{ color: emailStatus === 'sent' ? '#2abb98' : emailStatus === 'error' ? '#dc2626' : undefined, opacity: !row.email ? 0.4 : 1 }}
+                >
+                  {emailStatus === 'sent' ? <FaCheck /> : <FaEnvelope />}
+                </button>
+                <button
+                  className={`edit-button${downloadStatus === 'done' ? ' save-button' : downloadStatus === 'error' ? ' cancel-button' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); handleDownloadQrVisitante(row.id, row.qr_token, row.nome); }}
+                  title={row.qr_token ? 'Baixar QR Code' : 'QR indisponível'}
+                  disabled={!row.qr_token || downloadStatus === 'downloading'}
+                  style={{ color: downloadStatus === 'done' ? '#2abb98' : downloadStatus === 'error' ? '#dc2626' : undefined }}
+                >
+                  {downloadStatus === 'done' ? <FaCheck /> : <FaDownload />}
+                </button>
+                <button
                   className="edit-button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleEditRow(row.id);
-                  }}
+                  onClick={(e) => { e.stopPropagation(); handleEditRow(row.id); }}
                   title="Editar visitante"
                 >
                   <FaEdit />
                 </button>
                 <button
                   className="delete-button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteVisitante(row.id);
-                  }}
+                  onClick={(e) => { e.stopPropagation(); handleDeleteVisitante(row.id); }}
                   title="Excluir visitante"
                 >
                   <FaTrash />

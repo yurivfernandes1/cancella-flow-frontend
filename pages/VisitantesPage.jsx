@@ -6,7 +6,8 @@ import AddVisitanteDropdown from '../components/Visitantes/AddVisitanteDropdown'
 import { useAuth } from '../context/AuthContext';
 import api, { visitanteAPI } from '../services/api';
 import '../styles/VisitantesPage.css';
-import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaCopy, FaEnvelope } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaCopy, FaEnvelope, FaDownload } from 'react-icons/fa';
+import { downloadQrCode } from '../utils/qrUtils';
 
 function VisitantesPage() {
   const { user } = useAuth();
@@ -21,6 +22,7 @@ function VisitantesPage() {
   const [currentEditData, setCurrentEditData] = useState({});
   const [qrCopyStatus, setQrCopyStatus] = useState({});
   const [qrEmailStatus, setQrEmailStatus] = useState({});
+  const [qrDownloadStatus, setQrDownloadStatus] = useState({});
 
   // Verificar se o usuário tem acesso
   const isPortaria = user?.groups?.some(group => group.name === 'Portaria');
@@ -106,6 +108,19 @@ function VisitantesPage() {
     } catch {
       setQrEmailStatus(prev => ({ ...prev, [id]: 'error' }));
       setTimeout(() => setQrEmailStatus(prev => ({ ...prev, [id]: 'idle' })), 3000);
+    }
+  };
+
+  const handleDownloadQr = async (id, token, nome) => {
+    if (!token) return;
+    setQrDownloadStatus(prev => ({ ...prev, [id]: 'downloading' }));
+    try {
+      await downloadQrCode(token, nome);
+      setQrDownloadStatus(prev => ({ ...prev, [id]: 'done' }));
+      setTimeout(() => setQrDownloadStatus(prev => ({ ...prev, [id]: 'idle' })), 2000);
+    } catch {
+      setQrDownloadStatus(prev => ({ ...prev, [id]: 'error' }));
+      setTimeout(() => setQrDownloadStatus(prev => ({ ...prev, [id]: 'idle' })), 2500);
     }
   };
 
@@ -242,6 +257,7 @@ function VisitantesPage() {
       const isEditing = editingRowId === row.id;
       const copyStatus = qrCopyStatus[row.id] || 'idle';
       const emailStatus = qrEmailStatus[row.id] || 'idle';
+      const downloadStatus = qrDownloadStatus[row.id] || 'idle';
 
       return (
         <div className="actions-column">
@@ -296,6 +312,20 @@ function VisitantesPage() {
                 }}
               >
                 {emailStatus === 'sent' ? <FaCheck /> : <FaEnvelope />}
+              </button>
+              <button
+                className={`edit-button${downloadStatus === 'done' ? ' save-button' : downloadStatus === 'error' ? ' cancel-button' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDownloadQr(row.id, row.qr_token, row.nome);
+                }}
+                title={row.qr_token ? 'Baixar QR Code' : 'QR indisponível'}
+                disabled={!row.qr_token || downloadStatus === 'downloading'}
+                style={{
+                  color: downloadStatus === 'done' ? '#2abb98' : downloadStatus === 'error' ? '#dc2626' : undefined,
+                }}
+              >
+                {downloadStatus === 'done' ? <FaCheck /> : <FaDownload />}
               </button>
               <button
                 className="edit-button"
