@@ -67,6 +67,10 @@ function MoradorPage() {
   const addVeiculoButtonRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [incluirEntregues, setIncluirEntregues] = useState(false);
+  const [incluirReservasPassadas, setIncluirReservasPassadas] = useState(false);
+  const [incluirFinalizadas, setIncluirFinalizadas] = useState(false);
+  const [incluirAvisosExpirados, setIncluirAvisosExpirados] = useState(false);
+  const [somenteHojeLista, setSomenteHojeLista] = useState(true);
   const [editingRowId, setEditingRowId] = useState(null);
   const [currentEditData, setCurrentEditData] = useState({});
   const [showReservaModal, setShowReservaModal] = useState(false);
@@ -137,7 +141,9 @@ function MoradorPage() {
           setTotalPages(prev => ({ ...prev, veiculos: 1 }));
         }
       } else if (type === 'reservas') {
-        const response = await espacoReservaAPI.list({ page, search });
+        const paramsReservas = { page, search };
+        if (incluirReservasPassadas) paramsReservas.incluir_passados = 1;
+        const response = await espacoReservaAPI.list(paramsReservas);
         if (response.data.results !== undefined) {
           setTableData(prev => ({ ...prev, reservas: response.data.results }));
           setTotalPages(prev => ({
@@ -161,11 +167,17 @@ function MoradorPage() {
           setTotalPages(prev => ({ ...prev, eventos: 1 }));
         }
       } else if (type === 'lista_convidados') {
-        const response = await listaConvidadosAPI.getListas({ search });
+        const d = new Date();
+        const hojeLocal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const paramsLista = { search };
+        if (somenteHojeLista) paramsLista.data_evento = hojeLocal;
+        const response = await listaConvidadosAPI.getListas(paramsLista);
         setTableData(prev => ({ ...prev, lista_convidados: Array.isArray(response.data) ? response.data : (response.data.results || []) }));
         setTotalPages(prev => ({ ...prev, lista_convidados: 1 }));
       } else if (type === 'avisos') {
-        const response = await avisoAPI.list({ page, search, vigente: 1 });
+        const paramsAvisos = { page, search };
+        if (!incluirAvisosExpirados) paramsAvisos.vigente = 1;
+        const response = await avisoAPI.list(paramsAvisos);
         if (response.data.results !== undefined) {
           setTableData(prev => ({ ...prev, avisos: response.data.results }));
           setTotalPages(prev => ({
@@ -177,7 +189,9 @@ function MoradorPage() {
           setTotalPages(prev => ({ ...prev, avisos: 1 }));
         }
       } else if (type === 'ocorrencias') {
-        const response = await ocorrenciaAPI.list({ search });
+        const paramsOcorrencias = { search };
+        if (incluirFinalizadas) paramsOcorrencias.incluir_finalizadas = true;
+        const response = await ocorrenciaAPI.list(paramsOcorrencias);
         const data = Array.isArray(response.data) ? response.data : (response.data.results || []);
         setTableData(prev => ({ ...prev, ocorrencias: data }));
         setTotalPages(prev => ({ ...prev, ocorrencias: 1 }));
@@ -197,7 +211,7 @@ function MoradorPage() {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [activeTab, currentPage, searchTerm, incluirEntregues]);
+  }, [activeTab, currentPage, searchTerm, incluirEntregues, incluirReservasPassadas, incluirFinalizadas, incluirAvisosExpirados, somenteHojeLista]);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -1058,6 +1072,62 @@ function MoradorPage() {
                     onChange={(e) => { setIncluirEntregues(e.target.checked); setCurrentPage(1); }}
                   />
                   Incluir encomendas entregues
+                </label>
+              </div>
+            </div>
+          )}
+          {activeTab === 'reservas' && (
+            <div className="filters-container">
+              <div className="filter-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={incluirReservasPassadas}
+                    onChange={(e) => { setIncluirReservasPassadas(e.target.checked); setCurrentPage(1); }}
+                  />
+                  Incluir reservas passadas
+                </label>
+              </div>
+            </div>
+          )}
+          {activeTab === 'ocorrencias' && (
+            <div className="filters-container">
+              <div className="filter-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={incluirFinalizadas}
+                    onChange={(e) => { setIncluirFinalizadas(e.target.checked); setCurrentPage(1); }}
+                  />
+                  Incluir resolvidas
+                </label>
+              </div>
+            </div>
+          )}
+          {activeTab === 'lista_convidados' && (
+            <div className="filters-container">
+              <div className="filter-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={somenteHojeLista}
+                    onChange={(e) => { setSomenteHojeLista(e.target.checked); setCurrentPage(1); }}
+                  />
+                  Somente hoje
+                </label>
+              </div>
+            </div>
+          )}
+          {activeTab === 'avisos' && (
+            <div className="filters-container">
+              <div className="filter-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={incluirAvisosExpirados}
+                    onChange={(e) => { setIncluirAvisosExpirados(e.target.checked); setCurrentPage(1); }}
+                  />
+                  Incluir avisos expirados
                 </label>
               </div>
             </div>

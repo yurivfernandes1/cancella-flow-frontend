@@ -78,6 +78,9 @@ function PortariaPage() {
 
   // Checkbox: mostrar apenas listas do dia
   const [somenteHoje, setSomenteHoje] = useState(true);
+  const [incluirReservasPassadas, setIncluirReservasPassadas] = useState(false);
+  const [incluirFinalizadas, setIncluirFinalizadas] = useState(false);
+  const [incluirAvisosExpirados, setIncluirAvisosExpirados] = useState(false);
 
   // Debug
   React.useEffect(() => {
@@ -159,7 +162,9 @@ function PortariaPage() {
         setTableData(prev => ({ ...prev, lista_convidados: Array.isArray(res.data) ? res.data : (res.data.results || []) }));
         setTotalPages(prev => ({ ...prev, lista_convidados: 1 }));
       } else if (type === 'avisos') {
-        const response = await avisoAPI.list({ page, search, vigente: 1 });
+        const paramsAvisos = { page, search };
+        if (!incluirAvisosExpirados) paramsAvisos.vigente = 1;
+        const response = await avisoAPI.list(paramsAvisos);
         if (response.data.results !== undefined) {
           setTableData(prev => ({ ...prev, avisos: response.data.results }));
           setTotalPages(prev => ({
@@ -171,10 +176,26 @@ function PortariaPage() {
           setTotalPages(prev => ({ ...prev, avisos: 1 }));
         }
       } else if (type === 'ocorrencias') {
-        const response = await ocorrenciaAPI.list({ search });
+        const paramsOcorrencias = { search };
+        if (incluirFinalizadas) paramsOcorrencias.incluir_finalizadas = true;
+        const response = await ocorrenciaAPI.list(paramsOcorrencias);
         const data = Array.isArray(response.data) ? response.data : (response.data.results || []);
         setTableData(prev => ({ ...prev, ocorrencias: data }));
         setTotalPages(prev => ({ ...prev, ocorrencias: 1 }));
+      } else if (type === 'reservas') {
+        const paramsReservas = { page, search };
+        if (incluirReservasPassadas) paramsReservas.incluir_passados = 1;
+        const response = await espacoReservaAPI.list(paramsReservas);
+        if (response.data.results !== undefined) {
+          setTableData(prev => ({ ...prev, reservas: response.data.results }));
+          setTotalPages(prev => ({
+            ...prev,
+            reservas: response.data.num_pages || Math.ceil(response.data.count / 10)
+          }));
+        } else {
+          setTableData(prev => ({ ...prev, reservas: Array.isArray(response.data) ? response.data : [] }));
+          setTotalPages(prev => ({ ...prev, reservas: 1 }));
+        }
       } else if (type === 'eventos') {
         const response = await eventoAPI.list({ page, search });
         const eventosData = response.data.results !== undefined ? response.data.results : response.data;
@@ -199,7 +220,7 @@ function PortariaPage() {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [activeTab, currentPage, searchTerm, somenteHoje, incluirEntregues]);
+  }, [activeTab, currentPage, searchTerm, somenteHoje, incluirEntregues, incluirReservasPassadas, incluirFinalizadas, incluirAvisosExpirados]);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -799,33 +820,44 @@ function PortariaPage() {
             </>
           )}
 
-          {/* Aba de Reservas do Dia */}
+          {/* Aba de Reservas */}
           {activeTab === 'reservas' && (
             <>
-              <div className="filters-section">
-                <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: 8, marginBottom: '1rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1rem', color: '#64748b' }}>
-                    📅 Reservas para hoje - {new Date().toLocaleDateString('pt-BR', { 
-                      day: '2-digit', 
-                      month: 'long', 
-                      year: 'numeric' 
-                    })}
-                  </h3>
+              <div className="page-header">
+                <div className="search-container" style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <div className="search-wrapper">
+                    <FaSearch className="search-icon" />
+                    <input
+                      className="search-input"
+                      type="text"
+                      placeholder="Buscar reservas..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <label style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: '#374151', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={incluirReservasPassadas}
+                      onChange={(e) => { setIncluirReservasPassadas(e.target.checked); setCurrentPage(1); }}
+                      style={{ accentColor: '#2abb98', width: 15, height: 15, cursor: 'pointer' }}
+                    />
+                    Incluir reservas passadas
+                  </label>
                 </div>
               </div>
-
               {tableData.reservas.length === 0 ? (
                 <div className="empty-state">
-                  <p>Nenhuma reserva para hoje.</p>
+                  <p>Nenhuma reserva encontrada.</p>
                 </div>
               ) : (
                 <GenericTable
                   data={tableData.reservas}
                   columns={reservasColumns}
                   loading={loading}
-                  currentPage={1}
-                  totalPages={1}
-                  onPageChange={() => {}}
+                  currentPage={currentPage}
+                  totalPages={totalPages.reservas}
+                  onPageChange={setCurrentPage}
                   editingRowId={null}
                   currentEditData={{}}
                   className="full-width-table allow-horizontal-scroll"
@@ -966,13 +998,29 @@ function PortariaPage() {
 
           {/* Aba de Avisos */}
           {activeTab === 'avisos' && (
-            <div style={{ maxWidth: 1100, margin: '0 auto', width: '100%' }}>
-              {tableData.avisos.length === 0 ? (
-                <div className="empty-state"><p>Nenhum aviso disponível.</p></div>
-              ) : (
-                tableData.avisos.map(av => <AvisoBanner key={av.id} aviso={av} />)
-              )}
-            </div>
+            <>
+              <div className="page-header">
+                <div className="filters-container">
+                  <div className="filter-group">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={incluirAvisosExpirados}
+                        onChange={(e) => { setIncluirAvisosExpirados(e.target.checked); setCurrentPage(1); }}
+                      />
+                      Incluir avisos expirados
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div style={{ maxWidth: 1100, margin: '0 auto', width: '100%' }}>
+                {tableData.avisos.length === 0 ? (
+                  <div className="empty-state"><p>Nenhum aviso disponível.</p></div>
+                ) : (
+                  tableData.avisos.map(av => <AvisoBanner key={av.id} aviso={av} />)
+                )}
+              </div>
+            </>
           )}
 
           {/* Aba de Ocorrências */}
@@ -984,7 +1032,7 @@ function PortariaPage() {
                     <FaPlus /> Nova Ocorrência
                   </button>
                 </div>
-                <div className="search-container">
+                <div className="search-container" style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <div className="search-wrapper">
                     <FaSearch className="search-icon" />
                     <input
@@ -995,6 +1043,15 @@ function PortariaPage() {
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
+                  <label style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: '#374151', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={incluirFinalizadas}
+                      onChange={(e) => { setIncluirFinalizadas(e.target.checked); setCurrentPage(1); }}
+                      style={{ accentColor: '#2abb98', width: 15, height: 15, cursor: 'pointer' }}
+                    />
+                    Incluir resolvidas
+                  </label>
                 </div>
               </div>
               <GenericTable
