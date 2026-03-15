@@ -66,6 +66,7 @@ function MoradorPage() {
   const [showAddVeiculo, setShowAddVeiculo] = useState(false);
   const addVeiculoButtonRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [incluirEntregues, setIncluirEntregues] = useState(false);
   const [editingRowId, setEditingRowId] = useState(null);
   const [currentEditData, setCurrentEditData] = useState({});
   const [showReservaModal, setShowReservaModal] = useState(false);
@@ -88,7 +89,9 @@ function MoradorPage() {
     setLoading(true);
     try {
       if (type === 'encomendas') {
-        const response = await api.get(`/cadastros/encomendas/?page=${page}&search=${search}`);
+        let url = `/cadastros/encomendas/?page=${page}&search=${search}`;
+        if (incluirEntregues) url += '&incluir_entregues=true';
+        const response = await api.get(url);
         if (response.data.results !== undefined) {
           // Mapear unidade_identificacao para unidade_info
           const mappedData = response.data.results.map(item => ({
@@ -194,7 +197,7 @@ function MoradorPage() {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [activeTab, currentPage, searchTerm]);
+  }, [activeTab, currentPage, searchTerm, incluirEntregues]);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -1042,6 +1045,20 @@ function MoradorPage() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="search-input"
                 />
+              </div>
+            </div>
+          )}
+          {activeTab === 'encomendas' && (
+            <div className="filters-container">
+              <div className="filter-group">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={incluirEntregues}
+                    onChange={(e) => { setIncluirEntregues(e.target.checked); setCurrentPage(1); }}
+                  />
+                  Incluir encomendas entregues
+                </label>
               </div>
             </div>
           )}

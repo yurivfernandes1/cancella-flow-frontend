@@ -62,6 +62,7 @@ function PortariaPage() {
   const [showAddEncomenda, setShowAddEncomenda] = useState(false);
   const addEncomendaButtonRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [incluirEntregues, setIncluirEntregues] = useState(false);
   const [editingRowId, setEditingRowId] = useState(null);
   const [currentEditData, setCurrentEditData] = useState({});
   const [eventoSelecionado, setEventoSelecionado] = useState(null);
@@ -107,27 +108,6 @@ function PortariaPage() {
           setTableData(prev => ({ ...prev, unidades_moradores: response.data }));
           setTotalPages(prev => ({ ...prev, unidades_moradores: 1 }));
         }
-      } else if (type === 'encomendas') {
-        const response = await api.get(`/cadastros/encomendas/?page=${page}&search=${search}`);
-        if (response.data.results !== undefined) {
-          // Mapear unidade_identificacao para unidade_info
-          // Mostrar apenas encomendas que ainda não foram retiradas (retirado_em null/undefined)
-          const mappedData = response.data.results
-            .map(item => ({ ...item, unidade_info: item.unidade_identificacao || '-' }))
-            .filter(item => !item.retirado_em);
-          setTableData(prev => ({ ...prev, encomendas: mappedData }));
-          setTotalPages(prev => ({
-            ...prev,
-            encomendas: response.data.num_pages || Math.ceil(response.data.count / 10)
-          }));
-        } else {
-          // Mapear unidade_identificacao para unidade_info
-          const mappedData = response.data
-            .map(item => ({ ...item, unidade_info: item.unidade_identificacao || '-' }))
-            .filter(item => !item.retirado_em);
-          setTableData(prev => ({ ...prev, encomendas: mappedData }));
-          setTotalPages(prev => ({ ...prev, encomendas: 1 }));
-        }
       } else if (type === 'visitantes') {
         const response = await api.get(`/cadastros/visitantes/?page=${page}&search=${search}`);
         if (response.data.results !== undefined) {
@@ -152,31 +132,31 @@ function PortariaPage() {
           setTableData(prev => ({ ...prev, veiculos: response.data }));
           setTotalPages(prev => ({ ...prev, veiculos: 1 }));
         }
-      } else if (type === 'reservas') {
-        const response = await espacoReservaAPI.hoje();
-        // Endpoint 'hoje' retorna lista direta, sem paginação
-        const items = Array.isArray(response.data) ? response.data : [];
-        setTableData(prev => ({ ...prev, reservas: items }));
-        setTotalPages(prev => ({ ...prev, reservas: 1 }));
-      } else if (type === 'eventos') {
-        const response = await api.get(`/cadastros/eventos/?page=${page}&search=${search}`);
+      } else if (type === 'encomendas') {
+        let url = `/cadastros/encomendas/?page=${page}&search=${search}`;
+        if (incluirEntregues) url += '&incluir_entregues=true';
+        const response = await api.get(url);
         if (response.data.results !== undefined) {
-          setTableData(prev => ({ ...prev, eventos: response.data.results }));
+          const mappedData = response.data.results.map(item => ({ ...item, unidade_info: item.unidade_identificacao || '-' }));
+          const filtered = incluirEntregues ? mappedData : mappedData.filter(item => !item.retirado_em);
+          setTableData(prev => ({ ...prev, encomendas: filtered }));
           setTotalPages(prev => ({
             ...prev,
-            eventos: response.data.num_pages || Math.ceil(response.data.count / 10)
+            encomendas: response.data.num_pages || Math.ceil(response.data.count / 10)
           }));
         } else {
-          setTableData(prev => ({ ...prev, eventos: response.data }));
-          setTotalPages(prev => ({ ...prev, eventos: 1 }));
+          const mappedData = response.data.map(item => ({ ...item, unidade_info: item.unidade_identificacao || '-' }));
+          const filtered = incluirEntregues ? mappedData : mappedData.filter(item => !item.retirado_em);
+          setTableData(prev => ({ ...prev, encomendas: filtered }));
+          setTotalPages(prev => ({ ...prev, encomendas: 1 }));
         }
       } else if (type === 'lista_convidados') {
         const d = new Date();
         const hojeLocal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const params = { search };
         if (somenteHoje) params.data_evento = hojeLocal;
-        const response = await listaConvidadosAPI.getListas(params);
-        setTableData(prev => ({ ...prev, lista_convidados: Array.isArray(response.data) ? response.data : (response.data.results || []) }));
+        const res = await listaConvidadosAPI.getListas(params);
+        setTableData(prev => ({ ...prev, lista_convidados: Array.isArray(res.data) ? res.data : (res.data.results || []) }));
         setTotalPages(prev => ({ ...prev, lista_convidados: 1 }));
       } else if (type === 'avisos') {
         const response = await avisoAPI.list({ page, search, vigente: 1 });
@@ -211,7 +191,7 @@ function PortariaPage() {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [activeTab, currentPage, searchTerm, somenteHoje]);
+  }, [activeTab, currentPage, searchTerm, somenteHoje, incluirEntregues]);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -708,6 +688,18 @@ function PortariaPage() {
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
+                  </div>
+                </div>
+                <div className="filters-container">
+                  <div className="filter-group">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={incluirEntregues}
+                        onChange={(e) => { setIncluirEntregues(e.target.checked); setCurrentPage(1); }}
+                      />
+                      Incluir encomendas entregues
+                    </label>
                   </div>
                 </div>
               </div>
