@@ -97,6 +97,8 @@ export default function ProtectedImage({ src, alt, fallbackSrc, ...rest }) {
 
   if (loading) {
     const { className, style } = rest;
+    const isCircular = typeof className === 'string' && /avatar|avatar-img|condo-logo|sidebar-condo-logo|user-menu-avatar/.test(className);
+    const spinnerSize = isCircular ? 36 : 28;
     return (
       <div
         className={className}
@@ -105,16 +107,16 @@ export default function ProtectedImage({ src, alt, fallbackSrc, ...rest }) {
           alignItems: 'center',
           justifyContent: 'center',
           background: '#f3f4f6',
-          borderRadius: 8,
+          borderRadius: isCircular ? '50%' : 8,
           ...style,
         }}
         aria-label="Carregando imagem..."
       >
         <div style={{
-          width: 28,
-          height: 28,
-          border: '3px solid #d1fae5',
-          borderTopColor: '#2abb98',
+          width: spinnerSize,
+          height: spinnerSize,
+          border: '3px solid rgba(209,250,229,0.9)',
+          borderTopColor: 'var(--sl-primary, #2abb98)',
           borderRadius: '50%',
           animation: 'spin 0.8s linear infinite',
         }} />
@@ -128,6 +130,7 @@ export default function ProtectedImage({ src, alt, fallbackSrc, ...rest }) {
       return <img src={fallbackSrc} alt={alt} {...rest} />;
     }
     const { className, style } = rest;
+    const isCircular = typeof className === 'string' && /avatar|avatar-img|condo-logo|sidebar-condo-logo|user-menu-avatar/.test(className);
     return (
       <div
         className={className}
@@ -138,7 +141,7 @@ export default function ProtectedImage({ src, alt, fallbackSrc, ...rest }) {
           background: '#f3f4f6',
           color: '#9ca3af',
           fontSize: '0.75rem',
-          borderRadius: 8,
+          borderRadius: isCircular ? '50%' : 8,
           ...style,
         }}
       >

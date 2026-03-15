@@ -113,10 +113,10 @@ function Sidebar({ isOpen, isMobileOpen, onToggle, onClose }) {
   else if (isPortaria) menu = PORTARIA_MENU;
   else if (isMorador)  menu = MORADOR_MENU;
 
-  // Grupos expandidos: todos abertos por padrão
+  // Grupos expandidos: todos fechados por padrão
   const [expandedGroups, setExpandedGroups] = useState(() => {
     const initial = {};
-    menu.forEach((s) => { initial[s.group] = true; });
+    menu.forEach((s) => { initial[s.group] = false; });
     return initial;
   });
 
@@ -154,11 +154,13 @@ function Sidebar({ isOpen, isMobileOpen, onToggle, onClose }) {
             /* Expandida — logo do condomínio + nome */
             <Link to="/welcome" className="sidebar-logo-expanded" onClick={onClose}>
               {condominioLogo ? (
-                <ProtectedImage
-                  src={condominioLogo}
-                  alt="Logo do condomínio"
-                  className="sidebar-condo-logo"
-                />
+                <div className="sidebar-condo-logo-wrap">
+                  <ProtectedImage
+                    src={condominioLogo}
+                    alt="Logo do condomínio"
+                    className="sidebar-condo-logo"
+                  />
+                </div>
               ) : null}
               <span className="sidebar-condo-name">
                 {condominioName || 'Cancella Flow'}

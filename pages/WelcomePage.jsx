@@ -433,11 +433,13 @@ function WelcomePage() {
             {/* Logo do Condomínio à esquerda para Síndicos, Moradores e Porteiros */}
             {(isSindico || isMorador || isPortaria) && condominioLogoUrl && (
               <div className="condo-logo-wrapper condo-logo-left">
-                <ProtectedImage
-                  src={condominioLogoUrl}
-                  alt="Logo do Condomínio"
-                  className="condo-logo"
-                />
+                <div className="sidebar-condo-logo-wrap">
+                  <ProtectedImage
+                    src={condominioLogoUrl}
+                    alt="Logo do Condomínio"
+                    className="sidebar-condo-logo"
+                  />
+                </div>
               </div>
             )}
 
