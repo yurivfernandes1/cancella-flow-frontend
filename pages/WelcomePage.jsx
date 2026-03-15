@@ -332,20 +332,19 @@ function WelcomePage() {
       setCondominioName(nameFromUser);
     }
 
-    // Buscar dados completos do condomínio se tivermos o id
     const condominioId = user.condominio_id || user.condominio?.id || null;
     if (condominioId) {
+      // Dispara o fetch da logo imediatamente (sem esperar a chamada do condomínio)
+      setCondominioLogo(`/cadastros/condominios/${condominioId}/logo-db/`);
+
+      // Busca o nome do condomínio em paralelo
       (async () => {
         try {
           const resp = await condominioAPI.get(condominioId);
           const nome = resp?.data?.nome || resp?.data?.name || null;
-          const logoUrl = resp?.data?.logo_url || null;
           if (nome) setCondominioName(nome);
-          if (logoUrl) setCondominioLogo(logoUrl);
-          console.log('Condominio logo URL fetched:', logoUrl);
         } catch (err) {
           // silencioso — não quebrar a tela principal
-          console.error('Failed to fetch condominio data for welcome page:', err);
         }
       })();
     }
