@@ -496,15 +496,15 @@ function WelcomePage() {
                 </p>
               ) : isSindico ? (
                 <p className="welcome-subtitle">
-                  Dashboard do Síndico - Visão geral do condomínio{condominioName ? `: ${formatCondominioName(condominioName)}` : ''}
+                  Dashboard do síndico
                 </p>
               ) : isPortaria ? (
                 <p className="welcome-subtitle">
-                  Dashboard da Portaria - Gestão de encomendas e visitantes{condominioName ? ` - ${formatCondominioName(condominioName)}` : ''}
+                  Dashboard da Portaria
                 </p>
               ) : isMorador ? (
                 <p className="welcome-subtitle">
-                  Minha Área - Acompanhe suas encomendas e visitantes{condominioName ? ` - ${formatCondominioName(condominioName)}` : ''}
+                  Acompanhe suas encomendas e visitantes.
                 </p>
               ) : (
                 <p className="welcome-subtitle">
