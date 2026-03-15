@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FaCheck, FaCheckCircle, FaClock, FaEnvelope, FaPencilAlt, FaPlus, FaTimes, FaTrash, FaUsers } from 'react-icons/fa';
+import { FaCheck, FaCheckCircle, FaClock, FaCopy, FaEnvelope, FaPencilAlt, FaPlus, FaTimes, FaTrash, FaUsers } from 'react-icons/fa';
 import { espacoAPI, listaConvidadosAPI } from '../../services/api';
 
 /**
@@ -35,6 +35,7 @@ function ListaConvidadosModal({ lista: listaInicial, onClose, readOnly = false, 
   // Estado de envio de QR por convidado: { [id]: 'idle' | 'sending' | 'ok' | 'error' }
   const [qrStatus, setQrStatus] = useState({});
   const [qrErro, setQrErro] = useState({});
+  const [qrCopyStatus, setQrCopyStatus] = useState({});
 
   // Edição do cabeçalho (título / data)
   const [editandoCabecalho, setEditandoCabecalho] = useState(false);
@@ -217,6 +218,18 @@ function ListaConvidadosModal({ lista: listaInicial, onClose, readOnly = false, 
     } catch (e) {
       setQrStatus(prev => ({ ...prev, [convidadoId]: 'error' }));
       setQrErro(prev => ({ ...prev, [convidadoId]: e.response?.data?.error || 'Erro ao enviar.' }));
+    }
+  };
+
+  const handleCopyQr = async (convidadoId, qrToken) => {
+    if (!qrToken) return;
+    try {
+      await navigator.clipboard.writeText(String(qrToken));
+      setQrCopyStatus(prev => ({ ...prev, [convidadoId]: 'copied' }));
+      setTimeout(() => setQrCopyStatus(prev => ({ ...prev, [convidadoId]: 'idle' })), 2000);
+    } catch {
+      setQrCopyStatus(prev => ({ ...prev, [convidadoId]: 'error' }));
+      setTimeout(() => setQrCopyStatus(prev => ({ ...prev, [convidadoId]: 'idle' })), 2500);
     }
   };
 
@@ -576,32 +589,58 @@ function ListaConvidadosModal({ lista: listaInicial, onClose, readOnly = false, 
                             </div>
                             <div className="convidado-card-actions">
                               {readOnly ? (
-                                c.entrada_confirmada ? (
-                                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                                    <span style={{ color: '#059669', fontWeight: 600, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                      <FaCheckCircle size={13} /> Entrou
-                                    </span>
+                                <>
+                                  {c.entrada_confirmada ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                                      <span style={{ color: '#059669', fontWeight: 600, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                        <FaCheckCircle size={13} /> Entrou
+                                      </span>
+                                      <button
+                                        onClick={() => handleConfirmarEntrada(c.id)}
+                                        disabled={confirmandoId === c.id}
+                                        title="Desfazer confirmação"
+                                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '0.68rem', padding: 0, opacity: confirmandoId === c.id ? 0.5 : 1, textDecoration: 'underline' }}
+                                      >
+                                        desfazer
+                                      </button>
+                                    </div>
+                                  ) : (
                                     <button
                                       onClick={() => handleConfirmarEntrada(c.id)}
                                       disabled={confirmandoId === c.id}
-                                      title="Desfazer confirmação"
-                                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', fontSize: '0.68rem', padding: 0, opacity: confirmandoId === c.id ? 0.5 : 1, textDecoration: 'underline' }}
+                                      title="Confirmar entrada manual"
+                                      style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 6, cursor: 'pointer', color: '#15803d', fontSize: '0.73rem', fontWeight: 600, padding: '4px 8px', whiteSpace: 'nowrap', opacity: confirmandoId === c.id ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 4 }}
                                     >
-                                      desfazer
+                                      <FaCheckCircle size={11} /> Confirmar
                                     </button>
-                                  </div>
-                                ) : (
+                                  )}
                                   <button
-                                    onClick={() => handleConfirmarEntrada(c.id)}
-                                    disabled={confirmandoId === c.id}
-                                    title="Confirmar entrada manual"
-                                    style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 6, cursor: 'pointer', color: '#15803d', fontSize: '0.73rem', fontWeight: 600, padding: '4px 8px', whiteSpace: 'nowrap', opacity: confirmandoId === c.id ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 4 }}
+                                    onClick={() => handleCopyQr(c.id, c.qr_token)}
+                                    disabled={!c.qr_token}
+                                    title="Copiar QR Code"
+                                    style={{
+                                      ...iconBtn,
+                                      color: qrCopyStatus[c.id] === 'copied' ? '#059669' : qrCopyStatus[c.id] === 'error' ? '#dc2626' : '#374151',
+                                      borderColor: qrCopyStatus[c.id] === 'copied' ? '#86efac' : qrCopyStatus[c.id] === 'error' ? '#fca5a5' : '#e5e7eb',
+                                    }}
                                   >
-                                    <FaCheckCircle size={11} /> Confirmar
+                                    {qrCopyStatus[c.id] === 'copied' ? <FaCheck size={11} /> : <FaCopy size={11} />}
                                   </button>
-                                )
+                                </>
                               ) : (
                                 <>
+                                  <button
+                                    onClick={() => handleCopyQr(c.id, c.qr_token)}
+                                    disabled={!c.qr_token}
+                                    title="Copiar QR Code"
+                                    style={{
+                                      ...iconBtn,
+                                      color: qrCopyStatus[c.id] === 'copied' ? '#059669' : qrCopyStatus[c.id] === 'error' ? '#dc2626' : '#374151',
+                                      borderColor: qrCopyStatus[c.id] === 'copied' ? '#86efac' : qrCopyStatus[c.id] === 'error' ? '#fca5a5' : '#e5e7eb',
+                                    }}
+                                  >
+                                    {qrCopyStatus[c.id] === 'copied' ? <FaCheck size={11} /> : <FaCopy size={11} />}
+                                  </button>
                                   <button
                                     onClick={() => handleEnviarQrCode(c.id)}
                                     disabled={!c.email || qrStatus[c.id] === 'sending'}

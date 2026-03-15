@@ -6,7 +6,7 @@ import AddVisitanteDropdown from '../components/Visitantes/AddVisitanteDropdown'
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import '../styles/VisitantesPage.css';
-import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaCopy } from 'react-icons/fa';
 
 function VisitantesPage() {
   const { user } = useAuth();
@@ -19,6 +19,7 @@ function VisitantesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingRowId, setEditingRowId] = useState(null);
   const [currentEditData, setCurrentEditData] = useState({});
+  const [qrCopyStatus, setQrCopyStatus] = useState({});
 
   // Verificar se o usuário tem acesso
   const isPortaria = user?.groups?.some(group => group.name === 'Portaria');
@@ -62,6 +63,7 @@ function VisitantesPage() {
       const payload = {
         nome: data.nome,
         documento: data.documento,
+        email: data.email || '',
         data_entrada: data.data_entrada ? new Date(data.data_entrada).toISOString() : null,
         data_saida: data.data_saida ? new Date(data.data_saida).toISOString() : null,
         is_permanente: Boolean(data.is_permanente),
@@ -79,6 +81,18 @@ function VisitantesPage() {
 
   const handleEditRow = (rowId) => {
     setEditingRowId(rowId);
+  };
+
+  const handleCopyQr = async (id, token) => {
+    if (!token) return;
+    try {
+      await navigator.clipboard.writeText(String(token));
+      setQrCopyStatus(prev => ({ ...prev, [id]: 'copied' }));
+      setTimeout(() => setQrCopyStatus(prev => ({ ...prev, [id]: 'idle' })), 2000);
+    } catch {
+      setQrCopyStatus(prev => ({ ...prev, [id]: 'error' }));
+      setTimeout(() => setQrCopyStatus(prev => ({ ...prev, [id]: 'idle' })), 2500);
+    }
   };
 
   const formatDateTime = (dateString) => {
@@ -178,6 +192,22 @@ function VisitantesPage() {
       )
     },
     {
+      key: 'email',
+      header: 'E-mail',
+      width: '16%',
+      editable: isMorador || user?.is_staff,
+      render: (row) => row.email || '-',
+      editComponent: (editData, handleInputChange) => (
+        <input
+          className="edit-input"
+          type="email"
+          value={editData.email || ''}
+          onChange={(e) => handleInputChange('email', e.target.value)}
+          placeholder="E-mail do visitante"
+        />
+      )
+    },
+    {
       key: 'esta_no_condominio',
       header: 'Status',
       width: '8%',
@@ -193,9 +223,10 @@ function VisitantesPage() {
   columns.push({
     key: 'actions',
     header: 'Ações',
-    width: '6%',
+    width: '8%',
     render: (row) => {
       const isEditing = editingRowId === row.id;
+      const copyStatus = qrCopyStatus[row.id] || 'idle';
 
       return (
         <div className="actions-column">
@@ -223,16 +254,30 @@ function VisitantesPage() {
               </button>
             </>
           ) : (
-            <button
-              className="edit-button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleEditRow(row.id);
-              }}
-              title="Editar visitante"
-            >
-              <FaEdit />
-            </button>
+            <>
+              <button
+                className={`edit-button${copyStatus === 'copied' ? ' save-button' : copyStatus === 'error' ? ' cancel-button' : ''}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleCopyQr(row.id, row.qr_token);
+                }}
+                title={row.qr_token ? 'Copiar QR Code' : 'QR indisponível'}
+                disabled={!row.qr_token}
+                style={{ color: copyStatus === 'copied' ? '#2abb98' : copyStatus === 'error' ? '#dc2626' : undefined }}
+              >
+                {copyStatus === 'copied' ? <FaCheck /> : <FaCopy />}
+              </button>
+              <button
+                className="edit-button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleEditRow(row.id);
+                }}
+                title="Editar visitante"
+              >
+                <FaEdit />
+              </button>
+            </>
           )}
         </div>
       );

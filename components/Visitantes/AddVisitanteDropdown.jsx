@@ -11,6 +11,7 @@ function AddVisitanteDropdown({ onClose, onSuccess, triggerRef }) {
   const [formData, setFormData] = useState({
     nome: '',
     documento: '',
+    email: '',
     data_entrada: '',
     placa_veiculo: '',
     is_permanente: false
@@ -108,6 +109,17 @@ function AddVisitanteDropdown({ onClose, onSuccess, triggerRef }) {
             onChange={handleChange}
             placeholder="CPF, RG ou outro documento"
             required
+          />
+        </div>
+
+        <div className="form-field">
+          <label>E-mail (Opcional)</label>
+          <input
+            type="email"
+            name="email"
+            value={formData.email}
+            onChange={handleChange}
+            placeholder="Para envio do QR Code"
           />
         </div>
 
