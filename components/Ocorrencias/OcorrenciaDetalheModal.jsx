@@ -54,6 +54,7 @@ function OcorrenciaDetalheModal({ ocorrencia, onClose, onUpdate }) {
       await ocorrenciaAPI.update(ocorrencia.id, { resposta, status: statusEdit });
       setSuccess('Resposta salva com sucesso!');
       onUpdate && onUpdate();
+      setTimeout(() => onClose(), 1200);
     } catch (err) {
       setError(err.response?.data?.error || 'Erro ao salvar resposta.');
     } finally {

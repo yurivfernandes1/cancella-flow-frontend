@@ -147,7 +147,8 @@ function WelcomePage() {
         if (dias <= 0) return 'Pendentes há menos de 1 dia';
         if (dias === 1) return 'Mais antiga há 1 dia';
         return `Mais antiga há ${dias} dias`;
-      })()
+      })(),
+      link: '/minha-area?tab=encomendas'
     },
     {
       title: 'Reservas (Próximos 7 dias)',

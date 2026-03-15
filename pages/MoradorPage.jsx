@@ -7,9 +7,10 @@ import AddVisitanteDropdown from '../components/Visitantes/AddVisitanteDropdown'
 import AddVeiculoDropdown from '../components/Veiculos/AddVeiculoDropdown';
 
 import { useAuth } from '../context/AuthContext';
-import api, { avisoAPI, espacoReservaAPI, listaConvidadosAPI, ocorrenciaAPI } from '../services/api';
+import api, { avisoAPI, espacoReservaAPI, listaConvidadosAPI, ocorrenciaAPI, eventoAPI } from '../services/api';
 import ListaConvidadosModal from '../components/Eventos/ListaConvidadosModal';
 import AddListaConvidadosModal from '../components/Eventos/AddListaConvidadosModal';
+import EventoModal from '../components/Eventos/EventoModal';
 import { FaUsers } from 'react-icons/fa';
 import AvisoBanner from '../components/Avisos/AvisoBanner';
 import ReservaModal from '../components/Reservas/ReservaModal';
@@ -71,10 +72,13 @@ function MoradorPage() {
   const [eventoSelecionado, setEventoSelecionado] = useState(null);
   const [listaSelecionada, setListaSelecionada] = useState(null);
   const [showAddLista, setShowAddLista] = useState(false);
+  const [showEventoModal, setShowEventoModal] = useState(false);
+  const [editingEvento, setEditingEvento] = useState(null);
 
   // Verificar se o usuário tem acesso
   const isMorador = user?.groups?.some(group => group.name === 'Moradores');
-  const hasAccess = user?.is_staff || isMorador;
+  const isSindico = user?.groups?.some(group => group.name === 'Síndicos');
+  const hasAccess = user?.is_staff || isMorador || isSindico;
 
   if (!hasAccess) {
     return <Navigate to="/welcome" replace />;
@@ -291,6 +295,17 @@ function MoradorPage() {
     } catch (error) {
       console.error('Erro ao cancelar reserva:', error);
       alert(`Erro ao cancelar: ${error.response?.data?.error || 'Ocorreu um erro ao cancelar'}`);
+    }
+  };
+
+  const handleDeleteEvento = async (id) => {
+    if (!window.confirm('Deseja excluir este evento?')) return;
+    try {
+      await eventoAPI.delete(id);
+      fetchData('eventos', currentPage, searchTerm);
+    } catch (error) {
+      console.error('Erro ao excluir evento:', error);
+      alert(`Erro ao excluir: ${error.response?.data?.error || 'Ocorreu um erro'}`);
     }
   };
 
@@ -685,6 +700,29 @@ function MoradorPage() {
         return `${value.slice(0, 5)} - ${horaFim.slice(0, 5)}`;
       }
     },
+    ...(isSindico || user?.is_staff ? [{
+      key: 'actions',
+      header: 'Ações',
+      width: '10%',
+      render: (_, row) => (
+        <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+          <button
+            onClick={() => { setEditingEvento(row); setShowEventoModal(true); }}
+            className="action-button edit-button"
+            title="Editar evento"
+          >
+            <FaEdit />
+          </button>
+          <button
+            onClick={() => handleDeleteEvento(row.id)}
+            className="action-button delete-button"
+            title="Excluir evento"
+          >
+            <FaTrash />
+          </button>
+        </div>
+      )
+    }] : []),
   ];
 
   const ocorrenciasColumns = [
@@ -968,6 +1006,14 @@ function MoradorPage() {
               </div>
             )}
 
+            {activeTab === 'eventos' && (isSindico || user?.is_staff) && (
+              <div className="dropdown-wrapper">
+                <button className="add-button" onClick={() => { setEditingEvento(null); setShowEventoModal(true); }}>
+                  <FaPlus /> Novo Evento
+                </button>
+              </div>
+            )}
+
             {activeTab === 'lista_convidados' && (
               <div className="dropdown-wrapper">
                 <button className="add-button" onClick={() => setShowAddLista(true)}>
@@ -1079,6 +1125,19 @@ function MoradorPage() {
             fetchData('lista_convidados', 1, searchTerm);
           }}
           moradorUnidadeId={user?.unidade_id}
+        />
+      )}
+
+      {showEventoModal && (
+        <EventoModal
+          isOpen={showEventoModal}
+          onClose={() => { setShowEventoModal(false); setEditingEvento(null); }}
+          onSuccess={() => {
+            setShowEventoModal(false);
+            setEditingEvento(null);
+            fetchData('eventos', currentPage, searchTerm);
+          }}
+          evento={editingEvento}
         />
       )}
 

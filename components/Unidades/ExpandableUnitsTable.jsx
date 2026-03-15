@@ -36,6 +36,7 @@ function ExpandableUnitsTable({
   onSaveMorador,
   onResetPassword,
   onDeleteMorador,
+  onVincularSindico,
 }) {
   const [expandedRows, setExpandedRows] = useState({});
   const [editingMoradorId, setEditingMoradorId] = useState(null);
@@ -262,15 +263,28 @@ function ExpandableUnitsTable({
                     <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
                       Moradores
                     </div>
-                    {isSindico && onAddMorador && (
-                      <button
-                        className="add-user-button"
-                        style={{ fontSize: '0.82rem', padding: '8px 14px', marginBottom: 10, width: '100%', minHeight: 44 }}
-                        onClick={() => onAddMorador(unidade.id)}
-                      >
-                        <FaUserPlus style={{ marginRight: 6 }} />
-                        Adicionar Morador
-                      </button>
+                    {isSindico && (onAddMorador || onVincularSindico) && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+                        {onVincularSindico && (
+                          <button
+                            style={{ fontSize: '0.82rem', padding: '8px 14px', width: '100%', minHeight: 44, background: '#fff', color: '#2abb98', border: '1px solid #2abb98', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                            onClick={() => onVincularSindico(unidade.id)}
+                          >
+                            <FaUserPlus />
+                            Vincular-me a esta unidade
+                          </button>
+                        )}
+                        {onAddMorador && (
+                          <button
+                            className="add-user-button"
+                            style={{ fontSize: '0.82rem', padding: '8px 14px', width: '100%', minHeight: 44 }}
+                            onClick={() => onAddMorador(unidade.id)}
+                          >
+                            <FaUserPlus style={{ marginRight: 6 }} />
+                            Adicionar Morador
+                          </button>
+                        )}
+                      </div>
                     )}
                     {moradores.length === 0 ? (
                       <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: 0 }}>Nenhum morador vinculado.</p>
@@ -357,7 +371,7 @@ function ExpandableUnitsTable({
                                     <button className="reset-button" onClick={() => onResetPassword(morador.id)} title="Resetar senha" style={{ flex: 1, minHeight: 44 }}><FaKey style={{ marginRight: 4 }} /> Resetar senha</button>
                                   )}
                                   {onDeleteMorador && (
-                                    <button className="delete-button" onClick={() => onDeleteMorador(morador.id)} title="Remover morador" style={{ flex: 1, minHeight: 44 }}><FaTrash style={{ marginRight: 4 }} /> Remover</button>
+                                    <button className="delete-button" onClick={() => onDeleteMorador(morador.id, morador.full_name, unitTitle)} title="Remover morador" style={{ flex: 1, minHeight: 44 }}><FaTrash style={{ marginRight: 4 }} /> Remover</button>
                                   )}
                                 </>
                               )}
@@ -524,16 +538,27 @@ function ExpandableUnitsTable({
                     <tr>
                       <td colSpan={isSindico ? 7 : 6} style={{ padding: 0, background: '#f8fafc' }}>
                         <div style={{ padding: '12px 24px 16px 48px' }}>
-                          {isSindico && onAddMorador && (
-                            <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'flex-end' }}>
-                              <button
-                                className="add-user-button"
-                                style={{ fontSize: '0.82rem', padding: '5px 14px' }}
-                                onClick={() => onAddMorador(unidade.id)}
-                              >
-                                <FaUserPlus style={{ marginRight: 6 }} />
-                                Adicionar Morador
-                              </button>
+                          {isSindico && (onAddMorador || onVincularSindico) && (
+                            <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
+                              {onVincularSindico && (
+                                <button
+                                  style={{ fontSize: '0.82rem', padding: '5px 14px', background: '#fff', color: '#2abb98', border: '1px solid #2abb98', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
+                                  onClick={() => onVincularSindico(unidade.id)}
+                                >
+                                  <FaUserPlus />
+                                  Vincular-me a esta unidade
+                                </button>
+                              )}
+                              {onAddMorador && (
+                                <button
+                                  className="add-user-button"
+                                  style={{ fontSize: '0.82rem', padding: '5px 14px' }}
+                                  onClick={() => onAddMorador(unidade.id)}
+                                >
+                                  <FaUserPlus style={{ marginRight: 6 }} />
+                                  Adicionar Morador
+                                </button>
+                              )}
                             </div>
                           )}
 
@@ -667,7 +692,7 @@ function ExpandableUnitsTable({
                                                   <button className="reset-button" onClick={() => onResetPassword(morador.id)} title="Resetar senha"><FaKey /></button>
                                                 )}
                                                 {onDeleteMorador && (
-                                                  <button className="delete-button" onClick={() => onDeleteMorador(morador.id)} title="Remover morador"><FaTrash /></button>
+                                                  <button className="delete-button" onClick={() => onDeleteMorador(morador.id, morador.full_name, unidade.identificacao_completa || unidade.numero)} title="Remover morador"><FaTrash /></button>
                                                 )}
                                               </>
                                             )}

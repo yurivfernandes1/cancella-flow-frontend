@@ -27,7 +27,8 @@ function EncomendasPage() {
   // Verificar se o usuário tem acesso
   const isPortaria = user?.groups?.some(group => group.name === 'Portaria');
   const isMorador = user?.groups?.some(group => group.name === 'Moradores');
-  const hasAccess = user?.is_staff || isPortaria || isMorador;
+  const isSindico = user?.groups?.some(group => group.name === 'Síndicos');
+  const hasAccess = user?.is_staff || isPortaria || isMorador || isSindico;
 
   if (!hasAccess) {
     return <Navigate to="/welcome" replace />;
@@ -269,7 +270,7 @@ function EncomendasPage() {
                 {showAddEncomenda && (
                   <AddEncomendaDropdown
                     onClose={() => setShowAddEncomenda(false)}
-                    onSuccess={() => {
+                    onEncomendaAdded={() => {
                       fetchData(currentPage, searchTerm, incluirEntregues, unidadeAntigaId, codigoAntiga);
                       setShowAddEncomenda(false);
                     }}
