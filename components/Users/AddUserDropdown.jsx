@@ -287,7 +287,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
     <>
       {showDropdown && (
         <GenericDropdown
-          title={`Novo ${userType === 'sindico' ? 'Síndico' : userType === 'funcionario' ? 'Funcionário' : existingMode ? 'Vincular Morador' : 'Morador'}`}
+          title={userType === 'sindico' ? 'Novo Síndico' : userType === 'funcionario' ? 'Novo Funcionário' : existingMode ? 'Vincular Morador' : 'Novo Morador'}
           onClose={onClose}
           icon={<FaUserPlus size={18} />}
           className="add-user-dropdown"
@@ -330,10 +330,11 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
                     <label>Buscar Morador Existente</label>
                     <AsyncSelect
                       loadOptions={loadMoradorOptions}
+                      defaultOptions
                       onChange={setSelectedMorador}
                       value={selectedMorador}
-                      placeholder="Digite o nome para buscar..."
-                      noOptionsMessage={({ inputValue }) => inputValue.length < 1 ? 'Digite para buscar' : 'Nenhum morador encontrado'}
+                      placeholder="Buscar por nome ou usuário..."
+                      noOptionsMessage={() => 'Nenhum morador encontrado'}
                       loadingMessage={() => 'Buscando...'}
                       menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
                       menuPosition="fixed"

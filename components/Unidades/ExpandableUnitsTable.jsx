@@ -269,15 +269,23 @@ function ExpandableUnitsTable({
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         {onVincularSindico && (() => {
                           const jaVinculado = currentUserId && moradores.some(m => String(m.id) === String(currentUserId));
-                          return (
+                          const currentMorador = jaVinculado ? moradores.find(m => String(m.id) === String(currentUserId)) : null;
+                          return jaVinculado ? (
+                            <button
+                              className="unit-card__action-btn"
+                              style={{ background: '#ef4444', color: 'white' }}
+                              onClick={() => onDeleteMorador(currentUserId, currentMorador?.full_name || '', unitTitle, unidade.id)}
+                              title="Desvincular-me desta unidade"
+                            >
+                              <FaTimes style={{ marginRight: 4 }} /> Desvincular
+                            </button>
+                          ) : (
                             <button
                               className="unit-card__action-btn unit-card__action-btn--outline"
-                              onClick={() => !jaVinculado && onVincularSindico(unidade.id)}
-                              disabled={jaVinculado}
-                              title={jaVinculado ? 'Você já está vinculado a esta unidade' : 'Vincular-me a esta unidade'}
-                              style={jaVinculado ? { opacity: 0.5, cursor: 'default' } : {}}
+                              onClick={() => onVincularSindico(unidade.id)}
+                              title="Vincular-me a esta unidade"
                             >
-                              <FaUserPlus /> {jaVinculado ? 'Já vinculado' : 'Vincular-me'}
+                              <FaUserPlus /> Vincular-me
                             </button>
                           );
                         })()}
