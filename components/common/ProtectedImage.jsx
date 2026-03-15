@@ -6,7 +6,7 @@ import api from '../../services/api';
 // Uso: <ProtectedImage src={url} alt="..." className="..." style={{}} />
 export default function ProtectedImage({ src, alt, fallbackSrc, ...rest }) {
   const [blobUrl, setBlobUrl] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !!(src && src.includes('/logo-db/')));
   const [error, setError] = useState(false);
 
   useEffect(() => {
