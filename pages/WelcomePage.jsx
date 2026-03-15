@@ -22,7 +22,6 @@ import {
   FaCalendarCheck,
   FaExclamationTriangle,
   FaClipboardList,
-  FaUserClock,
   FaDoorOpen,
   FaQrcode,
 } from 'react-icons/fa';
@@ -202,20 +201,11 @@ function WelcomePage() {
   // Dashboard dinâmico para admin (dados reais da API)
   const adminDashboardStats = loadingStats ? [] : [
     {
-      title: 'Usuários Pendentes',
-      value: adminStats?.usuarios_pendentes?.toString() || '0',
-      icon: <FaUserClock size={32} />,
-      color: (adminStats?.usuarios_pendentes || 0) > 0 ? '#ef4444' : '#2abb98',
-      description: 'Aguardando aprovação de cadastro',
-      link: '/gestao-usuarios?tab=usuarios'
-    },
-    {
       title: 'Total de Condomínios',
       value: adminStats?.total_condominios?.toString() || '0',
       icon: <FaBuilding size={32} />,
       color: '#19294a',
       description: 'Condomínios ativos no sistema',
-      link: '/gestao-usuarios?tab=condominios'
     },
     {
       title: 'Usuários Ativos',
@@ -230,7 +220,6 @@ function WelcomePage() {
       icon: <FaUserTie size={32} />,
       color: '#2abb98',
       description: 'Síndicos cadastrados',
-      link: '/gestao-usuarios?tab=sindicos'
     },
     {
       title: 'Total de Moradores',

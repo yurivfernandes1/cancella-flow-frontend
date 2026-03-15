@@ -184,38 +184,14 @@ function CondominioProfile() {
       {/* ── Cards ────────────────────────────────────────────── */}
       <div className="cp-cards">
 
-        {/* Nome — editável */}
+        {/* Nome — somente leitura */}
         <div className="cp-card cp-card--full">
           <FaBuilding className="cp-card-icon" />
           <div className="cp-card-body">
             <div className="cp-card-header">
               <span className="cp-card-label">Nome do Condomínio</span>
-              {editingField !== 'nome' && (
-                <button className="cp-inline-edit-btn" onClick={() => startEdit('nome')} title="Editar">
-                  <FaPencilAlt />
-                </button>
-              )}
             </div>
-            {editingField === 'nome' ? (
-              <div className="cp-inline-input-row">
-                <input
-                  className="cp-inline-input"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  autoFocus
-                  disabled={fieldSaving}
-                />
-                <button className="cp-inline-action cp-inline-action--save" onClick={saveField} disabled={fieldSaving} title="Salvar">
-                  <FaSave />
-                </button>
-                <button className="cp-inline-action cp-inline-action--cancel" onClick={cancelEdit} disabled={fieldSaving} title="Cancelar">
-                  <FaTimes />
-                </button>
-              </div>
-            ) : (
-              <span className="cp-card-value">{condominioData.nome || '—'}</span>
-            )}
+            <span className="cp-card-value">{condominioData.nome || '—'}</span>
           </div>
         </div>
 
