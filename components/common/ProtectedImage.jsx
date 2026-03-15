@@ -65,7 +65,11 @@ export default function ProtectedImage({ src, alt, fallbackSrc, ...rest }) {
         // Reutiliza a promise em andamento se outro componente já iniciou o fetch
         let promise = pendingFetches.get(src);
         if (!promise) {
-          promise = api.get(src, { responseType: 'blob' }).then((resp) => {
+          const fetchUrl =
+            typeof window !== 'undefined' && window.location.protocol === 'https:'
+              ? src.replace(/^http:\/\//, 'https://')
+              : src;
+          promise = api.get(fetchUrl, { responseType: 'blob' }).then((resp) => {
             const objectUrl = URL.createObjectURL(resp.data);
             blobCache.set(src, objectUrl);
             return objectUrl;
