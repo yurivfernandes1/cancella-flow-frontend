@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { FaChevronDown, FaChevronRight, FaEdit, FaCheck, FaTimes, FaKey, FaUserPlus, FaTrash } from 'react-icons/fa';
+import React, { useState } from 'react';
+import { FaChevronDown, FaChevronRight, FaEdit, FaCheck, FaTimes, FaKey, FaUserPlus, FaTrash, FaHome, FaUsers } from 'react-icons/fa';
 import api from '../../services/api';
 import { formatCPF, formatTelefone } from '../../utils/formatters';
 import { validateCPF, validatePhone } from '../../utils/validators';
 import '../../styles/GenericMobileCard.css';
+import '../../styles/UnitsCards.css';
 
 /**
- * Tabela expansível de unidades com moradores vinculados.
+ * Grid de cards de unidades com moradores vinculados.
  *
  * Props:
  *  - unidades: array de objetos { id, numero, bloco, identificacao_completa, is_active, moradores: [...] }
@@ -45,13 +46,6 @@ function ExpandableUnitsTable({
   const [editingUnidadeId, setEditingUnidadeId] = useState(null);
   const [editUnidadeData, setEditUnidadeData] = useState({});
   const [savingUnidade, setSavingUnidade] = useState(false);
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-
-  useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth <= 768);
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   const isSindico = mode === 'sindico';
 
@@ -64,6 +58,7 @@ function ExpandableUnitsTable({
     e.stopPropagation();
     setEditingUnidadeId(unidade.id);
     setEditUnidadeData({ numero: unidade.numero || '', bloco: unidade.bloco || '', is_active: unidade.is_active !== false });
+    setExpandedRows(prev => ({ ...prev, [unidade.id]: true }));
   };
 
   const cancelEditUnidade = (e) => {
@@ -95,10 +90,7 @@ function ExpandableUnitsTable({
 
   const startEditMorador = (morador) => {
     setEditingMoradorId(morador.id);
-    setEditMoradorData({
-      ...morador,
-      unidade_id: morador.unidade_id || null,
-    });
+    setEditMoradorData({ ...morador, unidade_id: morador.unidade_id || null });
     setMoradorValidation({ cpf: null, phone: null });
   };
 
@@ -116,14 +108,8 @@ function ExpandableUnitsTable({
     if (!validateCPF(cpfDigits)) { alert('CPF inválido.'); return; }
     if (phoneDigits && !validatePhone(phoneDigits)) { alert('Telefone inválido.'); return; }
 
-    const dataToSave = {
-      ...editMoradorData,
-      cpf: cpfDigits,
-      phone: phoneDigits || '',
-    };
-
     if (onSaveMorador) {
-      onSaveMorador(editingMoradorId, dataToSave);
+      onSaveMorador(editingMoradorId, { ...editMoradorData, cpf: cpfDigits, phone: phoneDigits || '' });
     }
     setEditingMoradorId(null);
     setEditMoradorData({});
@@ -147,9 +133,9 @@ function ExpandableUnitsTable({
     return <div className="empty-state" style={{ padding: 32, textAlign: 'center', color: '#94a3b8' }}>Nenhuma unidade encontrada.</div>;
   }
 
-  if (isMobile) {
-    return (
-      <div className="mobile-cards-container">
+  return (
+    <div>
+      <div className="units-cards-grid">
         {unidades.map(unidade => {
           const isExpanded = expandedRows[unidade.id];
           const moradores = unidade.moradores || [];
@@ -157,612 +143,256 @@ function ExpandableUnitsTable({
           const unitTitle = unidade.identificacao_completa || `${unidade.bloco ? unidade.bloco + ' - ' : ''}${unidade.numero}`;
 
           return (
-            <div key={unidade.id} className="mobile-card">
+            <div key={unidade.id} className={`unit-card ${isExpanded ? 'unit-card--expanded' : ''} ${!unidade.is_active ? 'unit-card--inactive' : ''}`}>
+              {/* Cabeçalho do card */}
               <div
-                className="mobile-card-header"
+                className="unit-card__header"
                 style={{ cursor: isEditingUnidade ? 'default' : 'pointer' }}
                 onClick={() => !isEditingUnidade && toggleRow(unidade.id)}
               >
-                <span className="card-title">
-                  {isExpanded
-                    ? <FaChevronDown style={{ marginRight: 6, fontSize: '0.85rem', flexShrink: 0 }} />
-                    : <FaChevronRight style={{ marginRight: 6, fontSize: '0.85rem', flexShrink: 0 }} />}
-                  {unitTitle}
-                </span>
-                {isSindico && !isEditingUnidade && (
-                  <button
-                    style={{ background: 'transparent', color: 'white', border: 'none', cursor: 'pointer', padding: '4px 8px', minHeight: 44, display: 'flex', alignItems: 'center' }}
-                    title="Editar unidade"
-                    onClick={(e) => { e.stopPropagation(); startEditUnidade(unidade, e); }}
-                  >
-                    <FaEdit />
-                  </button>
-                )}
+                <div className="unit-card__header-left">
+                  <FaHome className="unit-card__icon" />
+                  <span className="unit-card__title">{unitTitle}</span>
+                </div>
+                <div className="unit-card__header-right">
+                  {isSindico && !isEditingUnidade && (
+                    <button
+                      className="unit-card__edit-btn"
+                      title="Editar unidade"
+                      onClick={(e) => startEditUnidade(unidade, e)}
+                    >
+                      <FaEdit />
+                    </button>
+                  )}
+                  <span className="unit-card__chevron">
+                    {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
+                  </span>
+                </div>
               </div>
 
-              <div className="mobile-card-content">
-                <div className="mobile-card-field">
-                  <span className="field-label">Bloco</span>
-                  <span className="field-value">
-                    {isEditingUnidade ? (
-                      <input
-                        className="mobile-edit-input"
-                        type="text"
-                        value={editUnidadeData.bloco}
-                        onChange={e => setEditUnidadeData(prev => ({ ...prev, bloco: e.target.value }))}
-                        placeholder="Bloco"
-                        style={{ width: '100%' }}
-                      />
-                    ) : (unidade.bloco || '-')}
-                  </span>
-                </div>
-                <div className="mobile-card-field">
-                  <span className="field-label">Número</span>
-                  <span className="field-value">
-                    {isEditingUnidade ? (
-                      <input
-                        className="mobile-edit-input"
-                        type="text"
-                        value={editUnidadeData.numero}
-                        onChange={e => setEditUnidadeData(prev => ({ ...prev, numero: e.target.value }))}
-                        placeholder="Número"
-                        style={{ width: '100%' }}
-                      />
-                    ) : unidade.numero}
-                  </span>
-                </div>
-                <div className="mobile-card-field">
-                  <span className="field-label">Status</span>
-                  <span className="field-value">
-                    {isEditingUnidade ? (
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {/* Resumo do card */}
+              <div
+                className="unit-card__summary"
+                style={{ cursor: isEditingUnidade ? 'default' : 'pointer' }}
+                onClick={() => !isEditingUnidade && toggleRow(unidade.id)}
+              >
+                {isEditingUnidade ? (
+                  <div className="unit-card__edit-form" onClick={e => e.stopPropagation()}>
+                    <div className="unit-card__edit-row">
+                      <div className="unit-card__edit-field">
+                        <label className="unit-card__edit-label">Bloco</label>
                         <input
-                          type="checkbox"
-                          checked={Boolean(editUnidadeData.is_active)}
-                          onChange={e => setEditUnidadeData(prev => ({ ...prev, is_active: e.target.checked }))}
-                        />
-                        Ativo
-                      </label>
-                    ) : (
-                      <span className={unidade.is_active ? 'status-active' : 'status-inactive'}>
-                        {unidade.is_active ? 'Ativo' : 'Inativo'}
-                      </span>
-                    )}
-                  </span>
-                </div>
-                <div className="mobile-card-field">
-                  <span className="field-label">Moradores</span>
-                  <span className="field-value">
-                    <span style={{
-                      display: 'inline-block',
-                      background: moradores.length ? '#dbeafe' : '#f1f5f9',
-                      color: moradores.length ? '#1d4ed8' : '#94a3b8',
-                      borderRadius: 12,
-                      padding: '2px 10px',
-                      fontSize: '0.78rem',
-                      fontWeight: 600,
-                    }}>
-                      {moradores.length} morador{moradores.length !== 1 ? 'es' : ''}
-                    </span>
-                  </span>
-                </div>
-
-                {isSindico && isEditingUnidade && (
-                  <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                    <button className="save-button" title="Salvar" disabled={savingUnidade} onClick={saveUnidade} style={{ flex: 1, minHeight: 44 }}>
-                      <FaCheck style={{ marginRight: 6 }} /> Salvar
-                    </button>
-                    <button className="cancel-button" title="Cancelar" onClick={cancelEditUnidade} style={{ flex: 1, minHeight: 44 }}>
-                      <FaTimes style={{ marginRight: 6 }} /> Cancelar
-                    </button>
-                  </div>
-                )}
-
-                {isExpanded && (
-                  <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
-                      Moradores
-                    </div>
-                    {isSindico && (onAddMorador || onVincularSindico) && (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
-                        {onVincularSindico && (
-                          <button
-                            style={{ fontSize: '0.82rem', padding: '8px 14px', width: '100%', minHeight: 44, background: '#fff', color: '#2abb98', border: '1px solid #2abb98', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                            onClick={() => onVincularSindico(unidade.id)}
-                          >
-                            <FaUserPlus />
-                            Vincular-me a esta unidade
-                          </button>
-                        )}
-                        {onAddMorador && (
-                          <button
-                            className="add-user-button"
-                            style={{ fontSize: '0.82rem', padding: '8px 14px', width: '100%', minHeight: 44 }}
-                            onClick={() => onAddMorador(unidade.id)}
-                          >
-                            <FaUserPlus style={{ marginRight: 6 }} />
-                            Adicionar Morador
-                          </button>
-                        )}
-                      </div>
-                    )}
-                    {moradores.length === 0 ? (
-                      <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: 0 }}>Nenhum morador vinculado.</p>
-                    ) : moradores.map(morador => {
-                      const isEditingThis = isSindico && editingMoradorId === morador.id;
-                      return (
-                        <div key={morador.id} style={{ background: '#f8fafc', borderRadius: 8, padding: '0.75rem', marginBottom: 8, border: '1px solid #e2e8f0' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                            <span style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.9rem', flex: 1 }}>
-                              {isEditingThis ? (
-                                <input className="mobile-edit-input" type="text" value={editMoradorData.full_name || ''} onChange={e => handleMoradorFieldChange('full_name', e.target.value)} style={{ width: '100%' }} />
-                              ) : (morador.full_name || '-')}
-                            </span>
-                            {isSindico && !isEditingThis && (
-                              <button className="edit-button" style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px 8px', minHeight: 44, display: 'flex', alignItems: 'center' }} onClick={() => startEditMorador(morador)} title="Editar">
-                                <FaEdit />
-                              </button>
-                            )}
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 6 }}>
-                            <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>CPF</span>
-                            <span style={{ fontSize: '0.9rem', color: '#1e293b' }}>
-                              {isEditingThis ? (
-                                <input
-                                  className={`mobile-edit-input ${moradorValidation.cpf === false ? 'input-error' : moradorValidation.cpf === true ? 'input-valid' : ''}`}
-                                  type="text"
-                                  value={formatCPF(String(editMoradorData.cpf || '').replace(/\D/g, '').slice(0, 11))}
-                                  onChange={e => {
-                                    const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
-                                    setMoradorValidation(prev => ({ ...prev, cpf: digits ? validateCPF(digits) : null }));
-                                    handleMoradorFieldChange('cpf', digits);
-                                  }}
-                                  placeholder="000.000.000-00"
-                                  style={{ width: '100%' }}
-                                />
-                              ) : formatCpfDisplay(morador.cpf)}
-                            </span>
-                          </div>
-                          {isSindico && isEditingThis && (
-                            <>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 6 }}>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Usuário</span>
-                                <input className="mobile-edit-input" type="text" value={editMoradorData.username || ''} onChange={e => handleMoradorFieldChange('username', e.target.value)} style={{ width: '100%' }} />
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 6 }}>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>E-mail</span>
-                                <input className="mobile-edit-input" type="email" value={editMoradorData.email || ''} onChange={e => handleMoradorFieldChange('email', e.target.value)} style={{ width: '100%' }} />
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 6 }}>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Telefone</span>
-                                <input
-                                  className={`mobile-edit-input ${moradorValidation.phone === false ? 'input-error' : moradorValidation.phone === true ? 'input-valid' : ''}`}
-                                  type="text"
-                                  value={formatTelefone(String(editMoradorData.phone || '').replace(/\D/g, '').slice(0, 11))}
-                                  onChange={e => {
-                                    const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
-                                    setMoradorValidation(prev => ({ ...prev, phone: digits ? validatePhone(digits) : null }));
-                                    handleMoradorFieldChange('phone', digits);
-                                  }}
-                                  placeholder="(00) 00000-0000"
-                                  style={{ width: '100%' }}
-                                />
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 6 }}>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>Status</span>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                  <input type="checkbox" checked={Boolean(editMoradorData.is_active)} onChange={e => handleMoradorFieldChange('is_active', e.target.checked)} />
-                                  Ativo
-                                </label>
-                              </div>
-                            </>
-                          )}
-                          {isSindico && (
-                            <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                              {isEditingThis ? (
-                                <>
-                                  <button className="save-button" onClick={saveMorador} title="Salvar" style={{ flex: 1, minHeight: 44 }}><FaCheck style={{ marginRight: 4 }} /> Salvar</button>
-                                  <button className="cancel-button" onClick={cancelEditMorador} title="Cancelar" style={{ flex: 1, minHeight: 44 }}><FaTimes style={{ marginRight: 4 }} /> Cancelar</button>
-                                </>
-                              ) : (
-                                <>
-                                  <button className="edit-button" onClick={() => startEditMorador(morador)} title="Editar morador" style={{ flex: 1, minHeight: 44 }}><FaEdit style={{ marginRight: 4 }} /> Editar</button>
-                                  {onResetPassword && (
-                                    <button className="reset-button" onClick={() => onResetPassword(morador.id)} title="Resetar senha" style={{ flex: 1, minHeight: 44 }}><FaKey style={{ marginRight: 4 }} /> Resetar senha</button>
-                                  )}
-                                  {onDeleteMorador && (
-                                    <button className="delete-button" onClick={() => onDeleteMorador(morador.id, morador.full_name, unitTitle)} title="Remover morador" style={{ flex: 1, minHeight: 44 }}><FaTrash style={{ marginRight: 4 }} /> Remover</button>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-
-        {totalPages > 1 && (
-          <div className="pagination" style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '16px 0' }}>
-            <button className="page-button" style={{ minHeight: 44 }} disabled={currentPage <= 1} onClick={() => onPageChange && onPageChange(currentPage - 1)}>Anterior</button>
-            <span style={{ padding: '6px 12px', color: '#64748b', fontSize: '0.9rem', display: 'flex', alignItems: 'center' }}>Página {currentPage} de {totalPages}</span>
-            <button className="page-button" style={{ minHeight: 44 }} disabled={currentPage >= totalPages} onClick={() => onPageChange && onPageChange(currentPage + 1)}>Próxima</button>
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div className="table-container expandable-units-table">
-      <div className="table-scroll">
-        <table className="generic-table">
-          <colgroup>
-            <col style={{ width: 40 }} />
-            <col />
-            <col />
-            <col />
-            <col />
-            <col />
-            {isSindico && <col style={{ width: 130 }} />}
-          </colgroup>
-          <thead>
-            <tr>
-              <th><span className="header-content"></span></th>
-              <th><span className="header-content">Bloco</span></th>
-              <th><span className="header-content">Número</span></th>
-              <th><span className="header-content">Identificação</span></th>
-              <th><span className="header-content">Moradores</span></th>
-              <th><span className="header-content">Status</span></th>
-              {isSindico && <th><span className="header-content">Ações</span></th>}
-            </tr>
-          </thead>
-          <tbody>
-            {unidades.map(unidade => {
-              const isExpanded = expandedRows[unidade.id];
-              const moradores = unidade.moradores || [];
-              const isEditingUnidade = editingUnidadeId === unidade.id;
-
-              return (
-                <React.Fragment key={unidade.id}>
-                  {/* Linha da unidade */}
-                  <tr
-                    className={`unit-row ${isExpanded ? 'expanded' : ''} ${isEditingUnidade ? 'editing' : ''}`}
-                    style={{ cursor: isEditingUnidade ? 'default' : 'pointer', background: isExpanded ? '#f0fdf4' : undefined }}
-                    onClick={() => !isEditingUnidade && toggleRow(unidade.id)}
-                  >
-                    <td style={{ textAlign: 'center', fontSize: '0.85rem', color: '#64748b' }}>
-                      {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
-                    </td>
-                    <td>
-                      {isEditingUnidade ? (
-                        <input
-                          className="edit-input"
+                          className="mobile-edit-input"
                           type="text"
                           value={editUnidadeData.bloco}
                           onChange={e => setEditUnidadeData(prev => ({ ...prev, bloco: e.target.value }))}
                           placeholder="Bloco"
-                          style={{ width: '100%', minWidth: 60 }}
-                          onClick={e => e.stopPropagation()}
                         />
-                      ) : (
-                        unidade.bloco || '-'
-                      )}
-                    </td>
-                    <td>
-                      {isEditingUnidade ? (
+                      </div>
+                      <div className="unit-card__edit-field">
+                        <label className="unit-card__edit-label">Número</label>
                         <input
-                          className="edit-input"
+                          className="mobile-edit-input"
                           type="text"
                           value={editUnidadeData.numero}
                           onChange={e => setEditUnidadeData(prev => ({ ...prev, numero: e.target.value }))}
                           placeholder="Número"
-                          style={{ width: '100%', minWidth: 60 }}
-                          onClick={e => e.stopPropagation()}
                         />
-                      ) : (
-                        unidade.numero
-                      )}
-                    </td>
-                    <td>{unidade.identificacao_completa || `${unidade.bloco ? unidade.bloco + ' - ' : ''}${unidade.numero}`}</td>
-                    <td>
+                      </div>
+                    </div>
+                    <div className="unit-card__edit-field">
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem', color: '#334155', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(editUnidadeData.is_active)}
+                          onChange={e => setEditUnidadeData(prev => ({ ...prev, is_active: e.target.checked }))}
+                          style={{ width: 18, height: 18, accentColor: '#2abb98' }}
+                        />
+                        Unidade ativa
+                      </label>
+                    </div>
+                    <div className="unit-card__edit-actions">
+                      <button className="save-button" disabled={savingUnidade} onClick={saveUnidade}>
+                        <FaCheck style={{ marginRight: 4 }} /> Salvar
+                      </button>
+                      <button className="cancel-button" onClick={cancelEditUnidade}>
+                        <FaTimes style={{ marginRight: 4 }} /> Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="unit-card__info">
+                    {unidade.bloco && (
+                      <div className="unit-card__info-item">
+                        <span className="unit-card__info-label">Bloco</span>
+                        <span className="unit-card__info-value">{unidade.bloco}</span>
+                      </div>
+                    )}
+                    <div className="unit-card__info-item">
+                      <span className="unit-card__info-label">Número</span>
+                      <span className="unit-card__info-value">{unidade.numero}</span>
+                    </div>
+                    <div className="unit-card__info-item">
+                      <span className={`unit-card__status-badge ${unidade.is_active ? 'unit-card__status-badge--active' : 'unit-card__status-badge--inactive'}`}>
+                        {unidade.is_active ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </div>
+                    <div className="unit-card__info-item unit-card__residents-count">
+                      <FaUsers style={{ fontSize: '0.8rem', color: moradores.length ? '#1d4ed8' : '#94a3b8' }} />
                       <span style={{
-                        display: 'inline-block',
                         background: moradores.length ? '#dbeafe' : '#f1f5f9',
                         color: moradores.length ? '#1d4ed8' : '#94a3b8',
                         borderRadius: 12,
                         padding: '2px 10px',
                         fontSize: '0.78rem',
-                        fontWeight: 600
+                        fontWeight: 600,
                       }}>
                         {moradores.length} morador{moradores.length !== 1 ? 'es' : ''}
                       </span>
-                    </td>
-                    <td>
-                      {isEditingUnidade ? (
-                        <input
-                          type="checkbox"
-                          checked={Boolean(editUnidadeData.is_active)}
-                          onChange={e => setEditUnidadeData(prev => ({ ...prev, is_active: e.target.checked }))}
-                          className="status-checkbox"
-                          onClick={e => e.stopPropagation()}
-                        />
-                      ) : (
-                        <span className={unidade.is_active ? 'status-active' : 'status-inactive'}>
-                          {unidade.is_active ? 'Ativo' : 'Inativo'}
-                        </span>
-                      )}
-                    </td>
-                    {isSindico && (
-                      <td onClick={e => e.stopPropagation()}>
-                        <div className="actions-column">
-                          {isEditingUnidade ? (
-                            <>
-                              <button
-                                className="save-button"
-                                title="Salvar"
-                                disabled={savingUnidade}
-                                onClick={saveUnidade}
-                              >
-                                <FaCheck />
-                              </button>
-                              <button
-                                className="cancel-button"
-                                title="Cancelar"
-                                onClick={cancelEditUnidade}
-                              >
-                                <FaTimes />
-                              </button>
-                            </>
-                          ) : (
-                            <button
-                              className="edit-button"
-                              title="Editar unidade"
-                              onClick={(e) => startEditUnidade(unidade, e)}
-                            >
-                              <FaEdit />
-                            </button>
-                          )}
-                        </div>
-                      </td>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Seção expandida — moradores */}
+              {isExpanded && !isEditingUnidade && (
+                <div className="unit-card__residents">
+                  <div className="unit-card__residents-header">
+                    <span className="unit-card__residents-title">Moradores</span>
+                    {isSindico && (onAddMorador || onVincularSindico) && (
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {onVincularSindico && (
+                          <button
+                            className="unit-card__action-btn unit-card__action-btn--outline"
+                            onClick={() => onVincularSindico(unidade.id)}
+                          >
+                            <FaUserPlus /> Vincular-me
+                          </button>
+                        )}
+                        {onAddMorador && (
+                          <button
+                            className="add-user-button unit-card__action-btn"
+                            onClick={() => onAddMorador(unidade.id)}
+                          >
+                            <FaUserPlus style={{ marginRight: 6 }} /> Adicionar Morador
+                          </button>
+                        )}
+                      </div>
                     )}
-                  </tr>
+                  </div>
 
-                  {/* Linha expandida com moradores */}
-                  {isExpanded && (
-                    <tr>
-                      <td colSpan={isSindico ? 7 : 6} style={{ padding: 0, background: '#f8fafc' }}>
-                        <div style={{ padding: '12px 24px 16px 48px' }}>
-                          {isSindico && (onAddMorador || onVincularSindico) && (
-                            <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'flex-end', gap: 8, flexWrap: 'wrap' }}>
-                              {onVincularSindico && (
-                                <button
-                                  style={{ fontSize: '0.82rem', padding: '5px 14px', background: '#fff', color: '#2abb98', border: '1px solid #2abb98', borderRadius: 6, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}
-                                  onClick={() => onVincularSindico(unidade.id)}
-                                >
-                                  <FaUserPlus />
-                                  Vincular-me a esta unidade
-                                </button>
-                              )}
-                              {onAddMorador && (
-                                <button
-                                  className="add-user-button"
-                                  style={{ fontSize: '0.82rem', padding: '5px 14px' }}
-                                  onClick={() => onAddMorador(unidade.id)}
-                                >
-                                  <FaUserPlus style={{ marginRight: 6 }} />
-                                  Adicionar Morador
-                                </button>
-                              )}
-                            </div>
-                          )}
-
-                          {moradores.length === 0 ? (
-                            <p style={{ color: '#94a3b8', fontSize: '0.85rem', margin: 0 }}>Nenhum morador vinculado.</p>
-                          ) : isSindico ? (
-                            /* Tabela de moradores - modo síndico (editável) */
-                            <div className={`table-container ${editingMoradorId ? 'editing-active' : ''}`} style={{ marginTop: 4 }}>
-                              <div className="table-scroll">
-                              <table className="generic-table">
-                                <colgroup>
-                                  <col />
-                                  <col />
-                                  <col />
-                                  <col style={{ minWidth: 155 }} />
-                                  <col style={{ minWidth: 155 }} />
-                                  <col />
-                                  <col />
-                                </colgroup>
-                                <thead>
-                                  <tr>
-                                    <th><span className="header-content">Nome</span></th>
-                                    <th><span className="header-content">Usuário</span></th>
-                                    <th><span className="header-content">E-mail</span></th>
-                                    <th><span className="header-content">CPF</span></th>
-                                    <th><span className="header-content">Telefone</span></th>
-                                    <th><span className="header-content">Status</span></th>
-                                    <th><span className="header-content">Ações</span></th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {moradores.map(morador => {
-                                    const isEditingThis = editingMoradorId === morador.id;
-                                    return (
-                                      <tr key={morador.id}>
-                                        <td>
-                                          {isEditingThis ? (
-                                            <input
-                                              className="edit-input"
-                                              type="text"
-                                              value={editMoradorData.full_name || ''}
-                                              onChange={e => handleMoradorFieldChange('full_name', e.target.value)}
-                                            />
-                                          ) : (
-                                            <span className="cell-content">{morador.full_name || '-'}</span>
-                                          )}
-                                        </td>
-                                        <td>
-                                          {isEditingThis ? (
-                                            <input
-                                              className="edit-input"
-                                              type="text"
-                                              value={editMoradorData.username || ''}
-                                              onChange={e => handleMoradorFieldChange('username', e.target.value)}
-                                            />
-                                          ) : (
-                                            <span className="cell-content">{morador.username || '-'}</span>
-                                          )}
-                                        </td>
-                                        <td>
-                                          {isEditingThis ? (
-                                            <input
-                                              className="edit-input"
-                                              type="email"
-                                              value={editMoradorData.email || ''}
-                                              onChange={e => handleMoradorFieldChange('email', e.target.value)}
-                                            />
-                                          ) : (
-                                            <span className="cell-content">{morador.email || '-'}</span>
-                                          )}
-                                        </td>
-                                        <td>
-                                          {isEditingThis ? (
-                                            <input
-                                              className={`edit-input ${moradorValidation.cpf === false ? 'input-error' : moradorValidation.cpf === true ? 'input-valid' : ''}`}
-                                              type="text"
-                                              value={formatCPF(String(editMoradorData.cpf || '').replace(/\D/g, '').slice(0, 11))}
-                                              onChange={e => {
-                                                const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
-                                                setMoradorValidation(prev => ({ ...prev, cpf: digits ? validateCPF(digits) : null }));
-                                                handleMoradorFieldChange('cpf', digits);
-                                              }}
-                                              placeholder="000.000.000-00"
-                                            />
-                                          ) : (
-                                            <span className="cell-content" style={{ whiteSpace: 'nowrap' }}>{formatCpfDisplay(morador.cpf)}</span>
-                                          )}
-                                        </td>
-                                        <td>
-                                          {isEditingThis ? (
-                                            <input
-                                              className={`edit-input ${moradorValidation.phone === false ? 'input-error' : moradorValidation.phone === true ? 'input-valid' : ''}`}
-                                              type="text"
-                                              value={formatTelefone(String(editMoradorData.phone || '').replace(/\D/g, '').slice(0, 11))}
-                                              onChange={e => {
-                                                const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
-                                                setMoradorValidation(prev => ({ ...prev, phone: digits ? validatePhone(digits) : null }));
-                                                handleMoradorFieldChange('phone', digits);
-                                              }}
-                                              placeholder="(00) 00000-0000"
-                                            />
-                                          ) : (
-                                            <span className="cell-content" style={{ whiteSpace: 'nowrap' }}>{morador.phone ? formatTelefone(morador.phone) : '-'}</span>
-                                          )}
-                                        </td>
-                                        <td>
-                                          {isEditingThis ? (
-                                            <input
-                                              type="checkbox"
-                                              checked={Boolean(editMoradorData.is_active)}
-                                              onChange={e => handleMoradorFieldChange('is_active', e.target.checked)}
-                                              className="status-checkbox"
-                                            />
-                                          ) : (
-                                            <span className={morador.is_active ? 'status-active' : 'status-inactive'}>
-                                              {morador.is_active ? 'Ativo' : 'Inativo'}
-                                            </span>
-                                          )}
-                                        </td>
-                                        <td>
-                                          <div className="actions-column">
-                                            {isEditingThis ? (
-                                              <>
-                                                <button className="save-button" onClick={saveMorador} title="Salvar"><FaCheck /></button>
-                                                <button className="cancel-button" onClick={cancelEditMorador} title="Cancelar"><FaTimes /></button>
-                                              </>
-                                            ) : (
-                                              <>
-                                                <button className="edit-button" onClick={() => startEditMorador(morador)} title="Editar morador"><FaEdit /></button>
-                                                {onResetPassword && (
-                                                  <button className="reset-button" onClick={() => onResetPassword(morador.id)} title="Resetar senha"><FaKey /></button>
-                                                )}
-                                                {onDeleteMorador && (
-                                                  <button className="delete-button" onClick={() => onDeleteMorador(morador.id, morador.full_name, unidade.identificacao_completa || unidade.numero)} title="Remover morador"><FaTrash /></button>
-                                                )}
-                                              </>
-                                            )}
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
+                  {moradores.length === 0 ? (
+                    <p className="unit-card__no-residents">Nenhum morador vinculado.</p>
+                  ) : (
+                    <div className="unit-card__residents-list">
+                      {moradores.map(morador => {
+                        const isEditingThis = isSindico && editingMoradorId === morador.id;
+                        return (
+                          <div key={morador.id} className="unit-card__resident-item">
+                            {isEditingThis ? (
+                              <div className="unit-card__resident-edit">
+                                <div className="unit-card__edit-row">
+                                  <div className="unit-card__edit-field">
+                                    <label className="unit-card__edit-label">Nome</label>
+                                    <input className="mobile-edit-input" type="text" value={editMoradorData.full_name || ''} onChange={e => handleMoradorFieldChange('full_name', e.target.value)} />
+                                  </div>
+                                  <div className="unit-card__edit-field">
+                                    <label className="unit-card__edit-label">Usuário</label>
+                                    <input className="mobile-edit-input" type="text" value={editMoradorData.username || ''} onChange={e => handleMoradorFieldChange('username', e.target.value)} />
+                                  </div>
+                                </div>
+                                <div className="unit-card__edit-row">
+                                  <div className="unit-card__edit-field">
+                                    <label className="unit-card__edit-label">E-mail</label>
+                                    <input className="mobile-edit-input" type="email" value={editMoradorData.email || ''} onChange={e => handleMoradorFieldChange('email', e.target.value)} />
+                                  </div>
+                                  <div className="unit-card__edit-field">
+                                    <label className="unit-card__edit-label">CPF</label>
+                                    <input
+                                      className={`mobile-edit-input ${moradorValidation.cpf === false ? 'input-error' : moradorValidation.cpf === true ? 'input-valid' : ''}`}
+                                      type="text"
+                                      value={formatCPF(String(editMoradorData.cpf || '').replace(/\D/g, '').slice(0, 11))}
+                                      onChange={e => {
+                                        const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+                                        setMoradorValidation(prev => ({ ...prev, cpf: digits ? validateCPF(digits) : null }));
+                                        handleMoradorFieldChange('cpf', digits);
+                                      }}
+                                      placeholder="000.000.000-00"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="unit-card__edit-row">
+                                  <div className="unit-card__edit-field">
+                                    <label className="unit-card__edit-label">Telefone</label>
+                                    <input
+                                      className={`mobile-edit-input ${moradorValidation.phone === false ? 'input-error' : moradorValidation.phone === true ? 'input-valid' : ''}`}
+                                      type="text"
+                                      value={formatTelefone(String(editMoradorData.phone || '').replace(/\D/g, '').slice(0, 11))}
+                                      onChange={e => {
+                                        const digits = e.target.value.replace(/\D/g, '').slice(0, 11);
+                                        setMoradorValidation(prev => ({ ...prev, phone: digits ? validatePhone(digits) : null }));
+                                        handleMoradorFieldChange('phone', digits);
+                                      }}
+                                      placeholder="(00) 00000-0000"
+                                    />
+                                  </div>
+                                  <div className="unit-card__edit-field">
+                                    <label className="unit-card__edit-label">Status</label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, fontSize: '0.9rem', cursor: 'pointer' }}>
+                                      <input type="checkbox" checked={Boolean(editMoradorData.is_active)} onChange={e => handleMoradorFieldChange('is_active', e.target.checked)} style={{ width: 18, height: 18, accentColor: '#2abb98' }} />
+                                      Ativo
+                                    </label>
+                                  </div>
+                                </div>
+                                <div className="unit-card__edit-actions">
+                                  <button className="save-button" onClick={saveMorador}><FaCheck style={{ marginRight: 4 }} /> Salvar</button>
+                                  <button className="cancel-button" onClick={cancelEditMorador}><FaTimes style={{ marginRight: 4 }} /> Cancelar</button>
+                                </div>
                               </div>
-                            </div>
-                          ) : (
-                            /* Lista simples de moradores - modo portaria (read-only) */
-                            <div className="table-container compact-table" style={{ marginTop: 4 }}>
-                              <div className="table-scroll">
-                              <table className="generic-table">
-                                <colgroup>
-                                  <col />
-                                  <col style={{ minWidth: 160 }} />
-                                </colgroup>
-                                <thead>
-                                  <tr>
-                                    <th><span className="header-content">Nome</span></th>
-                                    <th><span className="header-content">CPF</span></th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {moradores.map(morador => (
-                                    <tr key={morador.id}>
-                                      <td><span className="cell-content">{morador.full_name || '-'}</span></td>
-                                      <td><span className="cell-content">{formatCpfDisplay(morador.cpf)}</span></td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                            ) : (
+                              <div className="unit-card__resident-view">
+                                <div className="unit-card__resident-info">
+                                  <span className="unit-card__resident-name">{morador.full_name || '-'}</span>
+                                  <span className="unit-card__resident-cpf">{formatCpfDisplay(morador.cpf)}</span>
+                                  {morador.phone && (
+                                    <span className="unit-card__resident-phone">{formatTelefone(morador.phone)}</span>
+                                  )}
+                                  {!morador.is_active && (
+                                    <span className="unit-card__status-badge unit-card__status-badge--inactive" style={{ fontSize: '0.7rem', padding: '1px 8px' }}>Inativo</span>
+                                  )}
+                                </div>
+                                {isSindico && (
+                                  <div className="unit-card__resident-actions">
+                                    <button className="edit-button" onClick={() => startEditMorador(morador)} title="Editar morador"><FaEdit /></button>
+                                    {onResetPassword && (
+                                      <button className="reset-button" onClick={() => onResetPassword(morador.id)} title="Resetar senha"><FaKey /></button>
+                                    )}
+                                    {onDeleteMorador && (
+                                      <button className="delete-button" onClick={() => onDeleteMorador(morador.id, morador.full_name, unitTitle)} title="Remover morador"><FaTrash /></button>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
-                </React.Fragment>
-              );
-            })}
-          </tbody>
-        </table>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
-      {/* Paginação */}
       {totalPages > 1 && (
         <div className="pagination" style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '16px 0' }}>
-          <button
-            className="page-button"
-            disabled={currentPage <= 1}
-            onClick={() => onPageChange && onPageChange(currentPage - 1)}
-          >
-            Anterior
-          </button>
-          <span style={{ padding: '6px 12px', color: '#64748b', fontSize: '0.9rem' }}>
+          <button className="page-button" disabled={currentPage <= 1} onClick={() => onPageChange && onPageChange(currentPage - 1)}>Anterior</button>
+          <span style={{ padding: '6px 12px', color: '#64748b', fontSize: '0.9rem', display: 'flex', alignItems: 'center' }}>
             Página {currentPage} de {totalPages}
           </span>
-          <button
-            className="page-button"
-            disabled={currentPage >= totalPages}
-            onClick={() => onPageChange && onPageChange(currentPage + 1)}
-          >
-            Próxima
-          </button>
+          <button className="page-button" disabled={currentPage >= totalPages} onClick={() => onPageChange && onPageChange(currentPage + 1)}>Próxima</button>
         </div>
       )}
     </div>
