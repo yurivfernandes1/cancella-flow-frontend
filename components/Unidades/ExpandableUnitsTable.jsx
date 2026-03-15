@@ -38,6 +38,7 @@ function ExpandableUnitsTable({
   onResetPassword,
   onDeleteMorador,
   onVincularSindico,
+  currentUserId = null,
 }) {
   const [expandedRows, setExpandedRows] = useState({});
   const [editingMoradorId, setEditingMoradorId] = useState(null);
@@ -136,7 +137,12 @@ function ExpandableUnitsTable({
   return (
     <div>
       <div className="units-cards-grid">
-        {unidades.map(unidade => {
+        {[...unidades].sort((a, b) => {
+          const blocoA = (a.bloco || '').toLowerCase();
+          const blocoB = (b.bloco || '').toLowerCase();
+          if (blocoA !== blocoB) return blocoA.localeCompare(blocoB, 'pt-BR');
+          return String(a.numero || '').localeCompare(String(b.numero || ''), 'pt-BR', { numeric: true });
+        }).map(unidade => {
           const isExpanded = expandedRows[unidade.id];
           const moradores = unidade.moradores || [];
           const isEditingUnidade = editingUnidadeId === unidade.id;
@@ -261,14 +267,20 @@ function ExpandableUnitsTable({
                     <span className="unit-card__residents-title">Moradores</span>
                     {isSindico && (onAddMorador || onVincularSindico) && (
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {onVincularSindico && (
-                          <button
-                            className="unit-card__action-btn unit-card__action-btn--outline"
-                            onClick={() => onVincularSindico(unidade.id)}
-                          >
-                            <FaUserPlus /> Vincular-me
-                          </button>
-                        )}
+                        {onVincularSindico && (() => {
+                          const jaVinculado = currentUserId && moradores.some(m => String(m.id) === String(currentUserId));
+                          return (
+                            <button
+                              className="unit-card__action-btn unit-card__action-btn--outline"
+                              onClick={() => !jaVinculado && onVincularSindico(unidade.id)}
+                              disabled={jaVinculado}
+                              title={jaVinculado ? 'Você já está vinculado a esta unidade' : 'Vincular-me a esta unidade'}
+                              style={jaVinculado ? { opacity: 0.5, cursor: 'default' } : {}}
+                            >
+                              <FaUserPlus /> {jaVinculado ? 'Já vinculado' : 'Vincular-me'}
+                            </button>
+                          );
+                        })()}
                         {onAddMorador && (
                           <button
                             className="add-user-button unit-card__action-btn"
@@ -367,8 +379,8 @@ function ExpandableUnitsTable({
                                     {onResetPassword && (
                                       <button className="reset-button" onClick={() => onResetPassword(morador.id)} title="Resetar senha"><FaKey /></button>
                                     )}
-                                    {onDeleteMorador && (
-                                      <button className="delete-button" onClick={() => onDeleteMorador(morador.id, morador.full_name, unitTitle)} title="Remover morador"><FaTrash /></button>
+                                    {onDeleteMorador && String(morador.id) !== String(currentUserId) && (
+                                      <button className="delete-button" onClick={() => onDeleteMorador(morador.id, morador.full_name, unitTitle, unidade.id)} title="Remover morador"><FaTrash /></button>
                                     )}
                                   </div>
                                 )}

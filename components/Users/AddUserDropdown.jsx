@@ -3,6 +3,7 @@ import { FaSave, FaTimes, FaUserPlus } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import api, { condominioAPI } from '../../services/api';
 import Select from 'react-select';
+import AsyncSelect from 'react-select/async';
 import { generateStrongPassword } from '../../utils/passwordGenerator';
 import { formatUsername } from '../../utils/stringUtils';
 import { formatCPF, formatTelefone } from '../../utils/formatters';
@@ -31,6 +32,9 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
   const [cpfIsValid, setCpfIsValid] = useState(null);
   const [phoneIsValid, setPhoneIsValid] = useState(null);
   const [showDropdown, setShowDropdown] = useState(true);
+  const [existingMode, setExistingMode] = useState(false);
+  const [selectedMorador, setSelectedMorador] = useState(null);
+  const [existingSubmitError, setExistingSubmitError] = useState('');
   const [submitError, setSubmitError] = useState('');
   // Funcionários, síndicos e moradores têm os mesmos campos.
   // Removemos toda a lógica de Equipes.
@@ -133,10 +137,46 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
     }
   };
 
+  const loadMoradorOptions = async (inputValue) => {
+    try {
+      const response = await api.get(`/access/users/simple/?type=moradores&search=${encodeURIComponent(inputValue || '')}`);
+      const users = response.data.results || response.data || [];
+      return users.map(u => ({ value: u.id, label: u.full_name || u.username }));
+    } catch (error) {
+      console.error('Erro ao buscar moradores:', error);
+      return [];
+    }
+  };
+
+  const handleExistingSubmit = async (e) => {
+    e.preventDefault();
+    setExistingSubmitError('');
+    if (!selectedMorador) {
+      setExistingSubmitError('Selecione um morador existente.');
+      return;
+    }
+    if (!defaultUnidadeId) {
+      setExistingSubmitError('Unidade não definida.');
+      return;
+    }
+    try {
+      await api.patch(`/access/profile/${selectedMorador.value}/`, {
+        add_unidade_id: defaultUnidadeId,
+        is_morador: true,
+      });
+      if (typeof onSuccess === 'function') onSuccess();
+      if (typeof onClose === 'function') onClose();
+    } catch (error) {
+      console.error('Erro ao vincular morador:', error);
+      const backendError = error.response?.data?.error || 'Erro ao vincular morador';
+      setExistingSubmitError(backendError);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitError('');
-    
+
     if (userType === 'sindico' && !formData.condominio_id) {
       alert('Por favor, selecione um condomínio para o síndico');
       return;
@@ -247,7 +287,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
     <>
       {showDropdown && (
         <GenericDropdown
-          title={`Novo ${userType === 'sindico' ? 'Síndico' : userType === 'funcionario' ? 'Funcionário' : 'Morador'}`}
+          title={`Novo ${userType === 'sindico' ? 'Síndico' : userType === 'funcionario' ? 'Funcionário' : existingMode ? 'Vincular Morador' : 'Morador'}`}
           onClose={onClose}
           icon={<FaUserPlus size={18} />}
           className="add-user-dropdown"
@@ -257,12 +297,66 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
           isOpen={true}
           closeOnClickOutside={false}
         >
-          <form onSubmit={handleSubmit}>
-            {submitError && (
-              <div className="form-error" role="alert" style={{ marginBottom: '12px', color: '#b91c1c', fontWeight: 600 }}>
-                {submitError}
+          <form onSubmit={existingMode ? handleExistingSubmit : handleSubmit}>
+            {/* Alternância Novo / Existente — apenas para moradores */}
+            {userType === 'morador' && (
+              <div style={{ display: 'flex', marginBottom: 16, borderRadius: 8, overflow: 'hidden', border: '1px solid #e2e8f0' }}>
+                <button
+                  type="button"
+                  style={{ flex: 1, padding: '8px 0', fontSize: '0.85rem', fontWeight: 600, border: 'none', cursor: 'pointer', background: !existingMode ? '#2abb98' : '#f8fafc', color: !existingMode ? 'white' : '#64748b', transition: 'all 0.15s' }}
+                  onClick={() => { setExistingMode(false); setSelectedMorador(null); setExistingSubmitError(''); setSubmitError(''); }}
+                >
+                  Novo Morador
+                </button>
+                <button
+                  type="button"
+                  style={{ flex: 1, padding: '8px 0', fontSize: '0.85rem', fontWeight: 600, border: 'none', borderLeft: '1px solid #e2e8f0', cursor: 'pointer', background: existingMode ? '#2abb98' : '#f8fafc', color: existingMode ? 'white' : '#64748b', transition: 'all 0.15s' }}
+                  onClick={() => { setExistingMode(true); setSubmitError(''); setExistingSubmitError(''); }}
+                >
+                  Morador Existente
+                </button>
               </div>
             )}
+
+            {existingMode && userType === 'morador' ? (
+              <>
+                {existingSubmitError && (
+                  <div className="form-error" role="alert" style={{ marginBottom: '12px', color: '#b91c1c', fontWeight: 600 }}>
+                    {existingSubmitError}
+                  </div>
+                )}
+                <div className="form-row">
+                  <div className="form-field">
+                    <label>Buscar Morador Existente</label>
+                    <AsyncSelect
+                      loadOptions={loadMoradorOptions}
+                      onChange={setSelectedMorador}
+                      value={selectedMorador}
+                      placeholder="Digite o nome para buscar..."
+                      noOptionsMessage={({ inputValue }) => inputValue.length < 1 ? 'Digite para buscar' : 'Nenhum morador encontrado'}
+                      loadingMessage={() => 'Buscando...'}
+                      menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                      menuPosition="fixed"
+                      styles={{ menuPortal: base => ({ ...base, zIndex: 300000 }) }}
+                    />
+                  </div>
+                </div>
+                <div className="form-actions">
+                  <button type="button" className="button-secondary" onClick={onClose}>
+                    <FaTimes /> Cancelar
+                  </button>
+                  <button type="submit" className="button-primary" disabled={!selectedMorador}>
+                    <FaSave /> Vincular Morador
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {submitError && (
+                  <div className="form-error" role="alert" style={{ marginBottom: '12px', color: '#b91c1c', fontWeight: 600 }}>
+                    {submitError}
+                  </div>
+                )}
             <div className="form-row">
               <div className="form-field">
                 <input
@@ -449,14 +543,16 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
               <button type="button" className="button-secondary" onClick={onClose}>
                 <FaTimes /> Cancelar
               </button>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="button-primary"
                 disabled={emailIsValid === false || cpfIsValid === false || phoneIsValid === false}
               >
                 <FaSave /> Criar {userType === 'sindico' ? 'Síndico' : userType === 'funcionario' ? 'Funcionário' : 'Morador'}
               </button>
             </div>
+              </>
+            )}
           </form>
         </GenericDropdown>
       )}
