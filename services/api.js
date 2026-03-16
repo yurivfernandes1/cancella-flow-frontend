@@ -16,16 +16,33 @@ const api = axios.create({
 });
 
 // Lista de rotas que não precisam de token
-const publicRoutes = [
-  'access/login/',
-  'access/signup/',
-  'docs/', // Adicionar rota da documentação como pública
+const publicRouteRules = [
+  { type: 'exact', value: '/access/login/' },
+  { type: 'exact', value: '/access/signup/' },
+  { type: 'prefix', value: '/access/signup/condominio/' },
+  { type: 'prefix', value: '/access/check-username/' },
+  { type: 'prefix', value: '/access/check-cpf/' },
+  { type: 'prefix', value: '/docs/' },
 ];
 
+function normalizePath(url = '') {
+  const noQuery = String(url).split('?')[0];
+  return noQuery.startsWith('/') ? noQuery : `/${noQuery}`;
+}
+
+function isPublicRoute(url = '') {
+  const path = normalizePath(url);
+  return publicRouteRules.some((rule) => {
+    if (rule.type === 'exact') return path === rule.value;
+    if (rule.type === 'prefix') return path.startsWith(rule.value);
+    return false;
+  });
+}
+
 api.interceptors.request.use(config => {
-  const isPublicRoute = publicRoutes.some(route => config.url.includes(route));
+  const routeIsPublic = isPublicRoute(config.url);
   
-  if (!isPublicRoute) {
+  if (!routeIsPublic) {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Token ${token}`;
@@ -115,7 +132,8 @@ export const visitanteAPI = {
   get: (id) => api.get(`/cadastros/visitantes/${id}/`),
   update: (id, data) => api.put(`/cadastros/visitantes/${id}/update/`, data),
   patch: (id, data) => api.patch(`/cadastros/visitantes/${id}/update/`, data),
-  delete: (id) => api.delete(`/cadastros/visitantes/${id}/delete/`)
+  delete: (id) => api.delete(`/cadastros/visitantes/${id}/delete/`),
+  enviarQrCode: (id) => api.post(`/cadastros/visitantes/${id}/enviar-qrcode/`),
 };
 
 // Funções específicas para Avisos
@@ -183,6 +201,30 @@ export const dashboardAPI = {
   sindicoStats: () => api.get('/cadastros/dashboard/sindico-stats/'),
   portariaStats: () => api.get('/cadastros/dashboard/portaria-stats/'),
   adminStats: () => api.get('/cadastros/dashboard/admin-stats/'),
+};
+
+export const signupAPI = {
+  getCondominioInfo: (slug) =>
+    api.get(`/access/signup/condominio/${encodeURIComponent(slug)}/`),
+  signupMorador: (data) => api.post('/access/signup/', data),
+  checkUsername: (username) =>
+    api.get(`/access/check-username/${encodeURIComponent(username)}/`),
+  checkCpf: (cpf) => api.get(`/access/check-cpf/${encodeURIComponent(cpf)}/`),
+  checkEmail: (email) => api.get(`/access/check-email/${encodeURIComponent(email)}/`),
+  getInviteLink: (params = {}) => api.get('/access/signup/invite-link/', { params }),
+  regenerateInviteLink: (payload = {}, params = {}) =>
+    api.post('/access/signup/invite-link/', payload, { params }),
+  downloadInviteQrCode: (params = {}) =>
+    api.get('/access/signup/invite-link/qrcode/', {
+      params,
+      responseType: 'blob',
+    }),
+};
+
+export const profileAPI = {
+  get: () => api.get('/access/profile/'),
+  update: (data) => api.patch('/access/profile/', data),
+  uploadPhoto: (formData) => api.post('/access/profile/foto-db/upload/', formData),
 };
 
 // API de Eventos
