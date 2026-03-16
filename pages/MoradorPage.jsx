@@ -11,7 +11,9 @@ import ListaConvidadosModal from '../components/Eventos/ListaConvidadosModal';
 import AddListaConvidadosModal from '../components/Eventos/AddListaConvidadosModal';
 import EventoModal from '../components/Eventos/EventoModal';
 import { FaUsers } from 'react-icons/fa';
-import AvisoBanner from '../components/Avisos/AvisoBanner';
+import AvisosKanbanBoard from '../components/Avisos/AvisosKanbanBoard';
+import EncomendasKanbanBoard from '../components/Encomendas/EncomendasKanbanBoard';
+import EncomendaDetalheModal from '../components/Encomendas/EncomendaDetalheModal';
 import ReservaModal from '../components/Reservas/ReservaModal';
 import { validatePlaca, formatPlaca, normalizePlaca, maskPlaca } from '../utils/placaValidator';
 import '../styles/MoradorPage.css';
@@ -60,15 +62,16 @@ function MoradorPage() {
   const [showAddOcorrencia, setShowAddOcorrencia] = useState(false);
   const [ocorrenciaSelecionada, setOcorrenciaSelecionada] = useState(null);
   const [ocorrenciaStatusPending, setOcorrenciaStatusPending] = useState({});
+  const [encomendaSelecionada, setEncomendaSelecionada] = useState(null);
+  const [encomendaStatusPending, setEncomendaStatusPending] = useState({});
+  const [avisoStatusPending, setAvisoStatusPending] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddVisitante, setShowAddVisitante] = useState(false);
   const addVisitanteButtonRef = useRef(null);
   const [showAddVeiculo, setShowAddVeiculo] = useState(false);
   const addVeiculoButtonRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [incluirEntregues, setIncluirEntregues] = useState(false);
   const [incluirReservasPassadas, setIncluirReservasPassadas] = useState(false);
-  const [incluirAvisosExpirados, setIncluirAvisosExpirados] = useState(false);
   const [somenteHojeLista, setSomenteHojeLista] = useState(true);
   const [editingRowId, setEditingRowId] = useState(null);
   const [currentEditData, setCurrentEditData] = useState({});
@@ -99,8 +102,7 @@ function MoradorPage() {
     setLoading(true);
     try {
       if (type === 'encomendas') {
-        let url = `/cadastros/encomendas/?page=${page}&search=${search}`;
-        if (incluirEntregues) url += '&incluir_entregues=true';
+        const url = `/cadastros/encomendas/?page=${page}&search=${search}`;
         const response = await api.get(url);
         if (response.data.results !== undefined) {
           // Mapear unidade_identificacao para unidade_info
@@ -182,7 +184,6 @@ function MoradorPage() {
         setTotalPages(prev => ({ ...prev, lista_convidados: 1 }));
       } else if (type === 'avisos') {
         const paramsAvisos = { page, search };
-        if (!incluirAvisosExpirados) paramsAvisos.vigente = 1;
         const response = await avisoAPI.list(paramsAvisos);
         if (response.data.results !== undefined) {
           setTableData(prev => ({ ...prev, avisos: response.data.results }));
@@ -216,7 +217,7 @@ function MoradorPage() {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [activeTab, currentPage, searchTerm, incluirEntregues, incluirReservasPassadas, incluirAvisosExpirados, somenteHojeLista]);
+  }, [activeTab, currentPage, searchTerm, incluirReservasPassadas, somenteHojeLista]);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -343,6 +344,20 @@ function MoradorPage() {
     ocorrenciaStatusTimerRef.current[ocorrenciaId] = setTimeout(() => {
       flushOcorrenciaStatusUpdate(ocorrenciaId);
     }, 180);
+  };
+
+  const getEncomendaStatus = (encomenda) => {
+    if (encomenda.contestado_em && !encomenda.contestacao_resolvida) return 'contestada';
+    if (encomenda.retirado_em) return 'retirada';
+    return 'pendente';
+  };
+
+  const handleEncomendaStatusChange = async (_encomenda, _novoStatus) => {
+    // Morador não altera status por drag; a contestação acontece no modal.
+  };
+
+  const handleAvisoStatusChange = async (_aviso, _novoStatus) => {
+    // Morador não altera status de aviso.
   };
 
   const handleSaveVeiculo = async (id, data) => {
@@ -1209,20 +1224,6 @@ function MoradorPage() {
               </div>
             </div>
           )}
-          {activeTab === 'encomendas' && (
-            <div className="filters-container">
-              <div className="filter-group">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={incluirEntregues}
-                    onChange={(e) => { setIncluirEntregues(e.target.checked); setCurrentPage(1); }}
-                  />
-                  Incluir encomendas entregues
-                </label>
-              </div>
-            </div>
-          )}
           {activeTab === 'reservas' && (
             <div className="filters-container">
               <div className="filter-group">
@@ -1251,34 +1252,17 @@ function MoradorPage() {
               </div>
             </div>
           )}
-          {activeTab === 'avisos' && (
-            <div className="filters-container">
-              <div className="filter-group">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={incluirAvisosExpirados}
-                    onChange={(e) => { setIncluirAvisosExpirados(e.target.checked); setCurrentPage(1); }}
-                  />
-                  Incluir avisos expirados
-                </label>
-              </div>
-            </div>
-          )}
         </div>
 
         {activeTab === 'avisos' ? (
-          <div style={{ maxWidth: 1100, margin: '0 auto', width: '100%' }}>
-            {tableData.avisos.length === 0 ? (
-              <div className="empty-state">
-                <p>Nenhum aviso no momento.</p>
-              </div>
-            ) : (
-              tableData.avisos.map(av => (
-                <AvisoBanner key={av.id} aviso={av} />
-              ))
-            )}
-          </div>
+          <AvisosKanbanBoard
+            avisos={tableData.avisos}
+            loading={loading}
+            onStatusChange={handleAvisoStatusChange}
+            canDrag={false}
+            pendingById={avisoStatusPending}
+            visibleStatuses={['ativo']}
+          />
         ) : activeTab === 'ocorrencias' ? (
           <OcorrenciasKanbanBoard
             ocorrencias={tableData.ocorrencias}
@@ -1288,12 +1272,22 @@ function MoradorPage() {
             canDrag={false}
             pendingById={ocorrenciaStatusPending}
           />
+        ) : activeTab === 'encomendas' ? (
+          <EncomendasKanbanBoard
+            encomendas={tableData.encomendas}
+            loading={loading}
+            onCardClick={setEncomendaSelecionada}
+            onStatusChange={handleEncomendaStatusChange}
+            canDrag={false}
+            pendingById={encomendaStatusPending}
+            currentPage={currentPage}
+            totalPages={totalPages.encomendas}
+            onPageChange={setCurrentPage}
+          />
         ) : (
           <GenericTable
             columns={
-              activeTab === 'encomendas'
-                ? encomendasColumns
-                : activeTab === 'visitantes'
+              activeTab === 'visitantes'
                   ? visitantesColumns
                   : activeTab === 'reservas'
                     ? reservasColumns
@@ -1383,6 +1377,14 @@ function MoradorPage() {
           ocorrencia={ocorrenciaSelecionada}
           onClose={() => setOcorrenciaSelecionada(null)}
           onUpdate={() => fetchData('ocorrencias', currentPage, searchTerm)}
+        />
+      )}
+
+      {encomendaSelecionada && (
+        <EncomendaDetalheModal
+          encomenda={encomendaSelecionada}
+          onClose={() => setEncomendaSelecionada(null)}
+          onUpdate={() => fetchData('encomendas', currentPage, searchTerm)}
         />
       )}
     </div>

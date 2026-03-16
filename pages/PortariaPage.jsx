@@ -9,10 +9,12 @@ import api, { espacoReservaAPI, listaConvidadosAPI, ocorrenciaAPI, eventoAPI } f
 import ListaConvidadosModal from '../components/Eventos/ListaConvidadosModal';
 import { formatPlaca } from '../utils/placaValidator';
 import '../styles/PortariaPage.css';
-import AvisoBanner from '../components/Avisos/AvisoBanner';
+import AvisosKanbanBoard from '../components/Avisos/AvisosKanbanBoard';
 import { avisoAPI } from '../services/api';
 import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaUsers, FaEye, FaQrcode } from 'react-icons/fa';
 import QrCodeScanner from '../components/Eventos/QrCodeScanner';
+import EncomendasKanbanBoard from '../components/Encomendas/EncomendasKanbanBoard';
+import EncomendaDetalheModal from '../components/Encomendas/EncomendaDetalheModal';
 import AddOcorrenciaModal from '../components/Ocorrencias/AddOcorrenciaModal';
 import OcorrenciaDetalheModal from '../components/Ocorrencias/OcorrenciaDetalheModal';
 import OcorrenciasKanbanBoard from '../components/Ocorrencias/OcorrenciasKanbanBoard';
@@ -60,7 +62,6 @@ function PortariaPage() {
   const [showAddEncomenda, setShowAddEncomenda] = useState(false);
   const addEncomendaButtonRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [incluirEntregues, setIncluirEntregues] = useState(false);
   const [editingRowId, setEditingRowId] = useState(null);
   const [currentEditData, setCurrentEditData] = useState({});
   const [eventoSelecionado, setEventoSelecionado] = useState(null);
@@ -69,6 +70,12 @@ function PortariaPage() {
   const [showAddOcorrencia, setShowAddOcorrencia] = useState(false);
   const [ocorrenciaSelecionada, setOcorrenciaSelecionada] = useState(null);
   const [ocorrenciaStatusPending, setOcorrenciaStatusPending] = useState({});
+  const [encomendaSelecionada, setEncomendaSelecionada] = useState(null);
+  const [encomendaStatusPending, setEncomendaStatusPending] = useState({});
+  const [avisoStatusPending, setAvisoStatusPending] = useState({});
+  const [showRetiradaModal, setShowRetiradaModal] = useState(false);
+  const [retiradaNome, setRetiradaNome] = useState('');
+  const [retiradaTarget, setRetiradaTarget] = useState(null);
 
   // Verificar se o usuário tem acesso
   const isPortaria = user?.groups?.some(group => group.name === 'Portaria');
@@ -78,7 +85,10 @@ function PortariaPage() {
   // Checkbox: mostrar apenas listas do dia
   const [somenteHoje, setSomenteHoje] = useState(true);
   const [incluirReservasPassadas, setIncluirReservasPassadas] = useState(false);
-  const [incluirAvisosExpirados, setIncluirAvisosExpirados] = useState(false);
+  const encomendaStatusTimerRef = useRef({});
+  const encomendaStatusQueueRef = useRef({});
+  const encomendaStatusInFlightRef = useRef({});
+  const encomendaStatusStableRef = useRef({});
   const ocorrenciaStatusTimerRef = useRef({});
   const ocorrenciaStatusQueueRef = useRef({});
   const ocorrenciaStatusInFlightRef = useRef({});
@@ -138,21 +148,18 @@ function PortariaPage() {
           setTotalPages(prev => ({ ...prev, veiculos: 1 }));
         }
       } else if (type === 'encomendas') {
-        let url = `/cadastros/encomendas/?page=${page}&search=${search}`;
-        if (incluirEntregues) url += '&incluir_entregues=true';
+        const url = `/cadastros/encomendas/?page=${page}&search=${search}`;
         const response = await api.get(url);
         if (response.data.results !== undefined) {
           const mappedData = response.data.results.map(item => ({ ...item, unidade_info: item.unidade_identificacao || '-' }));
-          const filtered = incluirEntregues ? mappedData : mappedData.filter(item => !item.retirado_em);
-          setTableData(prev => ({ ...prev, encomendas: filtered }));
+          setTableData(prev => ({ ...prev, encomendas: mappedData }));
           setTotalPages(prev => ({
             ...prev,
             encomendas: response.data.num_pages || Math.ceil(response.data.count / 10)
           }));
         } else {
           const mappedData = response.data.map(item => ({ ...item, unidade_info: item.unidade_identificacao || '-' }));
-          const filtered = incluirEntregues ? mappedData : mappedData.filter(item => !item.retirado_em);
-          setTableData(prev => ({ ...prev, encomendas: filtered }));
+          setTableData(prev => ({ ...prev, encomendas: mappedData }));
           setTotalPages(prev => ({ ...prev, encomendas: 1 }));
         }
       } else if (type === 'lista_convidados') {
@@ -165,7 +172,6 @@ function PortariaPage() {
         setTotalPages(prev => ({ ...prev, lista_convidados: 1 }));
       } else if (type === 'avisos') {
         const paramsAvisos = { page, search };
-        if (!incluirAvisosExpirados) paramsAvisos.vigente = 1;
         const response = await avisoAPI.list(paramsAvisos);
         if (response.data.results !== undefined) {
           setTableData(prev => ({ ...prev, avisos: response.data.results }));
@@ -221,7 +227,7 @@ function PortariaPage() {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [activeTab, currentPage, searchTerm, somenteHoje, incluirEntregues, incluirReservasPassadas, incluirAvisosExpirados]);
+  }, [activeTab, currentPage, searchTerm, somenteHoje, incluirReservasPassadas]);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -241,6 +247,7 @@ function PortariaPage() {
   useEffect(() => {
     return () => {
       Object.values(ocorrenciaStatusTimerRef.current).forEach((timerId) => clearTimeout(timerId));
+      Object.values(encomendaStatusTimerRef.current).forEach((timerId) => clearTimeout(timerId));
     };
   }, []);
 
@@ -332,6 +339,176 @@ function PortariaPage() {
     ocorrenciaStatusTimerRef.current[ocorrenciaId] = setTimeout(() => {
       flushOcorrenciaStatusUpdate(ocorrenciaId);
     }, 180);
+  };
+
+  const getEncomendaStatus = (encomenda) => {
+    if (encomenda.contestado_em && !encomenda.contestacao_resolvida) return 'contestada';
+    if (encomenda.retirado_em) return 'retirada';
+    return 'pendente';
+  };
+
+  const applyEncomendaStatusLocal = (encomendaId, status, retiradoPor = null) => {
+    setTableData((prev) => ({
+      ...prev,
+      encomendas: prev.encomendas.map((item) => {
+        if (item.id !== encomendaId) return item;
+        if (status === 'pendente') {
+          return {
+            ...item,
+            retirado_em: null,
+            retirado_por: '',
+            contestacao_resolvida: true,
+          };
+        }
+        if (status === 'retirada') {
+          return {
+            ...item,
+            retirado_em: item.retirado_em || new Date().toISOString(),
+            retirado_por: retiradoPor || item.retirado_por || user?.full_name || user?.username || 'Portaria',
+            contestacao_resolvida: true,
+          };
+        }
+        return item;
+      }),
+    }));
+    setEncomendaSelecionada((prev) => {
+      if (!prev || prev.id !== encomendaId) return prev;
+      if (status === 'pendente') {
+        return { ...prev, retirado_em: null, retirado_por: '', contestacao_resolvida: true };
+      }
+      if (status === 'retirada') {
+        return {
+          ...prev,
+          retirado_em: prev.retirado_em || new Date().toISOString(),
+          retirado_por: retiradoPor || prev.retirado_por || user?.full_name || user?.username || 'Portaria',
+          contestacao_resolvida: true,
+        };
+      }
+      return prev;
+    });
+  };
+
+  const setEncomendaPending = (encomendaId, isPending) => {
+    setEncomendaStatusPending((prev) => {
+      if (isPending) return { ...prev, [encomendaId]: true };
+      const next = { ...prev };
+      delete next[encomendaId];
+      return next;
+    });
+  };
+
+  const flushEncomendaStatusUpdate = async (encomendaId) => {
+    if (encomendaStatusInFlightRef.current[encomendaId]) return;
+
+    const queued = encomendaStatusQueueRef.current[encomendaId];
+    const targetStatus = queued?.status;
+    if (!targetStatus || targetStatus === 'contestada') return;
+
+    encomendaStatusInFlightRef.current[encomendaId] = true;
+    setEncomendaPending(encomendaId, true);
+
+    const patch = { status_encomenda: targetStatus };
+    const atual = tableData.encomendas.find((item) => item.id === encomendaId);
+    if (atual?.contestado_em && !atual?.contestacao_resolvida) {
+      patch.resolver_contestacao = true;
+    }
+    if (targetStatus === 'retirada') {
+      patch.retirado_por = queued?.retiradoPor || '';
+    }
+
+    try {
+      await api.patch(`/cadastros/encomendas/${encomendaId}/update/`, patch);
+      encomendaStatusStableRef.current[encomendaId] = targetStatus;
+    } catch (error) {
+      const stableStatus = encomendaStatusStableRef.current[encomendaId];
+      if (stableStatus) {
+        encomendaStatusQueueRef.current[encomendaId] = { status: stableStatus };
+        applyEncomendaStatusLocal(encomendaId, stableStatus);
+      }
+      console.error('Erro ao alterar status da encomenda:', error);
+      alert('Não foi possível atualizar o status da encomenda.');
+    } finally {
+      encomendaStatusInFlightRef.current[encomendaId] = false;
+
+      const queuedStatus = encomendaStatusQueueRef.current[encomendaId]?.status;
+      const stableStatus = encomendaStatusStableRef.current[encomendaId];
+      if (queuedStatus && queuedStatus !== stableStatus) {
+        flushEncomendaStatusUpdate(encomendaId);
+        return;
+      }
+
+      setEncomendaPending(encomendaId, false);
+    }
+  };
+
+  const handleEncomendaStatusChange = (encomenda, novoStatus) => {
+    if (novoStatus === 'contestada') return;
+
+    const currentStatus = getEncomendaStatus(encomenda);
+    if (currentStatus === 'contestada') {
+      alert('Encomendas contestadas só podem ser alteradas pelo síndico.');
+      return;
+    }
+
+    if (novoStatus === 'retirada') {
+      setRetiradaTarget(encomenda);
+      setRetiradaNome('');
+      setShowRetiradaModal(true);
+      return;
+    }
+
+    const encomendaId = encomenda.id;
+    if (!encomendaStatusStableRef.current[encomendaId]) {
+      encomendaStatusStableRef.current[encomendaId] = currentStatus;
+    }
+
+    encomendaStatusQueueRef.current[encomendaId] = { status: novoStatus };
+    applyEncomendaStatusLocal(encomendaId, novoStatus);
+    setEncomendaPending(encomendaId, true);
+
+    if (encomendaStatusTimerRef.current[encomendaId]) {
+      clearTimeout(encomendaStatusTimerRef.current[encomendaId]);
+    }
+
+    encomendaStatusTimerRef.current[encomendaId] = setTimeout(() => {
+      flushEncomendaStatusUpdate(encomendaId);
+    }, 180);
+  };
+
+  const confirmRetiradaEncomenda = () => {
+    if (!retiradaTarget) return;
+    const nome = (retiradaNome || '').trim();
+    if (!nome) {
+      alert('Informe quem retirou a encomenda.');
+      return;
+    }
+
+    const encomenda = retiradaTarget;
+    const encomendaId = encomenda.id;
+    const currentStatus = getEncomendaStatus(encomenda);
+    if (!encomendaStatusStableRef.current[encomendaId]) {
+      encomendaStatusStableRef.current[encomendaId] = currentStatus;
+    }
+
+    encomendaStatusQueueRef.current[encomendaId] = { status: 'retirada', retiradoPor: nome };
+    applyEncomendaStatusLocal(encomendaId, 'retirada', nome);
+    setEncomendaPending(encomendaId, true);
+
+    if (encomendaStatusTimerRef.current[encomendaId]) {
+      clearTimeout(encomendaStatusTimerRef.current[encomendaId]);
+    }
+
+    encomendaStatusTimerRef.current[encomendaId] = setTimeout(() => {
+      flushEncomendaStatusUpdate(encomendaId);
+    }, 180);
+
+    setShowRetiradaModal(false);
+    setRetiradaTarget(null);
+    setRetiradaNome('');
+  };
+
+  const handleAvisoStatusChange = async (_aviso, _novoStatus) => {
+    // Portaria apenas visualiza avisos.
   };
 
   // handleSaveVisitante removed (não usado nesta página)
@@ -784,37 +961,20 @@ function PortariaPage() {
                     />
                   </div>
                 </div>
-                <div className="filters-container">
-                  <div className="filter-group">
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={incluirEntregues}
-                        onChange={(e) => { setIncluirEntregues(e.target.checked); setCurrentPage(1); }}
-                      />
-                      Incluir encomendas entregues
-                    </label>
-                  </div>
-                </div>
               </div>
 
-              <GenericTable
-                data={tableData.encomendas}
-                columns={encomendasColumns}
+              <EncomendasKanbanBoard
+                encomendas={tableData.encomendas}
                 loading={loading}
+                onCardClick={setEncomendaSelecionada}
+                onStatusChange={handleEncomendaStatusChange}
+                canDrag={isPortaria}
+                pendingById={encomendaStatusPending}
                 currentPage={currentPage}
                 totalPages={totalPages.encomendas}
                 onPageChange={setCurrentPage}
-                editingRowId={editingRowId}
-                onEditRow={handleEditRow}
-                onEditChange={(field, value) => {
-                  setCurrentEditData(prev => ({ ...prev, [field]: value }));
-                }}
-                onEditDataChange={setCurrentEditData}
-                currentEditData={currentEditData}
-                onSave={handleSaveEncomenda}
-                className="full-width-table allow-horizontal-scroll"
-                titleColumnKey={'codigo_rastreio'}
+                canDragCard={(encomenda, currentStatus) => currentStatus !== 'contestada' && !Boolean(encomendaStatusPending[encomenda.id])}
+                canMoveStatus={(_encomenda, nextStatus, currentStatus) => currentStatus !== 'contestada' && nextStatus !== 'contestada'}
               />
             </>
           )}
@@ -1064,27 +1224,15 @@ function PortariaPage() {
           {/* Aba de Avisos */}
           {activeTab === 'avisos' && (
             <>
-              <div className="page-header">
-                <div className="filters-container">
-                  <div className="filter-group">
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={incluirAvisosExpirados}
-                        onChange={(e) => { setIncluirAvisosExpirados(e.target.checked); setCurrentPage(1); }}
-                      />
-                      Incluir avisos expirados
-                    </label>
-                  </div>
-                </div>
-              </div>
-              <div style={{ maxWidth: 1100, margin: '0 auto', width: '100%' }}>
-                {tableData.avisos.length === 0 ? (
-                  <div className="empty-state"><p>Nenhum aviso disponível.</p></div>
-                ) : (
-                  tableData.avisos.map(av => <AvisoBanner key={av.id} aviso={av} />)
-                )}
-              </div>
+              <div className="page-header" />
+              <AvisosKanbanBoard
+                avisos={tableData.avisos}
+                loading={loading}
+                onStatusChange={handleAvisoStatusChange}
+                canDrag={false}
+                pendingById={avisoStatusPending}
+                visibleStatuses={['ativo']}
+              />
             </>
           )}
 
@@ -1129,6 +1277,47 @@ function PortariaPage() {
           readOnly={true}
           onClose={() => setListaSelecionada(null)}
         />
+      )}
+
+      {encomendaSelecionada && (
+        <EncomendaDetalheModal
+          encomenda={encomendaSelecionada}
+          onClose={() => setEncomendaSelecionada(null)}
+          onUpdate={() => fetchData('encomendas', currentPage, searchTerm)}
+        />
+      )}
+
+      {showRetiradaModal && (
+        <div className="modal-overlay" onClick={() => setShowRetiradaModal(false)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 460 }}>
+            <div className="modal-header">
+              <h2>Confirmar Retirada</h2>
+              <button className="modal-close" onClick={() => setShowRetiradaModal(false)}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className="modal-content">
+              <div className="form-group">
+                <label>Quem retirou a encomenda?</label>
+                <input
+                  type="text"
+                  value={retiradaNome}
+                  onChange={(e) => setRetiradaNome(e.target.value)}
+                  placeholder="Nome de quem retirou"
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn-secondary" onClick={() => setShowRetiradaModal(false)}>
+                Cancelar
+              </button>
+              <button type="button" className="btn-primary" onClick={confirmRetiradaEncomenda}>
+                Confirmar Retirada
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showQrScanner && (

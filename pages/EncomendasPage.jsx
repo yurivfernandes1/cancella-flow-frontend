@@ -19,7 +19,6 @@ function EncomendasPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [editingRowId, setEditingRowId] = useState(null);
   const [currentEditData, setCurrentEditData] = useState({});
-  const [incluirEntregues, setIncluirEntregues] = useState(false);
   const [unidadeAntigaId, setUnidadeAntigaId] = useState('');
   const [codigoAntiga, setCodigoAntiga] = useState('');
   const [unidades, setUnidades] = useState([]);
@@ -34,14 +33,11 @@ function EncomendasPage() {
     return <Navigate to="/welcome" replace />;
   }
 
-  const fetchData = async (page = 1, search = '', incluirEntregues = false, unidadeId = '', codigo = '') => {
+  const fetchData = async (page = 1, search = '', unidadeId = '', codigo = '') => {
     setLoading(true);
     try {
       let url = `/cadastros/encomendas/?page=${page}&search=${search}`;
-      
-      if (incluirEntregues) {
-        url += '&incluir_entregues=true';
-      }
+
       if (unidadeId) {
         url += `&unidade_antiga=${unidadeId}`;
       }
@@ -82,11 +78,11 @@ function EncomendasPage() {
 
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
-      fetchData(currentPage, searchTerm, incluirEntregues, unidadeAntigaId, codigoAntiga);
+      fetchData(currentPage, searchTerm, unidadeAntigaId, codigoAntiga);
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [currentPage, searchTerm, incluirEntregues, unidadeAntigaId, codigoAntiga]);
+  }, [currentPage, searchTerm, unidadeAntigaId, codigoAntiga]);
 
   const handleSave = async (id, data) => {
     try {
@@ -99,7 +95,7 @@ function EncomendasPage() {
       };
 
       await api.patch(`/cadastros/encomendas/${id}/update/`, payload);
-      fetchData(currentPage, searchTerm, incluirEntregues, unidadeAntigaId, codigoAntiga);
+      fetchData(currentPage, searchTerm, unidadeAntigaId, codigoAntiga);
       setEditingRowId(null);
     } catch (error) {
       console.error('Erro ao atualizar encomenda:', error);
@@ -271,7 +267,7 @@ function EncomendasPage() {
                   <AddEncomendaDropdown
                     onClose={() => setShowAddEncomenda(false)}
                     onEncomendaAdded={() => {
-                      fetchData(currentPage, searchTerm, incluirEntregues, unidadeAntigaId, codigoAntiga);
+                      fetchData(currentPage, searchTerm, unidadeAntigaId, codigoAntiga);
                       setShowAddEncomenda(false);
                     }}
                     triggerRef={addEncomendaButtonRef}
@@ -296,20 +292,6 @@ function EncomendasPage() {
         </div>
 
         <div className="filters-container">
-          <div className="filter-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={incluirEntregues}
-                onChange={(e) => {
-                  setIncluirEntregues(e.target.checked);
-                  setCurrentPage(1);
-                }}
-              />
-              Incluir encomendas entregues
-            </label>
-          </div>
-
           <div className="filter-group">
             <label htmlFor="unidade-filter">Buscar antigas por unidade:</label>
             <select
@@ -347,13 +329,12 @@ function EncomendasPage() {
             />
           </div>
 
-          {(unidadeAntigaId || codigoAntiga || incluirEntregues) && (
+          {(unidadeAntigaId || codigoAntiga) && (
             <button
               className="clear-filters-button"
               onClick={() => {
                 setUnidadeAntigaId('');
                 setCodigoAntiga('');
-                setIncluirEntregues(false);
                 setCurrentPage(1);
               }}
             >
