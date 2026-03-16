@@ -19,7 +19,7 @@ import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaTrash, FaCar, FaEye, FaCo
 import { downloadQrCode } from '../utils/qrUtils';
 import AddOcorrenciaModal from '../components/Ocorrencias/AddOcorrenciaModal';
 import OcorrenciaDetalheModal from '../components/Ocorrencias/OcorrenciaDetalheModal';
-import OcorrenciaCard from '../components/Ocorrencias/OcorrenciaCard';
+import OcorrenciasKanbanBoard from '../components/Ocorrencias/OcorrenciasKanbanBoard';
 
 const tabs = [
   { id: 'encomendas', label: 'Minhas Encomendas' },
@@ -59,6 +59,7 @@ function MoradorPage() {
   });
   const [showAddOcorrencia, setShowAddOcorrencia] = useState(false);
   const [ocorrenciaSelecionada, setOcorrenciaSelecionada] = useState(null);
+  const [ocorrenciaStatusPending, setOcorrenciaStatusPending] = useState({});
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddVisitante, setShowAddVisitante] = useState(false);
   const addVisitanteButtonRef = useRef(null);
@@ -67,7 +68,6 @@ function MoradorPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [incluirEntregues, setIncluirEntregues] = useState(false);
   const [incluirReservasPassadas, setIncluirReservasPassadas] = useState(false);
-  const [incluirFinalizadas, setIncluirFinalizadas] = useState(false);
   const [incluirAvisosExpirados, setIncluirAvisosExpirados] = useState(false);
   const [somenteHojeLista, setSomenteHojeLista] = useState(true);
   const [editingRowId, setEditingRowId] = useState(null);
@@ -81,6 +81,10 @@ function MoradorPage() {
   const [qrCopyStatus, setQrCopyStatus] = useState({});
   const [qrEmailStatus, setQrEmailStatus] = useState({});
   const [qrDownloadStatus, setQrDownloadStatus] = useState({});
+  const ocorrenciaStatusTimerRef = useRef({});
+  const ocorrenciaStatusQueueRef = useRef({});
+  const ocorrenciaStatusInFlightRef = useRef({});
+  const ocorrenciaStatusStableRef = useRef({});
 
   // Verificar se o usuário tem acesso
   const isMorador = user?.groups?.some(group => group.name === 'Moradores');
@@ -191,8 +195,7 @@ function MoradorPage() {
           setTotalPages(prev => ({ ...prev, avisos: 1 }));
         }
       } else if (type === 'ocorrencias') {
-        const paramsOcorrencias = { search };
-        if (incluirFinalizadas) paramsOcorrencias.incluir_finalizadas = true;
+        const paramsOcorrencias = { search, incluir_finalizadas: true };
         const response = await ocorrenciaAPI.list(paramsOcorrencias);
         const data = Array.isArray(response.data) ? response.data : (response.data.results || []);
         setTableData(prev => ({ ...prev, ocorrencias: data }));
@@ -213,7 +216,7 @@ function MoradorPage() {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [activeTab, currentPage, searchTerm, incluirEntregues, incluirReservasPassadas, incluirFinalizadas, incluirAvisosExpirados, somenteHojeLista]);
+  }, [activeTab, currentPage, searchTerm, incluirEntregues, incluirReservasPassadas, incluirAvisosExpirados, somenteHojeLista]);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -229,6 +232,12 @@ function MoradorPage() {
       setActiveTab(tabFromUrl);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(ocorrenciaStatusTimerRef.current).forEach((timerId) => clearTimeout(timerId));
+    };
+  }, []);
 
   const handleSaveVisitante = async (id, data) => {
     try {
@@ -262,6 +271,78 @@ function MoradorPage() {
       console.error('Erro ao excluir visitante:', error);
       alert(`Erro ao excluir: ${error.response?.data?.error || 'Ocorreu um erro ao excluir'}`);
     }
+  };
+
+  const applyOcorrenciaStatusLocal = (ocorrenciaId, status) => {
+    setTableData(prev => ({
+      ...prev,
+      ocorrencias: prev.ocorrencias.map(item =>
+        item.id === ocorrenciaId ? { ...item, status } : item
+      ),
+    }));
+    setOcorrenciaSelecionada(prev => (prev?.id === ocorrenciaId ? { ...prev, status } : prev));
+  };
+
+  const setOcorrenciaPending = (ocorrenciaId, isPending) => {
+    setOcorrenciaStatusPending(prev => {
+      if (isPending) return { ...prev, [ocorrenciaId]: true };
+      const next = { ...prev };
+      delete next[ocorrenciaId];
+      return next;
+    });
+  };
+
+  const flushOcorrenciaStatusUpdate = async (ocorrenciaId) => {
+    if (ocorrenciaStatusInFlightRef.current[ocorrenciaId]) return;
+
+    const targetStatus = ocorrenciaStatusQueueRef.current[ocorrenciaId];
+    if (!targetStatus) return;
+
+    ocorrenciaStatusInFlightRef.current[ocorrenciaId] = true;
+    setOcorrenciaPending(ocorrenciaId, true);
+
+    try {
+      await ocorrenciaAPI.update(ocorrenciaId, { status: targetStatus });
+      ocorrenciaStatusStableRef.current[ocorrenciaId] = targetStatus;
+    } catch (error) {
+      const stableStatus = ocorrenciaStatusStableRef.current[ocorrenciaId];
+      if (stableStatus) {
+        ocorrenciaStatusQueueRef.current[ocorrenciaId] = stableStatus;
+        applyOcorrenciaStatusLocal(ocorrenciaId, stableStatus);
+      }
+      console.error('Erro ao atualizar status da ocorrencia:', error);
+      alert('Nao foi possivel atualizar o status da ocorrencia.');
+    } finally {
+      ocorrenciaStatusInFlightRef.current[ocorrenciaId] = false;
+
+      const queuedStatus = ocorrenciaStatusQueueRef.current[ocorrenciaId];
+      const stableStatus = ocorrenciaStatusStableRef.current[ocorrenciaId];
+      if (queuedStatus && queuedStatus !== stableStatus) {
+        flushOcorrenciaStatusUpdate(ocorrenciaId);
+        return;
+      }
+
+      setOcorrenciaPending(ocorrenciaId, false);
+    }
+  };
+
+  const handleOcorrenciaStatusChange = (ocorrencia, novoStatus) => {
+    const ocorrenciaId = ocorrencia.id;
+    if (!ocorrenciaStatusStableRef.current[ocorrenciaId]) {
+      ocorrenciaStatusStableRef.current[ocorrenciaId] = ocorrencia.status;
+    }
+
+    ocorrenciaStatusQueueRef.current[ocorrenciaId] = novoStatus;
+    applyOcorrenciaStatusLocal(ocorrenciaId, novoStatus);
+    setOcorrenciaPending(ocorrenciaId, true);
+
+    if (ocorrenciaStatusTimerRef.current[ocorrenciaId]) {
+      clearTimeout(ocorrenciaStatusTimerRef.current[ocorrenciaId]);
+    }
+
+    ocorrenciaStatusTimerRef.current[ocorrenciaId] = setTimeout(() => {
+      flushOcorrenciaStatusUpdate(ocorrenciaId);
+    }, 180);
   };
 
   const handleSaveVeiculo = async (id, data) => {
@@ -855,9 +936,9 @@ function MoradorPage() {
       header: 'Status',
       width: '12%',
       render: (value) => {
-        const bg = { aberta: '#fee2e2', em_andamento: '#fef9c3', resolvida: '#dcfce7', fechada: '#f3f4f6' };
-        const color = { aberta: '#dc2626', em_andamento: '#ca8a04', resolvida: '#15803d', fechada: '#6b7280' };
-        const label = { aberta: 'Aberta', em_andamento: 'Em Andamento', resolvida: 'Resolvida', fechada: 'Fechada' };
+        const bg = { aberta: '#fee2e2', em_andamento: '#fef9c3', resolvida: '#dcfce7' };
+        const color = { aberta: '#dc2626', em_andamento: '#ca8a04', resolvida: '#15803d' };
+        const label = { aberta: 'Aberta', em_andamento: 'Em Andamento', resolvida: 'Resolvida' };
         return (
           <span style={{
             padding: '2px 8px', borderRadius: 10, fontSize: '0.8rem', fontWeight: 600,
@@ -1156,20 +1237,6 @@ function MoradorPage() {
               </div>
             </div>
           )}
-          {activeTab === 'ocorrencias' && (
-            <div className="filters-container">
-              <div className="filter-group">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={incluirFinalizadas}
-                    onChange={(e) => { setIncluirFinalizadas(e.target.checked); setCurrentPage(1); }}
-                  />
-                  Incluir resolvidas
-                </label>
-              </div>
-            </div>
-          )}
           {activeTab === 'lista_convidados' && (
             <div className="filters-container">
               <div className="filter-group">
@@ -1212,6 +1279,15 @@ function MoradorPage() {
               ))
             )}
           </div>
+        ) : activeTab === 'ocorrencias' ? (
+          <OcorrenciasKanbanBoard
+            ocorrencias={tableData.ocorrencias}
+            loading={loading}
+            onCardClick={setOcorrenciaSelecionada}
+            onStatusChange={handleOcorrenciaStatusChange}
+            canDrag={false}
+            pendingById={ocorrenciaStatusPending}
+          />
         ) : (
           <GenericTable
             columns={
@@ -1225,9 +1301,7 @@ function MoradorPage() {
                       ? eventosColumns
                       : activeTab === 'lista_convidados'
                         ? listaConvidadosColumns
-                        : activeTab === 'ocorrencias'
-                          ? ocorrenciasColumns
-                          : veiculosColumns
+                        : veiculosColumns
             }
             data={tableData[activeTab]}
             loading={loading}

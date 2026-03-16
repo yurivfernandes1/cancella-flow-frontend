@@ -15,7 +15,7 @@ import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaUsers, FaEye, FaQrcode } 
 import QrCodeScanner from '../components/Eventos/QrCodeScanner';
 import AddOcorrenciaModal from '../components/Ocorrencias/AddOcorrenciaModal';
 import OcorrenciaDetalheModal from '../components/Ocorrencias/OcorrenciaDetalheModal';
-import OcorrenciaCard from '../components/Ocorrencias/OcorrenciaCard';
+import OcorrenciasKanbanBoard from '../components/Ocorrencias/OcorrenciasKanbanBoard';
 
 const tabs = [
   { id: 'unidades_moradores', label: 'Unidades e Moradores' },
@@ -68,6 +68,7 @@ function PortariaPage() {
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [showAddOcorrencia, setShowAddOcorrencia] = useState(false);
   const [ocorrenciaSelecionada, setOcorrenciaSelecionada] = useState(null);
+  const [ocorrenciaStatusPending, setOcorrenciaStatusPending] = useState({});
 
   // Verificar se o usuário tem acesso
   const isPortaria = user?.groups?.some(group => group.name === 'Portaria');
@@ -77,8 +78,11 @@ function PortariaPage() {
   // Checkbox: mostrar apenas listas do dia
   const [somenteHoje, setSomenteHoje] = useState(true);
   const [incluirReservasPassadas, setIncluirReservasPassadas] = useState(false);
-  const [incluirFinalizadas, setIncluirFinalizadas] = useState(false);
   const [incluirAvisosExpirados, setIncluirAvisosExpirados] = useState(false);
+  const ocorrenciaStatusTimerRef = useRef({});
+  const ocorrenciaStatusQueueRef = useRef({});
+  const ocorrenciaStatusInFlightRef = useRef({});
+  const ocorrenciaStatusStableRef = useRef({});
 
   // Debug
   React.useEffect(() => {
@@ -174,8 +178,7 @@ function PortariaPage() {
           setTotalPages(prev => ({ ...prev, avisos: 1 }));
         }
       } else if (type === 'ocorrencias') {
-        const paramsOcorrencias = { search };
-        if (incluirFinalizadas) paramsOcorrencias.incluir_finalizadas = true;
+        const paramsOcorrencias = { search, incluir_finalizadas: true };
         const response = await ocorrenciaAPI.list(paramsOcorrencias);
         const data = Array.isArray(response.data) ? response.data : (response.data.results || []);
         setTableData(prev => ({ ...prev, ocorrencias: data }));
@@ -218,7 +221,7 @@ function PortariaPage() {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [activeTab, currentPage, searchTerm, somenteHoje, incluirEntregues, incluirReservasPassadas, incluirFinalizadas, incluirAvisosExpirados]);
+  }, [activeTab, currentPage, searchTerm, somenteHoje, incluirEntregues, incluirReservasPassadas, incluirAvisosExpirados]);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -234,6 +237,12 @@ function PortariaPage() {
       setActiveTab(tabFromUrl);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    return () => {
+      Object.values(ocorrenciaStatusTimerRef.current).forEach((timerId) => clearTimeout(timerId));
+    };
+  }, []);
 
   const handleSaveEncomenda = async (id, data) => {
     try {
@@ -251,6 +260,78 @@ function PortariaPage() {
       console.error('Erro ao atualizar encomenda:', error);
       alert(`Erro ao salvar: ${error.response?.data?.error || 'Ocorreu um erro ao salvar os dados'}`);
     }
+  };
+
+  const applyOcorrenciaStatusLocal = (ocorrenciaId, status) => {
+    setTableData(prev => ({
+      ...prev,
+      ocorrencias: prev.ocorrencias.map(item =>
+        item.id === ocorrenciaId ? { ...item, status } : item
+      ),
+    }));
+    setOcorrenciaSelecionada(prev => (prev?.id === ocorrenciaId ? { ...prev, status } : prev));
+  };
+
+  const setOcorrenciaPending = (ocorrenciaId, isPending) => {
+    setOcorrenciaStatusPending(prev => {
+      if (isPending) return { ...prev, [ocorrenciaId]: true };
+      const next = { ...prev };
+      delete next[ocorrenciaId];
+      return next;
+    });
+  };
+
+  const flushOcorrenciaStatusUpdate = async (ocorrenciaId) => {
+    if (ocorrenciaStatusInFlightRef.current[ocorrenciaId]) return;
+
+    const targetStatus = ocorrenciaStatusQueueRef.current[ocorrenciaId];
+    if (!targetStatus) return;
+
+    ocorrenciaStatusInFlightRef.current[ocorrenciaId] = true;
+    setOcorrenciaPending(ocorrenciaId, true);
+
+    try {
+      await ocorrenciaAPI.update(ocorrenciaId, { status: targetStatus });
+      ocorrenciaStatusStableRef.current[ocorrenciaId] = targetStatus;
+    } catch (error) {
+      const stableStatus = ocorrenciaStatusStableRef.current[ocorrenciaId];
+      if (stableStatus) {
+        ocorrenciaStatusQueueRef.current[ocorrenciaId] = stableStatus;
+        applyOcorrenciaStatusLocal(ocorrenciaId, stableStatus);
+      }
+      console.error('Erro ao atualizar status da ocorrencia:', error);
+      alert('Nao foi possivel atualizar o status da ocorrencia.');
+    } finally {
+      ocorrenciaStatusInFlightRef.current[ocorrenciaId] = false;
+
+      const queuedStatus = ocorrenciaStatusQueueRef.current[ocorrenciaId];
+      const stableStatus = ocorrenciaStatusStableRef.current[ocorrenciaId];
+      if (queuedStatus && queuedStatus !== stableStatus) {
+        flushOcorrenciaStatusUpdate(ocorrenciaId);
+        return;
+      }
+
+      setOcorrenciaPending(ocorrenciaId, false);
+    }
+  };
+
+  const handleOcorrenciaStatusChange = (ocorrencia, novoStatus) => {
+    const ocorrenciaId = ocorrencia.id;
+    if (!ocorrenciaStatusStableRef.current[ocorrenciaId]) {
+      ocorrenciaStatusStableRef.current[ocorrenciaId] = ocorrencia.status;
+    }
+
+    ocorrenciaStatusQueueRef.current[ocorrenciaId] = novoStatus;
+    applyOcorrenciaStatusLocal(ocorrenciaId, novoStatus);
+    setOcorrenciaPending(ocorrenciaId, true);
+
+    if (ocorrenciaStatusTimerRef.current[ocorrenciaId]) {
+      clearTimeout(ocorrenciaStatusTimerRef.current[ocorrenciaId]);
+    }
+
+    ocorrenciaStatusTimerRef.current[ocorrenciaId] = setTimeout(() => {
+      flushOcorrenciaStatusUpdate(ocorrenciaId);
+    }, 180);
   };
 
   // handleSaveVisitante removed (não usado nesta página)
@@ -591,9 +672,9 @@ function PortariaPage() {
       header: 'Status',
       width: '12%',
       render: (value) => {
-        const bg = { aberta: '#fee2e2', em_andamento: '#fef9c3', resolvida: '#dcfce7', fechada: '#f3f4f6' };
-        const color = { aberta: '#dc2626', em_andamento: '#ca8a04', resolvida: '#15803d', fechada: '#6b7280' };
-        const label = { aberta: 'Aberta', em_andamento: 'Em Andamento', resolvida: 'Resolvida', fechada: 'Fechada' };
+        const bg = { aberta: '#fee2e2', em_andamento: '#fef9c3', resolvida: '#dcfce7' };
+        const color = { aberta: '#dc2626', em_andamento: '#ca8a04', resolvida: '#15803d' };
+        const label = { aberta: 'Aberta', em_andamento: 'Em Andamento', resolvida: 'Resolvida' };
         return (
           <span style={{
             padding: '2px 8px', borderRadius: 10, fontSize: '0.8rem', fontWeight: 600,
@@ -1027,28 +1108,15 @@ function PortariaPage() {
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
-                  <label style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: '#374151', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={incluirFinalizadas}
-                      onChange={(e) => { setIncluirFinalizadas(e.target.checked); setCurrentPage(1); }}
-                      style={{ accentColor: '#2abb98', width: 15, height: 15, cursor: 'pointer' }}
-                    />
-                    Incluir resolvidas
-                  </label>
                 </div>
               </div>
-              <GenericTable
-                data={tableData.ocorrencias}
-                columns={ocorrenciasColumns}
+              <OcorrenciasKanbanBoard
+                ocorrencias={tableData.ocorrencias}
                 loading={loading}
-                currentPage={currentPage}
-                totalPages={totalPages.ocorrencias}
-                onPageChange={setCurrentPage}
-                editingRowId={null}
-                currentEditData={{}}
-                hideEditButton={true}
-                className="full-width-table allow-horizontal-scroll"
+                onCardClick={setOcorrenciaSelecionada}
+                onStatusChange={handleOcorrenciaStatusChange}
+                canDrag={false}
+                pendingById={ocorrenciaStatusPending}
               />
             </>
           )}

@@ -8,14 +8,13 @@ const STATUS_LABELS = {
   aberta: 'Aberta',
   em_andamento: 'Em Andamento',
   resolvida: 'Resolvida',
-  fechada: 'Fechada',
 };
 
 const STATUS_COLORS = {
   aberta: { bg: '#fee2e2', color: '#dc2626' },
   em_andamento: { bg: '#fef9c3', color: '#ca8a04' },
   resolvida: { bg: '#dcfce7', color: '#15803d' },
-  fechada: { bg: '#f3f4f6', color: '#6b7280' },
+  default: { bg: '#f3f4f6', color: '#6b7280' },
 };
 
 const TIPO_LABELS = {
@@ -31,9 +30,20 @@ function OcorrenciaDetalheModal({ ocorrencia, onClose, onUpdate }) {
 
   const [resposta, setResposta] = useState(ocorrencia.resposta || '');
   const [statusEdit, setStatusEdit] = useState(ocorrencia.status);
+  const [motivoReabertura, setMotivoReabertura] = useState('');
+  const [showConfirmReabrir, setShowConfirmReabrir] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  const referenciaResolucaoRaw = ocorrencia.respondido_em || ocorrencia.updated_at || null;
+  const dataResolucao = referenciaResolucaoRaw ? new Date(referenciaResolucaoRaw) : null;
+  const dataResolucaoValida = Boolean(dataResolucao && !Number.isNaN(dataResolucao.getTime()));
+  const msCincoDias = 5 * 24 * 60 * 60 * 1000;
+  const dentroPrazoReabertura = dataResolucaoValida
+    ? (Date.now() - dataResolucao.getTime()) <= msCincoDias
+    : false;
+  const podeReabrir = !isSindicoOrStaff && ocorrencia.status === 'resolvida' && dentroPrazoReabertura;
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
@@ -62,7 +72,37 @@ function OcorrenciaDetalheModal({ ocorrencia, onClose, onUpdate }) {
     }
   };
 
-  const statusStyle = STATUS_COLORS[ocorrencia.status] || STATUS_COLORS.fechada;
+  const handleReabrir = () => {
+    setError('');
+    setSuccess('');
+
+    if (!motivoReabertura.trim()) {
+      setError('Informe a justificativa para reabrir a ocorrência.');
+      return;
+    }
+
+    setShowConfirmReabrir(true);
+  };
+
+  const handleConfirmReabrir = async () => {
+    setShowConfirmReabrir(false);
+    setLoading(true);
+    try {
+      await ocorrenciaAPI.update(ocorrencia.id, {
+        status: 'em_andamento',
+        motivo_reabertura: motivoReabertura.trim(),
+      });
+      setSuccess('Ocorrência reaberta e movida para Em Andamento!');
+      onUpdate && onUpdate();
+      setTimeout(() => onClose(), 900);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Erro ao reabrir ocorrência.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const statusStyle = STATUS_COLORS[ocorrencia.status] || STATUS_COLORS.default;
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -122,16 +162,65 @@ function OcorrenciaDetalheModal({ ocorrencia, onClose, onUpdate }) {
             </div>
           )}
 
+          {!isSindicoOrStaff && ocorrencia.status === 'resolvida' && (
+            <div className="form-group" style={{ marginTop: 6 }}>
+              <label>Reabrir ocorrência</label>
+              <textarea
+                value={motivoReabertura}
+                onChange={(e) => setMotivoReabertura(e.target.value)}
+                placeholder={podeReabrir ? 'Descreva por que a ocorrência precisa ser reaberta...' : 'Reabertura indisponível'}
+                rows={3}
+                disabled={!podeReabrir || loading}
+              />
+              {!dataResolucaoValida && (
+                <p style={{ marginTop: 6, fontSize: '0.8rem', color: '#b45309' }}>
+                  Não foi possível determinar a data de resolução desta ocorrência.
+                </p>
+              )}
+              {dataResolucaoValida && !dentroPrazoReabertura && (
+                <p style={{ marginTop: 6, fontSize: '0.8rem', color: '#b45309' }}>
+                  Esta ocorrência foi resolvida há mais de 5 dias e não pode mais ser reaberta.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Formulário de resposta (síndico/staff) */}
           {isSindicoOrStaff && (
             <>
+              {(ocorrencia.reaberto_em || ocorrencia.motivo_reabertura) && (
+                <div className="form-group">
+                  <label>Dados da Reabertura</label>
+                  <div
+                    className="modal-info"
+                    style={{
+                      marginBottom: 0,
+                      background: '#fff7ed',
+                      color: '#9a3412',
+                      whiteSpace: 'pre-wrap',
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {ocorrencia.reaberto_em ? (
+                      <p style={{ margin: '0 0 6px' }}>
+                        Reaberta em <strong>{formatDate(ocorrencia.reaberto_em)}</strong>
+                      </p>
+                    ) : null}
+                    {ocorrencia.motivo_reabertura ? (
+                      <p style={{ margin: 0 }}>
+                        Motivo: {ocorrencia.motivo_reabertura}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              )}
+
               <div className="form-group">
                 <label>Status</label>
                 <select value={statusEdit} onChange={(e) => setStatusEdit(e.target.value)}>
                   <option value="aberta">Aberta</option>
                   <option value="em_andamento">Em Andamento</option>
                   <option value="resolvida">Resolvida</option>
-                  <option value="fechada">Fechada</option>
                 </select>
               </div>
 
@@ -155,12 +244,73 @@ function OcorrenciaDetalheModal({ ocorrencia, onClose, onUpdate }) {
           <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>
             Fechar
           </button>
+          {!isSindicoOrStaff && ocorrencia.status === 'resolvida' && (
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={handleReabrir}
+              disabled={!podeReabrir || loading}
+              title={!podeReabrir ? 'Reabertura permitida apenas até 5 dias após a resolução' : ''}
+            >
+              {loading ? 'Reabrindo...' : 'Reabrir Ocorrência'}
+            </button>
+          )}
           {isSindicoOrStaff && (
             <button type="button" className="btn-primary" onClick={handleSave} disabled={loading}>
               {loading ? 'Salvando...' : 'Salvar Resposta'}
             </button>
           )}
         </div>
+
+        {showConfirmReabrir && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.42)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 3,
+              padding: 16,
+            }}
+          >
+            <div
+              style={{
+                width: '100%',
+                maxWidth: 420,
+                background: '#fff',
+                borderRadius: 12,
+                border: '1px solid #e2e8f0',
+                padding: 16,
+                boxShadow: '0 12px 24px rgba(0,0,0,0.22)',
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: '1rem', color: '#0f172a' }}>Confirmar reabertura</h3>
+              <p style={{ margin: '10px 0 14px', fontSize: '0.9rem', color: '#475569', lineHeight: 1.45 }}>
+                Deseja realmente reabrir esta ocorrência? Ela voltará para o status Em Andamento.
+              </p>
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => setShowConfirmReabrir(false)}
+                  disabled={loading}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleConfirmReabrir}
+                  disabled={loading}
+                >
+                  Confirmar Reabertura
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,27 +1,7 @@
 import React from 'react';
-import '../../styles/GenericMobileCard.css';
+import '../../styles/UnitsCards.css';
 
-const STATUS_LABELS = {
-  aberta: 'Aberta',
-  em_andamento: 'Em Andamento',
-  resolvida: 'Resolvida',
-  fechada: 'Fechada',
-};
-
-const STATUS_COLORS = {
-  aberta: { bg: '#fee2e2', color: '#dc2626' },
-  em_andamento: { bg: '#fef9c3', color: '#ca8a04' },
-  resolvida: { bg: '#dcfce7', color: '#15803d' },
-  fechada: { bg: '#f3f4f6', color: '#6b7280' },
-};
-
-const TIPO_LABELS = {
-  problema: 'Problema',
-  sugestao: 'Sugestão',
-};
-
-function OcorrenciaCard({ ocorrencia, onClick }) {
-  const statusStyle = STATUS_COLORS[ocorrencia.status] || STATUS_COLORS.fechada;
+function OcorrenciaCard({ ocorrencia, onClick, isPending = false }) {
   const formatDate = (dateStr) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('pt-BR', {
@@ -36,42 +16,54 @@ function OcorrenciaCard({ ocorrencia, onClick }) {
     : ocorrencia.descricao;
 
   return (
-    <div className="generic-mobile-card" onClick={onClick} style={{ cursor: 'pointer' }}>
-      <div className="generic-mobile-card-header">
-        <span className="generic-mobile-card-title">{ocorrencia.titulo}</span>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{
-            padding: '2px 8px', borderRadius: 8, fontSize: '0.7rem', fontWeight: 600,
-            background: ocorrencia.tipo === 'problema' ? '#fee2e2' : '#dbeafe',
-            color: ocorrencia.tipo === 'problema' ? '#dc2626' : '#1d4ed8',
-          }}>
-            {TIPO_LABELS[ocorrencia.tipo] || ocorrencia.tipo}
-          </span>
-          <span style={{
-            padding: '2px 8px', borderRadius: 8, fontSize: '0.7rem', fontWeight: 600,
-            background: statusStyle.bg,
-            color: statusStyle.color,
-          }}>
-            {STATUS_LABELS[ocorrencia.status] || ocorrencia.status}
-          </span>
+    <div
+      className="unit-card"
+      onClick={onClick}
+      style={{
+        cursor: isPending ? 'progress' : 'pointer',
+        opacity: isPending ? 0.72 : 1,
+      }}
+    >
+      <div className="unit-card__header">
+        <div className="unit-card__header-left">
+          <span className="unit-card__title">{ocorrencia.titulo}</span>
         </div>
-      </div>
-
-      {previewDesc && (
-        <p style={{ fontSize: '0.85rem', color: '#6b7280', margin: '6px 0 4px', lineHeight: 1.5 }}>
-          {previewDesc}
-        </p>
-      )}
-
-      <div className="generic-mobile-card-footer">
-        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-          {formatDate(ocorrencia.created_at)}
-        </span>
-        {ocorrencia.criado_por_nome && (
-          <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-            por {ocorrencia.criado_por_nome}
+        {isPending && (
+          <span
+            style={{
+              fontSize: '0.72rem',
+              fontWeight: 700,
+              padding: '2px 8px',
+              borderRadius: 10,
+              background: 'rgba(255,255,255,0.22)',
+              color: '#fff',
+            }}
+          >
+            Salvando...
           </span>
         )}
+      </div>
+
+      <div className="unit-card__summary">
+        <div className="unit-card__info" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '0.4rem' }}>
+          {previewDesc && (
+            <p style={{ fontSize: '0.85rem', color: '#6b7280', margin: 0, lineHeight: 1.5 }}>
+              {previewDesc}
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div className="unit-card__info-item">
+              <span className="unit-card__info-label">Data</span>
+              <span className="unit-card__info-value" style={{ fontSize: '0.82rem', fontWeight: 500 }}>{formatDate(ocorrencia.created_at)}</span>
+            </div>
+            {ocorrencia.criado_por_nome && (
+              <div className="unit-card__info-item">
+                <span className="unit-card__info-label">Por</span>
+                <span className="unit-card__info-value" style={{ fontSize: '0.82rem', fontWeight: 500 }}>{ocorrencia.criado_por_nome}</span>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

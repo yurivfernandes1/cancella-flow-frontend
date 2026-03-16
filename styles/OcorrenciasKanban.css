@@ -1,0 +1,144 @@
+.ocorrencias-kanban-root {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ocorrencias-kanban-summary {
+  font-size: 0.9rem;
+  color: #475569;
+}
+
+.ocorrencias-kanban-summary strong {
+  color: #0f172a;
+}
+
+.ocorrencias-kanban-lane {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.9rem;
+}
+
+.ocorrencias-kanban-lane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.ocorrencias-kanban-lane-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #0f172a;
+}
+
+.ocorrencias-kanban-lane-header span {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.ocorrencias-kanban-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(230px, 1fr));
+  gap: 0.8rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+}
+
+.ocorrencias-kanban-column {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  min-height: 160px;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ocorrencias-kanban-column--dragover {
+  border-color: #2abb98;
+  box-shadow: 0 0 0 3px rgba(42, 187, 152, 0.16);
+}
+
+.ocorrencias-kanban-column-header {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.82rem;
+  color: #334155;
+  font-weight: 600;
+}
+
+.ocorrencias-kanban-column-header strong {
+  color: #0f172a;
+}
+
+.ocorrencias-kanban-column-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.65rem;
+  max-height: 62vh;
+  overflow-y: auto;
+}
+
+.ocorrencias-kanban-empty-column {
+  margin: 0;
+  padding: 0.75rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  text-align: center;
+}
+
+.ocorrencias-kanban-draggable {
+  cursor: grab;
+}
+
+.ocorrencias-kanban-draggable:active {
+  cursor: grabbing;
+}
+
+.ocorrencias-kanban-draggable--dragging {
+  opacity: 0.5;
+}
+
+.ocorrencias-kanban-draggable--pending {
+  pointer-events: none;
+}
+
+.ocorrencias-kanban-more {
+  margin: 0.15rem 0.65rem 0.75rem;
+  border: none;
+  background: #e2e8f0;
+  color: #1e293b;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+}
+
+.ocorrencias-kanban-more:hover {
+  background: #cbd5e1;
+}
+
+.ocorrencias-kanban-loading {
+  padding: 1rem;
+  color: #64748b;
+}
+
+@media (max-width: 920px) {
+  .ocorrencias-kanban-columns {
+    grid-template-columns: repeat(3, minmax(260px, 1fr));
+  }
+
+  .ocorrencias-kanban-column-cards {
+    max-height: none;
+  }
+}
