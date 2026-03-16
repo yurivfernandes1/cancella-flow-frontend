@@ -17,6 +17,7 @@ import EncomendaDetalheModal from '../components/Encomendas/EncomendaDetalheModa
 import ReservaModal from '../components/Reservas/ReservaModal';
 import { validatePlaca, formatPlaca, normalizePlaca, maskPlaca } from '../utils/placaValidator';
 import '../styles/MoradorPage.css';
+import '../styles/UnitsCards.css';
 import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaTrash, FaCar, FaEye, FaCopy, FaEnvelope, FaDownload } from 'react-icons/fa';
 import { downloadQrCode } from '../utils/qrUtils';
 import AddOcorrenciaModal from '../components/Ocorrencias/AddOcorrenciaModal';
@@ -84,6 +85,12 @@ function MoradorPage() {
   const [qrCopyStatus, setQrCopyStatus] = useState({});
   const [qrEmailStatus, setQrEmailStatus] = useState({});
   const [qrDownloadStatus, setQrDownloadStatus] = useState({});
+  const [visitanteSelecionado, setVisitanteSelecionado] = useState(null);
+  const [visitanteModalData, setVisitanteModalData] = useState(null);
+  const [visitanteModalSaving, setVisitanteModalSaving] = useState(false);
+  const [veiculoSelecionado, setVeiculoSelecionado] = useState(null);
+  const [veiculoModalData, setVeiculoModalData] = useState(null);
+  const [veiculoModalSaving, setVeiculoModalSaving] = useState(false);
   const ocorrenciaStatusTimerRef = useRef({});
   const ocorrenciaStatusQueueRef = useRef({});
   const ocorrenciaStatusInFlightRef = useRef({});
@@ -245,6 +252,7 @@ function MoradorPage() {
       const payload = {
         nome: data.nome,
         documento: data.documento,
+        email: data.email || '',
         data_entrada: data.data_entrada ? new Date(data.data_entrada).toISOString() : null,
         data_saida: data.data_saida ? new Date(data.data_saida).toISOString() : null,
         is_permanente: Boolean(data.is_permanente),
@@ -254,9 +262,11 @@ function MoradorPage() {
       await api.patch(`/cadastros/visitantes/${id}/update/`, payload);
       fetchData('visitantes', currentPage, searchTerm);
       setEditingRowId(null);
+      return true;
     } catch (error) {
       console.error('Erro ao atualizar visitante:', error);
       alert(`Erro ao salvar: ${error.response?.data?.error || 'Ocorreu um erro ao salvar os dados'}`);
+      return false;
     }
   };
 
@@ -370,7 +380,8 @@ function MoradorPage() {
     try {
       const payload = {
         placa: normalizePlaca(data.placa),
-        marca_modelo: data.marca_modelo
+        marca_modelo: data.marca_modelo,
+        is_active: data.is_active !== false,
       };
 
       // Atualizar veículo existente
@@ -378,9 +389,11 @@ function MoradorPage() {
       
       fetchData('veiculos', currentPage, searchTerm);
       setEditingRowId(null);
+      return true;
     } catch (error) {
       console.error('Erro ao salvar veículo:', error);
       alert(`Erro ao salvar: ${error.response?.data?.error || 'Ocorreu um erro ao salvar os dados'}`);
+      return false;
     }
   };
 
@@ -438,6 +451,82 @@ function MoradorPage() {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const toDateTimeLocalValue = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const offset = date.getTimezoneOffset() * 60000;
+    return new Date(date.getTime() - offset).toISOString().slice(0, 16);
+  };
+
+  const openVisitanteModal = (visitante) => {
+    setVisitanteSelecionado(visitante);
+    setVisitanteModalData({
+      nome: visitante.nome || '',
+      documento: visitante.documento || '',
+      email: visitante.email || '',
+      data_entrada: toDateTimeLocalValue(visitante.data_entrada),
+      data_saida: toDateTimeLocalValue(visitante.data_saida),
+      is_permanente: Boolean(visitante.is_permanente),
+    });
+  };
+
+  const closeVisitanteModal = () => {
+    if (visitanteModalSaving) return;
+    setVisitanteSelecionado(null);
+    setVisitanteModalData(null);
+  };
+
+  const saveVisitanteModal = async () => {
+    if (!visitanteSelecionado || !visitanteModalData) return;
+    setVisitanteModalSaving(true);
+    try {
+      const ok = await handleSaveVisitante(visitanteSelecionado.id, {
+        ...visitanteSelecionado,
+        ...visitanteModalData,
+        data_entrada: visitanteModalData.data_entrada ? new Date(visitanteModalData.data_entrada).toISOString() : null,
+        data_saida: visitanteModalData.data_saida ? new Date(visitanteModalData.data_saida).toISOString() : null,
+      });
+      if (ok) {
+        closeVisitanteModal();
+      }
+    } finally {
+      setVisitanteModalSaving(false);
+    }
+  };
+
+  const openVeiculoModal = (veiculo) => {
+    setVeiculoSelecionado(veiculo);
+    const rawPlaca = veiculo.placa || veiculo.placa_veiculo || veiculo.placa_normalizada || veiculo.placa_formatted || '';
+    setVeiculoModalData({
+      placa: rawPlaca ? formatPlaca(String(rawPlaca)) : '',
+      marca_modelo: veiculo.marca_modelo || '',
+      is_active: veiculo.is_active !== false,
+    });
+  };
+
+  const closeVeiculoModal = () => {
+    if (veiculoModalSaving) return;
+    setVeiculoSelecionado(null);
+    setVeiculoModalData(null);
+  };
+
+  const saveVeiculoModal = async () => {
+    if (!veiculoSelecionado || !veiculoModalData) return;
+    setVeiculoModalSaving(true);
+    try {
+      const ok = await handleSaveVeiculo(veiculoSelecionado.id, {
+        ...veiculoSelecionado,
+        ...veiculoModalData,
+      });
+      if (ok) {
+        closeVeiculoModal();
+      }
+    } finally {
+      setVeiculoModalSaving(false);
+    }
   };
 
   const encomendasColumns = [
@@ -1114,6 +1203,9 @@ function MoradorPage() {
     }
   ];
 
+  const visitantesPermanentes = (tableData.visitantes || []).filter((visitante) => Boolean(visitante.is_permanente));
+  const visitantesNaoPermanentes = (tableData.visitantes || []).filter((visitante) => !Boolean(visitante.is_permanente));
+
   return (
     <div className="morador-page">
 
@@ -1284,12 +1376,285 @@ function MoradorPage() {
             totalPages={totalPages.encomendas}
             onPageChange={setCurrentPage}
           />
+        ) : activeTab === 'visitantes' ? (
+          <>
+            <div className="morador-cards-sections">
+              <section className="morador-cards-section">
+                <div className="morador-cards-section__header">
+                  <h3>Permanentes</h3>
+                  <span>{visitantesPermanentes.length}</span>
+                </div>
+                <div className="units-cards-grid">
+                  {visitantesPermanentes.length === 0 ? (
+                    <div className="empty-state compact">
+                      <p>Nenhum visitante permanente encontrado.</p>
+                    </div>
+                  ) : (
+                    visitantesPermanentes.map((visitante) => {
+                      const copyStatus = qrCopyStatus[visitante.id] || 'idle';
+                      const emailStatus = qrEmailStatus[visitante.id] || 'idle';
+                      const downloadStatus = qrDownloadStatus[visitante.id] || 'idle';
+                      return (
+                        <article
+                          key={visitante.id}
+                          className="unit-card morador-record-card"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openVisitanteModal(visitante)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              openVisitanteModal(visitante);
+                            }
+                          }}
+                        >
+                          <div className="unit-card__header">
+                            <div className="unit-card__header-left">
+                              <span className="unit-card__title">{visitante.nome || '-'}</span>
+                            </div>
+                            <div className="unit-card__header-right">
+                              <span className="unit-card__status-badge unit-card__status-badge--active">Permanente</span>
+                            </div>
+                          </div>
+                          <div className="unit-card__summary">
+                            <div className="unit-card__info" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.45rem' }}>
+                              <div className="unit-card__info-item"><span className="unit-card__info-label">Documento</span><span className="unit-card__info-value">{visitante.documento || '-'}</span></div>
+                              <div className="unit-card__info-item"><span className="unit-card__info-label">E-mail</span><span className="unit-card__info-value">{visitante.email || '-'}</span></div>
+                              <div className="unit-card__info-item"><span className="unit-card__info-label">Entrada</span><span className="unit-card__info-value">{formatDateTime(visitante.data_entrada)}</span></div>
+                              <div className="unit-card__info-item"><span className="unit-card__info-label">Saída</span><span className="unit-card__info-value">{formatDateTime(visitante.data_saida)}</span></div>
+                            </div>
+                            <div className="morador-record-card__actions" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                className={`edit-button${copyStatus === 'copied' ? ' save-button' : copyStatus === 'error' ? ' cancel-button' : ''}`}
+                                onClick={() => handleCopyQrVisitante(visitante.id, visitante.qr_token)}
+                                title={visitante.qr_token ? 'Copiar QR Code' : 'QR indisponível'}
+                                disabled={!visitante.qr_token}
+                              >
+                                {copyStatus === 'copied' ? <FaCheck /> : <FaCopy />}
+                              </button>
+                              <button
+                                className={`edit-button${emailStatus === 'sent' ? ' save-button' : emailStatus === 'error' ? ' cancel-button' : ''}`}
+                                onClick={() => handleSendEmailVisitante(visitante.id, visitante.email)}
+                                title={visitante.email ? 'Reenviar QR por e-mail' : 'Cadastre um e-mail para enviar o QR'}
+                                disabled={!visitante.email || emailStatus === 'sending'}
+                              >
+                                {emailStatus === 'sent' ? <FaCheck /> : <FaEnvelope />}
+                              </button>
+                              <button
+                                className={`edit-button${downloadStatus === 'done' ? ' save-button' : downloadStatus === 'error' ? ' cancel-button' : ''}`}
+                                onClick={() => handleDownloadQrVisitante(visitante.id, visitante.qr_token, visitante.nome)}
+                                title={visitante.qr_token ? 'Baixar QR Code' : 'QR indisponível'}
+                                disabled={!visitante.qr_token || downloadStatus === 'downloading'}
+                              >
+                                {downloadStatus === 'done' ? <FaCheck /> : <FaDownload />}
+                              </button>
+                              <button
+                                className="delete-button card-delete-button"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteVisitante(visitante.id); }}
+                                title="Excluir visitante"
+                              >
+                                <FaTrash size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })
+                  )}
+                </div>
+              </section>
+
+              <section className="morador-cards-section">
+                <div className="morador-cards-section__header">
+                  <h3>Não permanentes</h3>
+                  <span>{visitantesNaoPermanentes.length}</span>
+                </div>
+                <div className="units-cards-grid">
+                  {visitantesNaoPermanentes.length === 0 ? (
+                    <div className="empty-state compact">
+                      <p>Nenhum visitante não permanente encontrado.</p>
+                    </div>
+                  ) : (
+                    visitantesNaoPermanentes.map((visitante) => {
+                      const copyStatus = qrCopyStatus[visitante.id] || 'idle';
+                      const emailStatus = qrEmailStatus[visitante.id] || 'idle';
+                      const downloadStatus = qrDownloadStatus[visitante.id] || 'idle';
+                      return (
+                        <article
+                          key={visitante.id}
+                          className="unit-card morador-record-card"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openVisitanteModal(visitante)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              openVisitanteModal(visitante);
+                            }
+                          }}
+                        >
+                          <div className="unit-card__header">
+                            <div className="unit-card__header-left">
+                              <span className="unit-card__title">{visitante.nome || '-'}</span>
+                            </div>
+                            <div className="unit-card__header-right">
+                              <span className="unit-card__status-badge unit-card__status-badge--inactive">Não permanente</span>
+                            </div>
+                          </div>
+                          <div className="unit-card__summary">
+                            <div className="unit-card__info" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.45rem' }}>
+                              <div className="unit-card__info-item"><span className="unit-card__info-label">Documento</span><span className="unit-card__info-value">{visitante.documento || '-'}</span></div>
+                              <div className="unit-card__info-item"><span className="unit-card__info-label">E-mail</span><span className="unit-card__info-value">{visitante.email || '-'}</span></div>
+                              <div className="unit-card__info-item"><span className="unit-card__info-label">Entrada</span><span className="unit-card__info-value">{formatDateTime(visitante.data_entrada)}</span></div>
+                              <div className="unit-card__info-item"><span className="unit-card__info-label">Saída</span><span className="unit-card__info-value">{formatDateTime(visitante.data_saida)}</span></div>
+                            </div>
+                            <div className="morador-record-card__actions" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                className={`edit-button${copyStatus === 'copied' ? ' save-button' : copyStatus === 'error' ? ' cancel-button' : ''}`}
+                                onClick={() => handleCopyQrVisitante(visitante.id, visitante.qr_token)}
+                                title={visitante.qr_token ? 'Copiar QR Code' : 'QR indisponível'}
+                                disabled={!visitante.qr_token}
+                              >
+                                {copyStatus === 'copied' ? <FaCheck /> : <FaCopy />}
+                              </button>
+                              <button
+                                className={`edit-button${emailStatus === 'sent' ? ' save-button' : emailStatus === 'error' ? ' cancel-button' : ''}`}
+                                onClick={() => handleSendEmailVisitante(visitante.id, visitante.email)}
+                                title={visitante.email ? 'Reenviar QR por e-mail' : 'Cadastre um e-mail para enviar o QR'}
+                                disabled={!visitante.email || emailStatus === 'sending'}
+                              >
+                                {emailStatus === 'sent' ? <FaCheck /> : <FaEnvelope />}
+                              </button>
+                              <button
+                                className={`edit-button${downloadStatus === 'done' ? ' save-button' : downloadStatus === 'error' ? ' cancel-button' : ''}`}
+                                onClick={() => handleDownloadQrVisitante(visitante.id, visitante.qr_token, visitante.nome)}
+                                title={visitante.qr_token ? 'Baixar QR Code' : 'QR indisponível'}
+                                disabled={!visitante.qr_token || downloadStatus === 'downloading'}
+                              >
+                                {downloadStatus === 'done' ? <FaCheck /> : <FaDownload />}
+                              </button>
+                              <button
+                                className="delete-button card-delete-button"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteVisitante(visitante.id); }}
+                                title="Excluir visitante"
+                              >
+                                <FaTrash size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })
+                  )}
+                </div>
+              </section>
+            </div>
+
+            <div className="pagination">
+              <div className="pagination-info">
+                Página {currentPage} de {totalPages.visitantes || 1}
+              </div>
+              <div className="pagination-controls">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage <= 1}
+                >
+                  Anterior
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages.visitantes || 1))}
+                  disabled={currentPage >= (totalPages.visitantes || 1)}
+                >
+                  Próxima
+                </button>
+              </div>
+            </div>
+          </>
+        ) : activeTab === 'veiculos' ? (
+          <>
+            <div className="units-cards-grid">
+              {(tableData.veiculos || []).length === 0 ? (
+                <div className="empty-state compact">
+                  <p>Nenhum veículo encontrado.</p>
+                </div>
+              ) : (
+                (tableData.veiculos || []).map((veiculo) => {
+                  const rawPlaca = veiculo.placa || veiculo.placa_veiculo || veiculo.placa_normalizada || veiculo.placa_formatted || '';
+                  const isAtivo = veiculo.is_active !== false;
+                  return (
+                    <article
+                      key={veiculo.id}
+                      className={`unit-card morador-record-card ${!isAtivo ? 'unit-card--inactive' : ''}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => openVeiculoModal(veiculo)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          openVeiculoModal(veiculo);
+                        }
+                      }}
+                    >
+                      <div className="unit-card__header">
+                        <div className="unit-card__header-left">
+                          <FaCar className="unit-card__icon" />
+                          <span className="unit-card__title">{rawPlaca ? formatPlaca(String(rawPlaca)) : 'Sem placa'}</span>
+                        </div>
+                        <div className="unit-card__header-right">
+                          <span className={`unit-card__status-badge ${isAtivo ? 'unit-card__status-badge--active' : 'unit-card__status-badge--inactive'}`}>
+                            {isAtivo ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="unit-card__summary">
+                        <div className="unit-card__info" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.45rem' }}>
+                          <div className="unit-card__info-item"><span className="unit-card__info-label">Marca e modelo</span><span className="unit-card__info-value">{veiculo.marca_modelo || '-'}</span></div>
+                          <div className="unit-card__info-item"><span className="unit-card__info-label">Cadastrado em</span><span className="unit-card__info-value">{formatDateTime(veiculo.created_on || veiculo.created_at || veiculo.data_cadastro || veiculo.created)}</span></div>
+                        </div>
+                        <div className="morador-record-card__actions" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            className="delete-button card-delete-button"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteVeiculo(veiculo.id); }}
+                            title="Excluir veículo"
+                          >
+                            <FaTrash size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="pagination">
+              <div className="pagination-info">
+                Página {currentPage} de {totalPages.veiculos || 1}
+              </div>
+              <div className="pagination-controls">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage <= 1}
+                >
+                  Anterior
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages.veiculos || 1))}
+                  disabled={currentPage >= (totalPages.veiculos || 1)}
+                >
+                  Próxima
+                </button>
+              </div>
+            </div>
+          </>
         ) : (
           <GenericTable
             columns={
-              activeTab === 'visitantes'
-                  ? visitantesColumns
-                  : activeTab === 'reservas'
+              activeTab === 'reservas'
                     ? reservasColumns
                     : activeTab === 'eventos'
                       ? eventosColumns
@@ -1303,21 +1668,147 @@ function MoradorPage() {
             totalPages={totalPages[activeTab]}
             currentPage={currentPage}
             onSave={
-              activeTab === 'visitantes'
-                ? handleSaveVisitante
-                : activeTab === 'veiculos'
-                  ? handleSaveVeiculo
-                  : undefined
+              undefined
             }
             className="full-width-table allow-horizontal-scroll"
-            editingRowId={activeTab === 'visitantes' || activeTab === 'veiculos' ? editingRowId : null}
-            onEditRow={activeTab === 'visitantes' || activeTab === 'veiculos' ? handleEditRow : undefined}
-            onEditDataChange={activeTab === 'visitantes' || activeTab === 'veiculos' ? setCurrentEditData : undefined}
+            editingRowId={null}
+            onEditRow={undefined}
+            onEditDataChange={undefined}
             hideEditButton={activeTab === 'encomendas' || activeTab === 'eventos' || activeTab === 'lista_convidados' || activeTab === 'ocorrencias'}
             titleColumnKey={activeTab === 'encomendas' ? 'codigo_rastreio' : undefined}
           />
         )}
       </main>
+
+      {visitanteSelecionado && visitanteModalData && (
+        <div className="modal-overlay" onClick={closeVisitanteModal}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
+            <div className="modal-header">
+              <h2>Editar Visitante</h2>
+              <button className="modal-close" onClick={closeVisitanteModal}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className="modal-content">
+              <div className="form-group">
+                <label>Nome</label>
+                <input
+                  type="text"
+                  value={visitanteModalData.nome}
+                  onChange={(e) => setVisitanteModalData((prev) => ({ ...prev, nome: e.target.value }))}
+                  disabled={visitanteModalSaving}
+                />
+              </div>
+              <div className="form-group">
+                <label>Documento</label>
+                <input
+                  type="text"
+                  value={visitanteModalData.documento}
+                  onChange={(e) => setVisitanteModalData((prev) => ({ ...prev, documento: e.target.value }))}
+                  disabled={visitanteModalSaving}
+                />
+              </div>
+              <div className="form-group">
+                <label>E-mail</label>
+                <input
+                  type="text"
+                  value={visitanteModalData.email}
+                  onChange={(e) => setVisitanteModalData((prev) => ({ ...prev, email: e.target.value }))}
+                  disabled={visitanteModalSaving}
+                />
+              </div>
+              <div className="form-group">
+                <label>Data de entrada</label>
+                <input
+                  type="datetime-local"
+                  value={visitanteModalData.data_entrada}
+                  onChange={(e) => setVisitanteModalData((prev) => ({ ...prev, data_entrada: e.target.value }))}
+                  disabled={visitanteModalSaving}
+                />
+              </div>
+              <div className="form-group">
+                <label>Data de saída</label>
+                <input
+                  type="datetime-local"
+                  value={visitanteModalData.data_saida}
+                  onChange={(e) => setVisitanteModalData((prev) => ({ ...prev, data_saida: e.target.value }))}
+                  disabled={visitanteModalSaving}
+                />
+              </div>
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(visitanteModalData.is_permanente)}
+                    onChange={(e) => setVisitanteModalData((prev) => ({ ...prev, is_permanente: e.target.checked }))}
+                    disabled={visitanteModalSaving}
+                    style={{ width: 18, height: 18, accentColor: '#2abb98' }}
+                  />
+                  Visitante permanente
+                </label>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn-secondary" onClick={closeVisitanteModal} disabled={visitanteModalSaving}>Cancelar</button>
+              <button type="button" className="btn-primary" onClick={saveVisitanteModal} disabled={visitanteModalSaving}>
+                {visitanteModalSaving ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {veiculoSelecionado && veiculoModalData && (
+        <div className="modal-overlay" onClick={closeVeiculoModal}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
+            <div className="modal-header">
+              <h2>Editar Veículo</h2>
+              <button className="modal-close" onClick={closeVeiculoModal}>
+                <FaTimes />
+              </button>
+            </div>
+            <div className="modal-content">
+              <div className="form-group">
+                <label>Placa</label>
+                <input
+                  type="text"
+                  value={veiculoModalData.placa}
+                  onChange={(e) => setVeiculoModalData((prev) => ({ ...prev, placa: maskPlaca(e.target.value) }))}
+                  placeholder="ABC-1234 ou ABC1D23"
+                  disabled={veiculoModalSaving}
+                />
+              </div>
+              <div className="form-group">
+                <label>Marca e modelo</label>
+                <input
+                  type="text"
+                  value={veiculoModalData.marca_modelo}
+                  onChange={(e) => setVeiculoModalData((prev) => ({ ...prev, marca_modelo: e.target.value }))}
+                  disabled={veiculoModalSaving}
+                />
+              </div>
+              <div className="form-group">
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(veiculoModalData.is_active)}
+                    onChange={(e) => setVeiculoModalData((prev) => ({ ...prev, is_active: e.target.checked }))}
+                    disabled={veiculoModalSaving}
+                    style={{ width: 18, height: 18, accentColor: '#2abb98' }}
+                  />
+                  Veículo ativo
+                </label>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn-secondary" onClick={closeVeiculoModal} disabled={veiculoModalSaving}>Cancelar</button>
+              <button type="button" className="btn-primary" onClick={saveVeiculoModal} disabled={veiculoModalSaving}>
+                {veiculoModalSaving ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showReservaModal && (
         <ReservaModal

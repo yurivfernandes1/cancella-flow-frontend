@@ -275,6 +275,97 @@
   margin: 0;
 }
 
+.empty-state.compact {
+  width: 100%;
+  padding: 2rem 1.25rem;
+  border: 1px dashed #cbd5e1;
+  box-shadow: none;
+}
+
+.empty-state.compact p {
+  font-size: 0.95rem;
+}
+
+.morador-cards-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.morador-cards-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.morador-cards-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.morador-cards-section__header h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.morador-cards-section__header span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 24px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0 8px;
+}
+
+.morador-record-card {
+  cursor: pointer;
+}
+
+.morador-record-card .unit-card__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.morador-record-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.morador-record-card__actions .edit-button,
+.morador-record-card__actions .delete-button,
+.morador-record-card__actions .save-button,
+.morador-record-card__actions .cancel-button {
+  width: 32px;
+  height: 32px;
+}
+
+.morador-record-card__actions .card-delete-button {
+  background: #ef4444;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.28);
+}
+
+.morador-record-card__actions .card-delete-button:hover {
+  background: #dc2626;
+}
+
 @media (max-width: 768px) {
   .morador-content {
     padding: 1rem;
@@ -307,5 +398,9 @@
   .add-button {
     width: 100%;
     justify-content: center;
+  }
+
+  .morador-cards-section__header h3 {
+    font-size: 0.95rem;
   }
 }
