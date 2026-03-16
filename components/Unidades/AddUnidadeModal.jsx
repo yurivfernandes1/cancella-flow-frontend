@@ -17,6 +17,8 @@ function AddUnidadeModal({ onClose, onSuccess }) {
   const [loading, setLoading] = useState(false);
   const [createdAccounts, setCreatedAccounts] = useState([]);
   const [showCredentials, setShowCredentials] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [successCount, setSuccessCount] = useState(0);
 
   const handleRemoveRow = (index) => {
     if (unidades.length === 1) {
@@ -137,9 +139,8 @@ function AddUnidadeModal({ onClose, onSuccess }) {
         setShowCredentials(true);
       } else {
         const count = unidadesData.length;
-        alert(`${count} unidade${count > 1 ? 's' : ''} cadastrada${count > 1 ? 's' : ''} com sucesso!`);
-        onSuccess();
-        onClose();
+        setSuccessCount(count);
+        setShowSuccess(true);
       }
     } catch (error) {
       console.error('Erro ao cadastrar unidades:', error);
@@ -160,14 +161,14 @@ function AddUnidadeModal({ onClose, onSuccess }) {
           </div>
           <div className="modal-content">
             <p style={{ color: '#64748b', marginBottom: '1rem' }}>
-              Anote as senhas geradas. Elas não poderão ser recuperadas depois.
+              Contas criadas com sucesso. Por segurança as senhas não são exibidas aqui.
             </p>
             <table className="unidades-form-table" style={{ width: '100%' }}>
               <thead>
                 <tr>
                   <th>Unidade</th>
                   <th>Usuário</th>
-                  <th>Senha</th>
+                  {/* Senha não exibida por segurança */}
                   <th></th>
                 </tr>
               </thead>
@@ -176,22 +177,8 @@ function AddUnidadeModal({ onClose, onSuccess }) {
                   <tr key={idx}>
                     <td>{acc.unidade}</td>
                     <td>{acc.username}</td>
-                    <td>
-                      <code style={{ background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, fontSize: '0.9rem' }}>
-                        {acc.password}
-                      </code>
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="action-button"
-                        title="Copiar senha"
-                        onClick={() => navigator.clipboard.writeText(acc.password).then(() => alert('Senha copiada!'))}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
-                      >
-                        <FaCopy />
-                      </button>
-                    </td>
+                    <td />
+                    <td />
                   </tr>
                 ))}
               </tbody>
@@ -204,6 +191,27 @@ function AddUnidadeModal({ onClose, onSuccess }) {
               onClick={() => { onSuccess(); onClose(); }}
             >
               <FaSave /> Concluir
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (showSuccess) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div className="modal-container modal-small" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h2>Unidades Cadastradas</h2>
+            <button className="modal-close" onClick={onClose}><FaTimes /></button>
+          </div>
+          <div className="modal-content">
+            <p>{successCount} unidade{successCount > 1 ? 's' : ''} cadastrada{successCount > 1 ? 's' : ''} com sucesso!</p>
+          </div>
+          <div className="modal-footer">
+            <button type="button" className="button-primary" onClick={() => { onSuccess(); onClose(); }}>
+              <FaSave /> OK
             </button>
           </div>
         </div>

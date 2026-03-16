@@ -7,6 +7,7 @@ import LandingPage from './pages/LandingPage';
 import SignupPage from './pages/SignupPage';
 import WelcomePage from './pages/WelcomePage';
 import PasswordPage from './pages/PasswordPage';
+import ProfilePage from './pages/ProfilePage';
 import UsersPage from './pages/UsersPage';
 import MoradorPage from './pages/MoradorPage';
 import PortariaPage from './pages/PortariaPage';
@@ -57,6 +58,7 @@ root.render(
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/signup/:slug" element={<SignupPage />} />
 
           {/* Rotas autenticadas — SidebarLayout monta UMA VEZ */}
           <Route element={<AuthenticatedLayout />}>
@@ -71,6 +73,7 @@ root.render(
             />
             <Route path="/minha-area"   element={<MoradorPage />} />
             <Route path="/portaria"     element={<PortariaPage />} />
+            <Route path="/perfil/meu" element={<ProfilePage />} />
             <Route path="/perfil/senha" element={<PasswordPage />} />
           </Route>
         </Routes>

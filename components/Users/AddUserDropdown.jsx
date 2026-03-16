@@ -8,7 +8,6 @@ import { generateStrongPassword } from '../../utils/passwordGenerator';
 import { formatUsername } from '../../utils/stringUtils';
 import { formatCPF, formatTelefone } from '../../utils/formatters';
 import { validateCPF, validatePhone } from '../../utils/validators';
-import PasswordResetModal from './PasswordResetModal';
 import GenericDropdown from '../common/GenericDropdown';
 
 function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionario', defaultUnidadeId = null, defaultCondominioId = null, position = 'relative' }) {
@@ -27,7 +26,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
     is_active: true,
   });
   const [isMoradorToo, setIsMoradorToo] = useState(false);
-  const [resetPassword, setResetPassword] = useState({ show: false, username: '', password: '' });
+  const [submitSuccess, setSubmitSuccess] = useState('');
   const [emailIsValid, setEmailIsValid] = useState(null);
   const [cpfIsValid, setCpfIsValid] = useState(null);
   const [phoneIsValid, setPhoneIsValid] = useState(null);
@@ -176,6 +175,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitError('');
+    setSubmitSuccess('');
 
     if (userType === 'sindico' && !formData.condominio_id) {
       alert('Por favor, selecione um condomínio para o síndico');
@@ -257,14 +257,11 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
       }
 
       await api.post('/access/create/', userData);
-      
-      setShowDropdown(false);
-      
-      setResetPassword({ 
-        show: true, 
-        username: username.toLowerCase(),
-        password: password.trim() 
-      });
+      setSubmitSuccess('Cadastro concluído com sucesso.');
+      setTimeout(() => {
+        if (typeof onSuccess === 'function') onSuccess();
+        if (typeof onClose === 'function') onClose();
+      }, 900);
       
     } catch (error) {
       console.error('Erro ao criar usuário:', error);
@@ -275,12 +272,6 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
       }
       setSubmitError(`Erro ao criar usuário: ${backendError}`);
     }
-  };
-
-  const handleModalClose = () => {
-    setResetPassword({ show: false, username: '', password: '' });
-    if (typeof onClose === 'function') onClose();
-    if (typeof onSuccess === 'function') onSuccess();
   };
 
   return (
@@ -356,6 +347,11 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
                 {submitError && (
                   <div className="form-error" role="alert" style={{ marginBottom: '12px', color: '#b91c1c', fontWeight: 600 }}>
                     {submitError}
+                  </div>
+                )}
+                {submitSuccess && (
+                  <div role="status" style={{ marginBottom: '12px', color: '#166534', fontWeight: 600 }}>
+                    {submitSuccess}
                   </div>
                 )}
             <div className="form-row">
@@ -547,7 +543,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
               <button
                 type="submit"
                 className="button-primary"
-                disabled={emailIsValid === false || cpfIsValid === false || phoneIsValid === false}
+                disabled={Boolean(submitSuccess) || emailIsValid === false || cpfIsValid === false || phoneIsValid === false}
               >
                 <FaSave /> Criar {userType === 'sindico' ? 'Síndico' : userType === 'funcionario' ? 'Funcionário' : 'Morador'}
               </button>
@@ -558,16 +554,6 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
         </GenericDropdown>
       )}
 
-      {resetPassword.show && (
-        <PasswordResetModal
-          title="Usuário Criado com Sucesso"
-          subtitle={`Username: ${resetPassword.username}`}
-          message="Por favor, aguarde a liberação do acesso ao sistema."
-          password={resetPassword.password}
-          onClose={handleModalClose}
-        />
-      )}
-      
     </>
   );
 }

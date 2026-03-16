@@ -159,6 +159,23 @@
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+/* Badges for units in profile hero */
+.cp-unit-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.cp-unit-badge {
+  background: rgba(255,255,255,0.12);
+  color: #e6f9f3;
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
 /* ─── Logo action buttons (após selecionar arquivo) ──────── */
 /* Removido: cp-logo-actions foi substituído por cp-photo-confirm */
 

@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import '../styles/WelcomePage.css';
 import ProtectedImage from '../components/common/ProtectedImage';
 import AvisoBanner from '../components/Avisos/AvisoBanner';
-import { avisoAPI, dashboardAPI } from '../services/api';
+import { avisoAPI, dashboardAPI, signupAPI } from '../services/api';
 import { 
   FaUserCog, 
   FaUsers,
@@ -38,6 +38,9 @@ function WelcomePage() {
   const [portariaStats, setPortariaStats] = useState(null);
   const [adminStats, setAdminStats] = useState(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [signupLinkLoading, setSignupLinkLoading] = useState(false);
+  const [signupLinkError, setSignupLinkError] = useState('');
+  const [signupLinkToast, setSignupLinkToast] = useState({ visible: false, type: 'success', text: '' });
 
   const formatCondominioName = (value) => {
     if (!value || typeof value !== 'string') return '';
@@ -58,6 +61,16 @@ function WelcomePage() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    if (!signupLinkToast.visible) return undefined;
+
+    const timer = setTimeout(() => {
+      setSignupLinkToast((prev) => ({ ...prev, visible: false }));
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [signupLinkToast.visible]);
 
   // Carregar estatísticas conforme o perfil
   useEffect(() => {
@@ -122,6 +135,68 @@ function WelcomePage() {
       setLoadingStats(false);
     }
   }, [user]);
+
+  const handleCopySignupLink = async () => {
+    try {
+      setSignupLinkLoading(true);
+      setSignupLinkError('');
+
+      let response = await signupAPI.getInviteLink({ frontend_base: window.location.origin });
+      let link = response.data?.signup_url || '';
+
+      if (!link) {
+        response = await signupAPI.regenerateInviteLink({}, { frontend_base: window.location.origin });
+        link = response.data?.signup_url || '';
+      }
+
+      if (!link) {
+        throw new Error('Link não disponível.');
+      }
+
+      await navigator.clipboard.writeText(link);
+      setSignupLinkToast({
+        visible: true,
+        type: 'success',
+        text: 'Link de cadastro copiado com sucesso.',
+      });
+    } catch (err) {
+      const msg = err.response?.data?.error || err.message || 'Não foi possível gerar o link de cadastro.';
+      setSignupLinkError(msg);
+      setSignupLinkToast({
+        visible: true,
+        type: 'error',
+        text: msg,
+      });
+    } finally {
+      setSignupLinkLoading(false);
+    }
+  };
+
+  const handleDownloadSignupQrCode = async () => {
+    try {
+      setSignupLinkLoading(true);
+      setSignupLinkError('');
+
+      const response = await signupAPI.downloadInviteQrCode({
+        frontend_base: window.location.origin,
+      });
+
+      const blob = new Blob([response.data], { type: 'image/png' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'qrcode-cadastro-condominio.png';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      const msg = err.response?.data?.error || 'Não foi possível gerar o QR Code do link de cadastro.';
+      setSignupLinkError(msg);
+    } finally {
+      setSignupLinkLoading(false);
+    }
+  };
 
   // Dashboard dinâmico para síndico (ordenado por prioridade: ocorrências → encomendas → reservas → ...)
   const sindicoDashboardStats = loadingStats ? [] : [
@@ -188,6 +263,14 @@ function WelcomePage() {
       icon: <FaCheckCircle size={32} />,
       color: '#10b981',
       description: `${sindicoStats?.moradores?.percentual_ativos || 0}% dos moradores ativos`
+    },
+    {
+      title: 'Cadastros Pendentes',
+      value: sindicoStats?.moradores?.pendentes?.toString() || '0',
+      icon: <FaUsers size={32} />,
+      color: (sindicoStats?.moradores?.pendentes || 0) > 0 ? '#f59e0b' : '#2abb98',
+      description: 'Moradores aguardando aprovação',
+      link: '/gestao-usuarios?tab=unidades_moradores'
     },
     {
       title: 'Funcionários',
@@ -423,6 +506,15 @@ function WelcomePage() {
   return (
     <>
       <div className="welcome-container">
+        {signupLinkToast.visible && (
+          <div
+            className={`system-toast ${signupLinkToast.type === 'error' ? 'system-toast--error' : 'system-toast--success'}`}
+            role="status"
+            aria-live="polite"
+          >
+            {signupLinkToast.text}
+          </div>
+        )}
         <div className="background-shapes">
           <div className="shape shape-1"></div>
           <div className="shape shape-2"></div>
@@ -481,6 +573,55 @@ function WelcomePage() {
 
         {showDashboard ? (
           <>
+            {isSindico && (
+              <section style={{ maxWidth: 1100, margin: '0 auto 16px', width: '100%' }}>
+                <div style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 12,
+                  padding: 14,
+                  display: 'flex',
+                  gap: 10,
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                }}>
+                  <strong style={{ color: '#19294a' }}>Convite de cadastro de moradores</strong>
+                  <button
+                    type="button"
+                    disabled={signupLinkLoading}
+                    onClick={handleCopySignupLink}
+                    style={{
+                      border: 'none',
+                      borderRadius: 8,
+                      background: '#19294a',
+                      color: '#fff',
+                      padding: '8px 12px',
+                      cursor: signupLinkLoading ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {signupLinkLoading ? 'Gerando...' : 'Copiar link de cadastro'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={signupLinkLoading}
+                    onClick={handleDownloadSignupQrCode}
+                    style={{
+                      border: '1px solid #19294a',
+                      borderRadius: 8,
+                      background: '#fff',
+                      color: '#19294a',
+                      padding: '8px 12px',
+                      cursor: signupLinkLoading ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {signupLinkLoading ? 'Gerando...' : 'Baixar QR Code'}
+                  </button>
+                  {signupLinkError && (
+                    <span style={{ color: '#b91c1c', fontSize: 13 }}>{signupLinkError}</span>
+                  )}
+                </div>
+              </section>
+            )}
             <main className="dashboard-grid">
               {portariaQrCard}
               {(isAdmin ? adminDashboardStats : isSindico ? sindicoDashboardStats : isPortaria ? portariaDashboardStats : moradorDashboardStats).map((stat, index) => (

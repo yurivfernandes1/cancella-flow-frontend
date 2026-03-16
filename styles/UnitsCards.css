@@ -28,6 +28,15 @@
   box-shadow: 0 4px 16px rgba(42, 187, 152, 0.15);
 }
 
+.unit-card--has-pending {
+  border-color: #f59e0b;
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.2);
+}
+
+.unit-card--has-pending .unit-card__header {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
 .unit-card--inactive {
   opacity: 0.75;
 }
@@ -155,6 +164,11 @@
 .unit-card__status-badge--inactive {
   background: #fee2e2;
   color: #dc2626;
+}
+
+.unit-card__status-badge--pending {
+  background: #ffedd5;
+  color: #c2410c;
 }
 
 /* Formulário de edição da unidade */
@@ -295,6 +309,12 @@
   overflow: hidden;
 }
 
+.unit-card__resident-item--pending {
+  border-color: #f59e0b;
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.35);
+  background: linear-gradient(180deg, #fff 0%, #fffbeb 100%);
+}
+
 .unit-card__resident-view {
   display: flex;
   align-items: center;
@@ -312,14 +332,48 @@
   min-width: 0;
 }
 
+.unit-card__resident-info--pending {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.unit-card__resident-contact-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.resident-line-1, .resident-line-2 {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
 .unit-card__resident-name {
   font-size: 0.9rem;
   font-weight: 600;
   color: #1e293b;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 180px;
+  max-width: 260px;
+}
+
+/* Badge de pendentes no cabeçalho laranja */
+.unit-card__header-pending {
+  margin-left: 10px;
+  background: #ffedd5;
+  color: #b45309;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 0.72rem;
+  font-weight: 700;
 }
 
 .unit-card__resident-cpf,
@@ -345,6 +399,63 @@
   display: flex;
   gap: 0.375rem;
   flex-shrink: 0;
+}
+
+.unit-card__resident-pending-actions {
+  display: flex;
+  gap: 0.375rem;
+  margin-right: 0.5rem;
+}
+
+.unit-card__resident-pending-actions .approve-button,
+.unit-card__resident-pending-actions .reject-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.unit-card__resident-pending-actions .approve-button {
+  background: #16a34a;
+  color: #fff;
+}
+
+.unit-card__resident-pending-actions .approve-button:hover {
+  background: #15803d;
+}
+
+.unit-card__resident-pending-actions .reject-button {
+  background: #dc2626;
+  color: #fff;
+}
+
+/* Estilos compactos apenas-ícone para aprovar/rejeitar */
+.approve-button--icon,
+.reject-button--icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  font-size: 16px;
+  border-radius: 8px;
+}
+
+.approve-button--icon svg,
+.reject-button--icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.unit-card__resident-pending-actions .reject-button:hover {
+  background: #b91c1c;
 }
 
 .unit-card__resident-actions .edit-button,

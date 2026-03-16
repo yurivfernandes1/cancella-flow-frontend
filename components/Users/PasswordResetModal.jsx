@@ -1,20 +1,7 @@
 import React from 'react';
-import { FaCopy, FaTimes } from 'react-icons/fa';
+import { FaTimes } from 'react-icons/fa';
 
 function PasswordResetModal({ title = "Senha Resetada", subtitle, message, password, onClose }) {
-  const handleCopyPassword = async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    try {
-      await navigator.clipboard.writeText(password);
-      alert('Senha copiada com sucesso!');
-    } catch (err) {
-      console.error('Erro ao copiar senha:', err);
-      alert('Erro ao copiar senha');
-    }
-  };
-
   const handleClose = (e) => {
     if (e) e.preventDefault();
     onClose();
@@ -32,25 +19,9 @@ function PasswordResetModal({ title = "Senha Resetada", subtitle, message, passw
         
         <div className="password-modal-content">
           {subtitle && <p>{subtitle}</p>}
-          <div className="password-display">
-            <span>{password}</span>
-            <button 
-              type="button"
-              className="copy-button" 
-              onClick={handleCopyPassword}
-            >
-              <FaCopy />
-            </button>
-          </div>
-          <p className="password-warning">
-            Certifique-se de copiar esta senha antes de fechar.
+          <p style={{ color: '#475569' }}>
+            {message || 'Operação concluída com sucesso.'}
           </p>
-          
-          {message && (
-            <div className="password-message">
-              {message}
-            </div>
-          )}
           
           <div className="modal-actions">
             <button 

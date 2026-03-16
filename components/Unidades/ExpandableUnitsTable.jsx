@@ -126,6 +126,17 @@ function ExpandableUnitsTable({
     return cpf.length === 11 ? cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : value;
   };
 
+  const isMoradorPending = (morador) => {
+    const status = morador?.is_active;
+    if (typeof status === 'boolean') return !status;
+    if (typeof status === 'number') return status === 0;
+    if (typeof status === 'string') {
+      const normalized = status.trim().toLowerCase();
+      return ['false', '0', 'inativo', 'pendente'].includes(normalized);
+    }
+    return !status;
+  };
+
   if (loading) {
     return <div className="loading-state" style={{ padding: 32, textAlign: 'center', color: '#64748b' }}>Carregando unidades...</div>;
   }
@@ -145,11 +156,15 @@ function ExpandableUnitsTable({
         }).map(unidade => {
           const isExpanded = expandedRows[unidade.id];
           const moradores = unidade.moradores || [];
+          const pendingMoradoresCount = moradores.filter(isMoradorPending).length;
           const isEditingUnidade = editingUnidadeId === unidade.id;
           const unitTitle = unidade.identificacao_completa || `${unidade.bloco ? unidade.bloco + ' - ' : ''}${unidade.numero}`;
 
           return (
-            <div key={unidade.id} className={`unit-card ${isExpanded ? 'unit-card--expanded' : ''} ${!unidade.is_active ? 'unit-card--inactive' : ''}`}>
+            <div
+              key={unidade.id}
+              className={`unit-card ${isExpanded ? 'unit-card--expanded' : ''} ${!unidade.is_active ? 'unit-card--inactive' : ''} ${pendingMoradoresCount > 0 ? 'unit-card--has-pending' : ''}`}
+            >
               {/* Cabeçalho do card */}
               <div
                 className="unit-card__header"
@@ -159,6 +174,9 @@ function ExpandableUnitsTable({
                 <div className="unit-card__header-left">
                   <FaHome className="unit-card__icon" />
                   <span className="unit-card__title">{unitTitle}</span>
+                  {pendingMoradoresCount > 0 && (
+                    <span className="unit-card__header-pending">{pendingMoradoresCount} pendente{pendingMoradoresCount > 1 ? 's' : ''}</span>
+                  )}
                 </div>
                 <div className="unit-card__header-right">
                   {isSindico && !isEditingUnidade && (
@@ -256,6 +274,13 @@ function ExpandableUnitsTable({
                         {moradores.length} morador{moradores.length !== 1 ? 'es' : ''}
                       </span>
                     </div>
+                    {pendingMoradoresCount > 0 && (
+                      <div className="unit-card__info-item">
+                        <span className="unit-card__status-badge unit-card__status-badge--pending">
+                          {pendingMoradoresCount} pendente{pendingMoradoresCount > 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -307,8 +332,10 @@ function ExpandableUnitsTable({
                     <div className="unit-card__residents-list">
                       {moradores.map(morador => {
                         const isEditingThis = isSindico && editingMoradorId === morador.id;
+                        const isPendingApproval = isMoradorPending(morador);
+                        const displayName = morador.full_name || morador.username || 'Morador sem nome';
                         return (
-                          <div key={morador.id} className="unit-card__resident-item">
+                          <div key={morador.id} className={`unit-card__resident-item ${isPendingApproval ? 'unit-card__resident-item--pending' : ''}`}>
                             {isEditingThis ? (
                               <div className="unit-card__resident-edit">
                                 <div className="unit-card__edit-row">
@@ -372,16 +399,46 @@ function ExpandableUnitsTable({
                             ) : (
                               <div className="unit-card__resident-view">
                                 <div className="unit-card__resident-info">
-                                  <span className="unit-card__resident-name">{morador.full_name || '-'}</span>
+                                  <span className="unit-card__resident-name">
+                                    {displayName}
+                                      {/* Pendente moved to unit header */}
+                                  </span>
                                   <span className="unit-card__resident-cpf">{formatCpfDisplay(morador.cpf)}</span>
                                   {morador.phone && (
                                     <span className="unit-card__resident-phone">{formatTelefone(morador.phone)}</span>
                                   )}
-                                  {!morador.is_active && (
-                                    <span className="unit-card__status-badge unit-card__status-badge--inactive" style={{ fontSize: '0.7rem', padding: '1px 8px' }}>Inativo</span>
+                                  {isPendingApproval && morador.username && (
+                                    <span className="unit-card__resident-phone">@{morador.username}</span>
+                                  )}
+                                  {isPendingApproval && morador.email && (
+                                    <span className="unit-card__resident-phone">{morador.email}</span>
                                   )}
                                 </div>
-                                {isSindico && (
+                                {isSindico && isPendingApproval && (
+                                  <div className="unit-card__resident-pending-actions">
+                                    {onSaveMorador && (
+                                      <button
+                                        className="approve-button approve-button--icon"
+                                        onClick={() => onSaveMorador(morador.id, { ...morador, is_active: true })}
+                                        title="Aprovar cadastro"
+                                        aria-label="Aprovar"
+                                      >
+                                        <FaCheck />
+                                      </button>
+                                    )}
+                                    {onDeleteMorador && String(morador.id) !== String(currentUserId) && (
+                                      <button
+                                        className="reject-button reject-button--icon"
+                                        onClick={() => onDeleteMorador(morador.id, morador.full_name, unitTitle, unidade.id)}
+                                        title="Rejeitar cadastro"
+                                        aria-label="Rejeitar"
+                                      >
+                                        <FaTimes />
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                                {isSindico && !isPendingApproval && (
                                   <div className="unit-card__resident-actions">
                                     <button className="edit-button" onClick={() => startEditMorador(morador)} title="Editar morador"><FaEdit /></button>
                                     {onResetPassword && (

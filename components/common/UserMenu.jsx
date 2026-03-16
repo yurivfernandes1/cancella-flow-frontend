@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaKey, FaSignOutAlt, FaUserCircle } from 'react-icons/fa';
+import { FaKey, FaSignOutAlt, FaUser } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
 import ProtectedImage from './ProtectedImage';
 
@@ -28,7 +28,7 @@ function UserMenu() {
   const initials =
     `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}`.toUpperCase() || '?';
 
-  const avatarUrl = user?.foto || user?.avatar || user?.profile_picture || null;
+  const avatarUrl = user?.foto_url || user?.foto || user?.avatar || user?.profile_picture || null;
 
   return (
     <div className="user-menu-wrapper" ref={menuRef}>
@@ -53,6 +53,13 @@ function UserMenu() {
             </span>
           </div>
           <div className="user-menu-divider" />
+          <Link
+            to="/perfil/meu"
+            className="user-menu-item"
+            onClick={() => setOpen(false)}
+          >
+            <FaUser /> Meu Perfil
+          </Link>
           <Link
             to="/perfil/senha"
             className="user-menu-item"

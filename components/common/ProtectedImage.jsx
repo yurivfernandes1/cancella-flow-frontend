@@ -40,7 +40,7 @@ export default function ProtectedImage({ src, alt, fallbackSrc, ...rest }) {
   useEffect(() => {
     let mounted = true;
 
-    const shouldFetch = src && src.includes('/logo-db/');
+    const shouldFetch = src && (src.includes('/logo-db/') || src.includes('/foto-db/'));
 
     if (!shouldFetch) {
       setBlobUrl(null);
