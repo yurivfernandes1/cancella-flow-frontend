@@ -335,6 +335,154 @@
   color: #94a3b8;
 }
 
+.empty-state.compact {
+  width: 100%;
+  padding: 2rem 1.25rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.portaria-lista-cards-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.portaria-lista-cards-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.portaria-lista-cards-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.portaria-lista-cards-section__header h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.portaria-lista-cards-section__header span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 24px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 0 8px;
+}
+
+.portaria-lista-card {
+  cursor: pointer;
+}
+
+.portaria-lista-card--hoje .unit-card__header {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+}
+
+.portaria-lista-card__dia-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+}
+
+.portaria-lista-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.portaria-lista-card__open-btn {
+  background: #2abb98;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.portaria-lista-card__open-btn:hover {
+  background: #239b82;
+}
+
+.portaria-visitante-card {
+  cursor: default;
+}
+
+.portaria-visitante-card--hoje .unit-card__header {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+}
+
+.portaria-visitante-card__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.portaria-visitante-card__status-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-top: 0.45rem;
+}
+
+.portaria-visitante-card__status-row .unit-card__status-badge {
+  font-size: 0.68rem;
+  padding: 2px 8px;
+}
+
+.portaria-visitante-card__btn {
+  background: #16a34a;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  padding: 0.45rem 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.portaria-visitante-card__btn:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.portaria-visitante-card__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.portaria-visitante-card__btn--saida {
+  background: #dc2626;
+}
+
+.portaria-visitante-card__btn--saida:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
 /* Responsividade */
 @media (max-width: 768px) {
   .portaria-content {

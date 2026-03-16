@@ -366,6 +366,25 @@
   background: #dc2626;
 }
 
+.lista-convidados-card {
+  cursor: pointer;
+}
+
+.lista-convidados-card--hoje .unit-card__header {
+  background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+}
+
+.lista-convidados-card__dia-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  letter-spacing: 0.2px;
+}
+
 @media (max-width: 768px) {
   .morador-content {
     padding: 1rem;

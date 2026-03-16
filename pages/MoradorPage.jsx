@@ -35,6 +35,8 @@ const tabs = [
   { id: 'ocorrencias', label: 'Minhas Ocorrências' }
 ];
 
+const LISTA_CONVIDADOS_CARDS_POR_PAGINA = 12;
+
 function MoradorPage() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -73,7 +75,6 @@ function MoradorPage() {
   const addVeiculoButtonRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [incluirReservasPassadas, setIncluirReservasPassadas] = useState(false);
-  const [somenteHojeLista, setSomenteHojeLista] = useState(true);
   const [editingRowId, setEditingRowId] = useState(null);
   const [currentEditData, setCurrentEditData] = useState({});
   const [showReservaModal, setShowReservaModal] = useState(false);
@@ -182,13 +183,12 @@ function MoradorPage() {
           setTotalPages(prev => ({ ...prev, eventos: 1 }));
         }
       } else if (type === 'lista_convidados') {
-        const d = new Date();
-        const hojeLocal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const paramsLista = { search };
-        if (somenteHojeLista) paramsLista.data_evento = hojeLocal;
         const response = await listaConvidadosAPI.getListas(paramsLista);
-        setTableData(prev => ({ ...prev, lista_convidados: Array.isArray(response.data) ? response.data : (response.data.results || []) }));
-        setTotalPages(prev => ({ ...prev, lista_convidados: 1 }));
+        const listas = Array.isArray(response.data) ? response.data : (response.data.results || []);
+        const paginas = Math.max(1, Math.ceil(listas.length / LISTA_CONVIDADOS_CARDS_POR_PAGINA));
+        setTableData(prev => ({ ...prev, lista_convidados: listas }));
+        setTotalPages(prev => ({ ...prev, lista_convidados: paginas }));
       } else if (type === 'avisos') {
         const paramsAvisos = { page, search };
         const response = await avisoAPI.list(paramsAvisos);
@@ -224,7 +224,7 @@ function MoradorPage() {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [activeTab, currentPage, searchTerm, incluirReservasPassadas, somenteHojeLista]);
+  }, [activeTab, currentPage, searchTerm, incluirReservasPassadas]);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -451,6 +451,13 @@ function MoradorPage() {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const isDataEventoHoje = (dataEvento) => {
+    if (!dataEvento) return false;
+    const hoje = new Date();
+    const hojeLocal = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+    return dataEvento === hojeLocal;
   };
 
   const toDateTimeLocalValue = (value) => {
@@ -1205,6 +1212,9 @@ function MoradorPage() {
 
   const visitantesPermanentes = (tableData.visitantes || []).filter((visitante) => Boolean(visitante.is_permanente));
   const visitantesNaoPermanentes = (tableData.visitantes || []).filter((visitante) => !Boolean(visitante.is_permanente));
+  const listaConvidadosCards = tableData.lista_convidados || [];
+  const listaConvidadosInicio = (currentPage - 1) * LISTA_CONVIDADOS_CARDS_POR_PAGINA;
+  const listaConvidadosPaginados = listaConvidadosCards.slice(listaConvidadosInicio, listaConvidadosInicio + LISTA_CONVIDADOS_CARDS_POR_PAGINA);
 
   return (
     <div className="morador-page">
@@ -1326,20 +1336,6 @@ function MoradorPage() {
                     onChange={(e) => { setIncluirReservasPassadas(e.target.checked); setCurrentPage(1); }}
                   />
                   Incluir reservas passadas
-                </label>
-              </div>
-            </div>
-          )}
-          {activeTab === 'lista_convidados' && (
-            <div className="filters-container">
-              <div className="filter-group">
-                <label className="checkbox-label">
-                  <input
-                    type="checkbox"
-                    checked={somenteHojeLista}
-                    onChange={(e) => { setSomenteHojeLista(e.target.checked); setCurrentPage(1); }}
-                  />
-                  Somente hoje
                 </label>
               </div>
             </div>
@@ -1651,6 +1647,81 @@ function MoradorPage() {
               </div>
             </div>
           </>
+        ) : activeTab === 'lista_convidados' ? (
+          <>
+            <div className="units-cards-grid">
+              {listaConvidadosPaginados.length === 0 ? (
+                <div className="empty-state compact">
+                  <p>Nenhuma lista encontrada.</p>
+                </div>
+              ) : (
+                listaConvidadosPaginados.map((lista) => {
+                  const isHoje = isDataEventoHoje(lista.data_evento);
+                  return (
+                    <article
+                      key={lista.id}
+                      className={`unit-card morador-record-card lista-convidados-card ${isHoje ? 'lista-convidados-card--hoje' : ''}`}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setListaSelecionada(lista)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setListaSelecionada(lista);
+                        }
+                      }}
+                    >
+                      <div className="unit-card__header">
+                        <div className="unit-card__header-left">
+                          <span className="unit-card__title">{lista.titulo || 'Sem título'}</span>
+                        </div>
+                        <div className="unit-card__header-right">
+                          {isHoje && <span className="lista-convidados-card__dia-badge">Hoje</span>}
+                          <span className={`unit-card__status-badge ${lista.ativa ? 'unit-card__status-badge--active' : 'unit-card__status-badge--inactive'}`}>
+                            {lista.ativa ? 'Ativa' : 'Inativa'}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="unit-card__summary">
+                        <div className="unit-card__info" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.45rem' }}>
+                          <div className="unit-card__info-item">
+                            <span className="unit-card__info-label">Data do evento</span>
+                            <span className="unit-card__info-value">{lista.data_evento ? lista.data_evento.split('-').reverse().join('/') : '-'}</span>
+                          </div>
+                          <div className="unit-card__info-item">
+                            <span className="unit-card__info-label">Convidados</span>
+                            <span className="unit-card__info-value">{lista.total_convidados ?? 0}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="pagination">
+              <div className="pagination-info">
+                Página {currentPage} de {totalPages.lista_convidados || 1}
+              </div>
+              <div className="pagination-controls">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage <= 1}
+                >
+                  Anterior
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages.lista_convidados || 1))}
+                  disabled={currentPage >= (totalPages.lista_convidados || 1)}
+                >
+                  Próxima
+                </button>
+              </div>
+            </div>
+          </>
         ) : (
           <GenericTable
             columns={
@@ -1658,9 +1729,7 @@ function MoradorPage() {
                     ? reservasColumns
                     : activeTab === 'eventos'
                       ? eventosColumns
-                      : activeTab === 'lista_convidados'
-                        ? listaConvidadosColumns
-                        : veiculosColumns
+                      : veiculosColumns
             }
             data={tableData[activeTab]}
             loading={loading}

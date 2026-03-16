@@ -9,9 +9,10 @@ import api, { espacoReservaAPI, listaConvidadosAPI, ocorrenciaAPI, eventoAPI } f
 import ListaConvidadosModal from '../components/Eventos/ListaConvidadosModal';
 import { formatPlaca } from '../utils/placaValidator';
 import '../styles/PortariaPage.css';
+import '../styles/UnitsCards.css';
 import AvisosKanbanBoard from '../components/Avisos/AvisosKanbanBoard';
 import { avisoAPI } from '../services/api';
-import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaUsers, FaEye, FaQrcode } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaUsers, FaEye, FaQrcode, FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import QrCodeScanner from '../components/Eventos/QrCodeScanner';
 import EncomendasKanbanBoard from '../components/Encomendas/EncomendasKanbanBoard';
 import EncomendaDetalheModal from '../components/Encomendas/EncomendaDetalheModal';
@@ -30,6 +31,8 @@ const tabs = [
   { id: 'avisos', label: 'Avisos' },
   { id: 'ocorrencias', label: 'Ocorrências' }
 ];
+
+const LISTA_CONVIDADOS_CARDS_POR_PAGINA = 12;
 
 function PortariaPage() {
   const { user } = useAuth();
@@ -76,14 +79,14 @@ function PortariaPage() {
   const [showRetiradaModal, setShowRetiradaModal] = useState(false);
   const [retiradaNome, setRetiradaNome] = useState('');
   const [retiradaTarget, setRetiradaTarget] = useState(null);
+  const [incluirVisitantesPassados, setIncluirVisitantesPassados] = useState(false);
+  const [expandedVisitanteCards, setExpandedVisitanteCards] = useState({});
 
   // Verificar se o usuário tem acesso
   const isPortaria = user?.groups?.some(group => group.name === 'Portaria');
   const isSindicoPortaria = user?.groups?.some(group => group.name === 'Síndicos') || user?.is_staff;
   const hasAccess = isPortaria || isSindicoPortaria;
 
-  // Checkbox: mostrar apenas listas do dia
-  const [somenteHoje, setSomenteHoje] = useState(true);
   const [incluirReservasPassadas, setIncluirReservasPassadas] = useState(false);
   const encomendaStatusTimerRef = useRef({});
   const encomendaStatusQueueRef = useRef({});
@@ -124,7 +127,8 @@ function PortariaPage() {
           setTotalPages(prev => ({ ...prev, unidades_moradores: 1 }));
         }
       } else if (type === 'visitantes') {
-        const response = await api.get(`/cadastros/visitantes/?page=${page}&search=${search}`);
+        const query = `/cadastros/visitantes/?page=${page}&search=${search}&incluir_passados=${incluirVisitantesPassados ? '1' : '0'}`;
+        const response = await api.get(query);
         if (response.data.results !== undefined) {
           setTableData(prev => ({ ...prev, visitantes: response.data.results }));
           setTotalPages(prev => ({
@@ -163,13 +167,15 @@ function PortariaPage() {
           setTotalPages(prev => ({ ...prev, encomendas: 1 }));
         }
       } else if (type === 'lista_convidados') {
-        const d = new Date();
-        const hojeLocal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         const params = { search };
-        if (somenteHoje) params.data_evento = hojeLocal;
         const res = await listaConvidadosAPI.getListas(params);
-        setTableData(prev => ({ ...prev, lista_convidados: Array.isArray(res.data) ? res.data : (res.data.results || []) }));
-        setTotalPages(prev => ({ ...prev, lista_convidados: 1 }));
+        const listas = Array.isArray(res.data) ? res.data : (res.data.results || []);
+        const hoje = new Date();
+        const hojeLocal = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+        const listasVisiveis = listas.filter((lista) => lista?.data_evento && lista.data_evento >= hojeLocal);
+        const paginas = Math.max(1, Math.ceil(listasVisiveis.length / LISTA_CONVIDADOS_CARDS_POR_PAGINA));
+        setTableData(prev => ({ ...prev, lista_convidados: listasVisiveis }));
+        setTotalPages(prev => ({ ...prev, lista_convidados: paginas }));
       } else if (type === 'avisos') {
         const paramsAvisos = { page, search };
         const response = await avisoAPI.list(paramsAvisos);
@@ -227,7 +233,7 @@ function PortariaPage() {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [activeTab, currentPage, searchTerm, somenteHoje, incluirReservasPassadas]);
+  }, [activeTab, currentPage, searchTerm, incluirReservasPassadas, incluirVisitantesPassados]);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -534,6 +540,115 @@ function PortariaPage() {
     const date = new Date(dateString);
     return date.toLocaleDateString('pt-BR');
   };
+
+  const getHojeDate = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  };
+
+  const isVisitanteEntradaHoje = (visitante) => {
+    if (!visitante?.data_entrada) return false;
+    const entrada = new Date(visitante.data_entrada);
+    const hoje = getHojeDate();
+    return (
+      entrada.getFullYear() === hoje.getFullYear() &&
+      entrada.getMonth() === hoje.getMonth() &&
+      entrada.getDate() === hoje.getDate()
+    );
+  };
+
+  const isVisitanteEntrou = (visitante) => {
+    if (!visitante?.data_entrada) return false;
+    return new Date(visitante.data_entrada) <= new Date();
+  };
+
+  const isVisitanteSaiu = (visitante) => Boolean(visitante?.data_saida);
+
+  const sortVisitantesByPrioridade = (a, b) => {
+    const aHoje = isVisitanteEntradaHoje(a);
+    const bHoje = isVisitanteEntradaHoje(b);
+    if (aHoje !== bHoje) return aHoje ? -1 : 1;
+
+    const agora = new Date();
+    const aEntrada = a?.data_entrada ? new Date(a.data_entrada) : null;
+    const bEntrada = b?.data_entrada ? new Date(b.data_entrada) : null;
+    const aFutura = aEntrada && aEntrada > agora;
+    const bFutura = bEntrada && bEntrada > agora;
+
+    if (aFutura !== bFutura) return aFutura ? -1 : 1;
+
+    if (aFutura && bFutura) {
+      return aEntrada - bEntrada;
+    }
+
+    if (aEntrada && bEntrada) {
+      return bEntrada - aEntrada;
+    }
+
+    return String(a?.nome || '').localeCompare(String(b?.nome || ''), 'pt-BR');
+  };
+
+  const patchVisitante = async (id, payload) => {
+    try {
+      await api.patch(`/cadastros/visitantes/${id}/update/`, payload);
+      fetchData('visitantes', currentPage, searchTerm);
+    } catch (error) {
+      console.error('Erro ao atualizar visitante:', error);
+      alert(`Erro ao atualizar visitante: ${error.response?.data?.error || 'Ocorreu um erro ao atualizar'}`);
+    }
+  };
+
+  const handleMarcarEntradaVisitante = async (visitante) => {
+    const agoraIso = new Date().toISOString();
+    await patchVisitante(visitante.id, {
+      data_entrada: agoraIso,
+      data_saida: null,
+    });
+  };
+
+  const handleMarcarSaidaVisitante = async (visitante) => {
+    const agoraIso = new Date().toISOString();
+    await patchVisitante(visitante.id, {
+      data_saida: agoraIso,
+    });
+  };
+
+  const toggleVisitanteCard = (visitanteId) => {
+    setExpandedVisitanteCards((prev) => ({
+      ...prev,
+      [visitanteId]: !prev[visitanteId],
+    }));
+  };
+
+  const visitantesOrdenados = [...(tableData.visitantes || [])].sort(sortVisitantesByPrioridade);
+  const visitantesPermanentes = visitantesOrdenados.filter((v) => Boolean(v.is_permanente));
+  const visitantesNaoPermanentes = visitantesOrdenados.filter((v) => !Boolean(v.is_permanente));
+
+  const getHojeLocal = () => {
+    const hoje = new Date();
+    return `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+  };
+
+  const isDataEventoHoje = (dataEvento) => Boolean(dataEvento) && dataEvento === getHojeLocal();
+
+  const isDataEventoFutura = (dataEvento) => Boolean(dataEvento) && dataEvento > getHojeLocal();
+
+  const listasConvidadosOrdenadas = [...(tableData.lista_convidados || [])].sort((a, b) => {
+    const dataA = a?.data_evento || '';
+    const dataB = b?.data_evento || '';
+    if (dataA !== dataB) return dataA.localeCompare(dataB);
+    return String(a?.titulo || '').localeCompare(String(b?.titulo || ''), 'pt-BR');
+  });
+
+  const listasConvidadosHoje = listasConvidadosOrdenadas.filter((lista) => isDataEventoHoje(lista.data_evento));
+  const listasConvidadosFuturas = listasConvidadosOrdenadas.filter((lista) => isDataEventoFutura(lista.data_evento));
+  const listasConvidadosInicio = (currentPage - 1) * LISTA_CONVIDADOS_CARDS_POR_PAGINA;
+  const listasConvidadosPaginadas = listasConvidadosOrdenadas.slice(
+    listasConvidadosInicio,
+    listasConvidadosInicio + LISTA_CONVIDADOS_CARDS_POR_PAGINA
+  );
+  const listasConvidadosHojePaginadas = listasConvidadosPaginadas.filter((lista) => isDataEventoHoje(lista.data_evento));
+  const listasConvidadosFuturasPaginadas = listasConvidadosPaginadas.filter((lista) => isDataEventoFutura(lista.data_evento));
 
   // Colunas para Encomendas (CRUD completo)
   const encomendasColumns = [
@@ -983,7 +1098,7 @@ function PortariaPage() {
           {activeTab === 'visitantes' && (
             <>
               <div className="page-header">
-                <div className="search-container">
+                <div className="search-container" style={{ width: '100%', flex: 1, display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <div className="search-wrapper">
                     <FaSearch className="search-icon" />
                     <input
@@ -994,21 +1109,215 @@ function PortariaPage() {
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
+                  <label style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: '#374151', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={incluirVisitantesPassados}
+                      onChange={(e) => { setIncluirVisitantesPassados(e.target.checked); setCurrentPage(1); }}
+                      style={{ accentColor: '#2abb98', width: 15, height: 15, cursor: 'pointer' }}
+                    />
+                    Incluir visitantes de datas anteriores
+                  </label>
                 </div>
               </div>
 
-              <GenericTable
-                data={tableData.visitantes}
-                columns={visitantesColumns}
-                loading={loading}
-                currentPage={currentPage}
-                totalPages={totalPages.visitantes}
-                onPageChange={setCurrentPage}
-                editingRowId={null}
-                currentEditData={{}}
-                className="full-width-table allow-horizontal-scroll"
-                hideEditButton={true}
-              />
+              <div className="portaria-lista-cards-sections">
+                <section className="portaria-lista-cards-section">
+                  <div className="portaria-lista-cards-section__header">
+                    <h3>Visitantes permanentes</h3>
+                    <span>{visitantesPermanentes.length}</span>
+                  </div>
+                  <div className="units-cards-grid">
+                    {visitantesPermanentes.length === 0 ? (
+                      <div className="empty-state compact">
+                        <p>Nenhum visitante permanente nesta página.</p>
+                      </div>
+                    ) : (
+                      visitantesPermanentes.map((visitante) => {
+                        const entrou = isVisitanteEntrou(visitante);
+                        const saiu = isVisitanteSaiu(visitante);
+                        const entradaHoje = isVisitanteEntradaHoje(visitante);
+                        const isExpanded = Boolean(expandedVisitanteCards[visitante.id]);
+                        return (
+                          <article
+                            key={visitante.id}
+                            className={`unit-card portaria-visitante-card ${isExpanded ? 'unit-card--expanded' : ''} ${entradaHoje ? 'portaria-visitante-card--hoje' : ''}`}
+                          >
+                            <div className="unit-card__header">
+                              <div className="unit-card__header-left">
+                                <span className="unit-card__title">{visitante.nome || '-'}</span>
+                              </div>
+                              <div className="unit-card__header-right">
+                                {entradaHoje && <span className="portaria-lista-card__dia-badge">Hoje</span>}
+                                <span className="unit-card__status-badge unit-card__status-badge--active">Permanente</span>
+                                <button
+                                  className="unit-card__edit-btn"
+                                  onClick={() => toggleVisitanteCard(visitante.id)}
+                                  title={isExpanded ? 'Recolher detalhes' : 'Expandir detalhes'}
+                                >
+                                  {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="unit-card__summary">
+                              <div className="unit-card__info" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.45rem' }}>
+                                <div className="unit-card__info-item"><span className="unit-card__info-label">Morador</span><span className="unit-card__info-value">{visitante.morador_nome || '-'}</span></div>
+                                <div className="unit-card__info-item"><span className="unit-card__info-label">Documento</span><span className="unit-card__info-value">{visitante.documento || '-'}</span></div>
+                              </div>
+                              <div className="portaria-visitante-card__status-row">
+                                <span className={`unit-card__status-badge ${entrou ? 'unit-card__status-badge--active' : 'unit-card__status-badge--inactive'}`}>Entrou: {entrou ? 'Sim' : 'Não'}</span>
+                                <span className={`unit-card__status-badge ${saiu ? 'unit-card__status-badge--active' : 'unit-card__status-badge--inactive'}`}>Saiu: {saiu ? 'Sim' : 'Não'}</span>
+                              </div>
+                              <div className="portaria-visitante-card__actions">
+                                <button
+                                  className="portaria-visitante-card__btn"
+                                  onClick={() => handleMarcarEntradaVisitante(visitante)}
+                                  disabled={entrou && !saiu}
+                                  title="Marcar entrada"
+                                >
+                                  <FaCheck size={12} /> Entrou
+                                </button>
+                                <button
+                                  className="portaria-visitante-card__btn portaria-visitante-card__btn--saida"
+                                  onClick={() => handleMarcarSaidaVisitante(visitante)}
+                                  disabled={!entrou || saiu}
+                                  title="Marcar saída"
+                                >
+                                  <FaTimes size={12} /> Saiu
+                                </button>
+                              </div>
+                            </div>
+                            {isExpanded && (
+                              <div className="unit-card__residents portaria-visitante-card__details">
+                                <div className="unit-card__info" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.45rem' }}>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Entrou</span><span className="unit-card__info-value">{entrou ? 'Sim' : 'Não'}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Saiu</span><span className="unit-card__info-value">{saiu ? 'Sim' : 'Não'}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Entrada</span><span className="unit-card__info-value">{formatDateTime(visitante.data_entrada)}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Saída</span><span className="unit-card__info-value">{formatDateTime(visitante.data_saida)}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Unidade</span><span className="unit-card__info-value">{visitante.morador_unidade_identificacao || '-'}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Bloco</span><span className="unit-card__info-value">{visitante.morador_unidade_bloco || '-'}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Número</span><span className="unit-card__info-value">{visitante.morador_unidade_numero || '-'}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">E-mail</span><span className="unit-card__info-value">{visitante.email || '-'}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Veículo</span><span className="unit-card__info-value">{visitante.placa_veiculo ? formatPlaca(String(visitante.placa_veiculo)) : '-'}</span></div>
+                                </div>
+                              </div>
+                            )}
+                          </article>
+                        );
+                      })
+                    )}
+                  </div>
+                </section>
+
+                <section className="portaria-lista-cards-section">
+                  <div className="portaria-lista-cards-section__header">
+                    <h3>Visitantes não permanentes</h3>
+                    <span>{visitantesNaoPermanentes.length}</span>
+                  </div>
+                  <div className="units-cards-grid">
+                    {visitantesNaoPermanentes.length === 0 ? (
+                      <div className="empty-state compact">
+                        <p>Nenhum visitante não permanente nesta página.</p>
+                      </div>
+                    ) : (
+                      visitantesNaoPermanentes.map((visitante) => {
+                        const entrou = isVisitanteEntrou(visitante);
+                        const saiu = isVisitanteSaiu(visitante);
+                        const entradaHoje = isVisitanteEntradaHoje(visitante);
+                        const isExpanded = Boolean(expandedVisitanteCards[visitante.id]);
+                        return (
+                          <article
+                            key={visitante.id}
+                            className={`unit-card portaria-visitante-card ${isExpanded ? 'unit-card--expanded' : ''} ${entradaHoje ? 'portaria-visitante-card--hoje' : ''}`}
+                          >
+                            <div className="unit-card__header">
+                              <div className="unit-card__header-left">
+                                <span className="unit-card__title">{visitante.nome || '-'}</span>
+                              </div>
+                              <div className="unit-card__header-right">
+                                {entradaHoje && <span className="portaria-lista-card__dia-badge">Hoje</span>}
+                                <span className="unit-card__status-badge unit-card__status-badge--inactive">Não permanente</span>
+                                <button
+                                  className="unit-card__edit-btn"
+                                  onClick={() => toggleVisitanteCard(visitante.id)}
+                                  title={isExpanded ? 'Recolher detalhes' : 'Expandir detalhes'}
+                                >
+                                  {isExpanded ? <FaChevronDown /> : <FaChevronRight />}
+                                </button>
+                              </div>
+                            </div>
+                            <div className="unit-card__summary">
+                              <div className="unit-card__info" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.45rem' }}>
+                                <div className="unit-card__info-item"><span className="unit-card__info-label">Morador</span><span className="unit-card__info-value">{visitante.morador_nome || '-'}</span></div>
+                                <div className="unit-card__info-item"><span className="unit-card__info-label">Documento</span><span className="unit-card__info-value">{visitante.documento || '-'}</span></div>
+                              </div>
+                              <div className="portaria-visitante-card__status-row">
+                                <span className={`unit-card__status-badge ${entrou ? 'unit-card__status-badge--active' : 'unit-card__status-badge--inactive'}`}>Entrou: {entrou ? 'Sim' : 'Não'}</span>
+                                <span className={`unit-card__status-badge ${saiu ? 'unit-card__status-badge--active' : 'unit-card__status-badge--inactive'}`}>Saiu: {saiu ? 'Sim' : 'Não'}</span>
+                              </div>
+                              <div className="portaria-visitante-card__actions">
+                                <button
+                                  className="portaria-visitante-card__btn"
+                                  onClick={() => handleMarcarEntradaVisitante(visitante)}
+                                  disabled={entrou && !saiu}
+                                  title="Marcar entrada"
+                                >
+                                  <FaCheck size={12} /> Entrou
+                                </button>
+                                <button
+                                  className="portaria-visitante-card__btn portaria-visitante-card__btn--saida"
+                                  onClick={() => handleMarcarSaidaVisitante(visitante)}
+                                  disabled={!entrou || saiu}
+                                  title="Marcar saída"
+                                >
+                                  <FaTimes size={12} /> Saiu
+                                </button>
+                              </div>
+                            </div>
+                            {isExpanded && (
+                              <div className="unit-card__residents portaria-visitante-card__details">
+                                <div className="unit-card__info" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.45rem' }}>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Entrou</span><span className="unit-card__info-value">{entrou ? 'Sim' : 'Não'}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Saiu</span><span className="unit-card__info-value">{saiu ? 'Sim' : 'Não'}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Entrada</span><span className="unit-card__info-value">{formatDateTime(visitante.data_entrada)}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Saída</span><span className="unit-card__info-value">{formatDateTime(visitante.data_saida)}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Unidade</span><span className="unit-card__info-value">{visitante.morador_unidade_identificacao || '-'}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Bloco</span><span className="unit-card__info-value">{visitante.morador_unidade_bloco || '-'}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Número</span><span className="unit-card__info-value">{visitante.morador_unidade_numero || '-'}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">E-mail</span><span className="unit-card__info-value">{visitante.email || '-'}</span></div>
+                                  <div className="unit-card__info-item"><span className="unit-card__info-label">Veículo</span><span className="unit-card__info-value">{visitante.placa_veiculo ? formatPlaca(String(visitante.placa_veiculo)) : '-'}</span></div>
+                                </div>
+                              </div>
+                            )}
+                          </article>
+                        );
+                      })
+                    )}
+                  </div>
+                </section>
+              </div>
+
+              <div className="pagination">
+                <div className="pagination-info">
+                  Página {currentPage} de {totalPages.visitantes || 1}
+                </div>
+                <div className="pagination-controls">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage <= 1}
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages.visitantes || 1))}
+                    disabled={currentPage >= (totalPages.visitantes || 1)}
+                  >
+                    Próxima
+                  </button>
+                </div>
+              </div>
             </>
           )}
 
@@ -1108,15 +1417,6 @@ function PortariaPage() {
                     />
                   </div>
                 </div>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem', color: '#374151', cursor: 'pointer', userSelect: 'none', marginLeft: 12, whiteSpace: 'nowrap' }}>
-                  <input
-                    type="checkbox"
-                    checked={somenteHoje}
-                    onChange={(e) => setSomenteHoje(e.target.checked)}
-                    style={{ accentColor: '#2abb98', width: 15, height: 15, cursor: 'pointer' }}
-                  />
-                  Somente hoje
-                </label>
                 <button
                   onClick={() => setShowQrScanner(true)}
                   className="qr-btn-mobile-only"
@@ -1132,59 +1432,142 @@ function PortariaPage() {
                 </button>
               </div>
 
-              <GenericTable
-                data={tableData.lista_convidados}
-                columns={[
-                  { key: 'morador_nome', header: 'Morador', width: '22%', render: (v) => v || '-' },
-                  { key: 'titulo', header: 'Título', width: '25%', render: (v) => v || '-' },
-                  {
-                    key: 'data_evento', header: 'Data do Evento', width: '15%',
-                    render: (v) => {
-                      if (!v) return '-';
-                      const [y, m, d] = v.split('-');
-                      return `${d}/${m}/${y}`;
-                    }
-                  },
-                  {
-                    key: 'total_convidados', header: 'Convidados', width: '12%',
-                    render: (v) => v ?? 0
-                  },
-                  {
-                    key: 'ativa', header: 'Status', width: '10%',
-                    render: (v) => (
-                      <span style={{
-                        padding: '3px 10px', borderRadius: 12, fontSize: '0.75rem', fontWeight: 600,
-                        background: v ? '#dcfce7' : '#f3f4f6', color: v ? '#15803d' : '#6b7280', display: 'inline-block'
-                      }}>{v ? 'Ativa' : 'Inativa'}</span>
-                    )
-                  },
-                  {
-                    key: 'actions', header: 'Convidados', width: '11%',
-                    render: (_, row) => (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setListaSelecionada(row); }}
-                        style={{
-                          background: '#2abb98', color: '#fff', border: 'none',
-                          borderRadius: 6, padding: '5px 10px', cursor: 'pointer',
-                          fontSize: '0.78rem', display: 'flex', alignItems: 'center',
-                          gap: 4, whiteSpace: 'nowrap',
-                        }}
-                        title="Ver lista de convidados"
-                      >
-                        <FaUsers size={12} /> Ver Lista
-                      </button>
-                    )
-                  },
-                ]}
-                loading={loading}
-                currentPage={currentPage}
-                totalPages={totalPages.lista_convidados}
-                onPageChange={setCurrentPage}
-                editingRowId={null}
-                currentEditData={{}}
-                hideEditButton={true}
-                className="full-width-table allow-horizontal-scroll"
-              />
+              <div className="portaria-lista-cards-sections">
+                <section className="portaria-lista-cards-section">
+                  <div className="portaria-lista-cards-section__header">
+                    <h3>Listas de hoje</h3>
+                    <span>{listasConvidadosHoje.length}</span>
+                  </div>
+                  <div className="units-cards-grid">
+                    {listasConvidadosHojePaginadas.length === 0 ? (
+                      <div className="empty-state compact">
+                        <p>Nenhuma lista do dia nesta página.</p>
+                      </div>
+                    ) : (
+                      listasConvidadosHojePaginadas.map((lista) => (
+                        <article
+                          key={lista.id}
+                          className="unit-card portaria-lista-card portaria-lista-card--hoje"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setListaSelecionada(lista)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setListaSelecionada(lista);
+                            }
+                          }}
+                        >
+                          <div className="unit-card__header">
+                            <div className="unit-card__header-left">
+                              <span className="unit-card__title">{lista.titulo || 'Sem título'}</span>
+                            </div>
+                            <div className="unit-card__header-right">
+                              <span className="portaria-lista-card__dia-badge">Hoje</span>
+                            </div>
+                          </div>
+                          <div className="unit-card__summary">
+                            <div className="unit-card__info" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.45rem' }}>
+                              <div className="unit-card__info-item"><span className="unit-card__info-label">Morador</span><span className="unit-card__info-value">{lista.morador_nome || '-'}</span></div>
+                              <div className="unit-card__info-item"><span className="unit-card__info-label">Data do evento</span><span className="unit-card__info-value">{lista.data_evento ? lista.data_evento.split('-').reverse().join('/') : '-'}</span></div>
+                              <div className="unit-card__info-item"><span className="unit-card__info-label">Convidados</span><span className="unit-card__info-value">{lista.total_convidados ?? 0}</span></div>
+                              <div className="unit-card__info-item"><span className="unit-card__info-label">Status</span><span className="unit-card__info-value">{lista.ativa ? 'Ativa' : 'Inativa'}</span></div>
+                            </div>
+                            <div className="portaria-lista-card__actions" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                className="portaria-lista-card__open-btn"
+                                onClick={() => setListaSelecionada(lista)}
+                                title="Ver lista de convidados"
+                              >
+                                <FaUsers size={12} /> Ver Lista
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      ))
+                    )}
+                  </div>
+                </section>
+
+                <section className="portaria-lista-cards-section">
+                  <div className="portaria-lista-cards-section__header">
+                    <h3>Listas futuras</h3>
+                    <span>{listasConvidadosFuturas.length}</span>
+                  </div>
+                  <div className="units-cards-grid">
+                    {listasConvidadosFuturasPaginadas.length === 0 ? (
+                      <div className="empty-state compact">
+                        <p>Nenhuma lista futura nesta página.</p>
+                      </div>
+                    ) : (
+                      listasConvidadosFuturasPaginadas.map((lista) => (
+                        <article
+                          key={lista.id}
+                          className="unit-card portaria-lista-card"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setListaSelecionada(lista)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              setListaSelecionada(lista);
+                            }
+                          }}
+                        >
+                          <div className="unit-card__header">
+                            <div className="unit-card__header-left">
+                              <span className="unit-card__title">{lista.titulo || 'Sem título'}</span>
+                            </div>
+                            <div className="unit-card__header-right">
+                              <span className={`unit-card__status-badge ${lista.ativa ? 'unit-card__status-badge--active' : 'unit-card__status-badge--inactive'}`}>
+                                {lista.ativa ? 'Ativa' : 'Inativa'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="unit-card__summary">
+                            <div className="unit-card__info" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.45rem' }}>
+                              <div className="unit-card__info-item"><span className="unit-card__info-label">Morador</span><span className="unit-card__info-value">{lista.morador_nome || '-'}</span></div>
+                              <div className="unit-card__info-item"><span className="unit-card__info-label">Data do evento</span><span className="unit-card__info-value">{lista.data_evento ? lista.data_evento.split('-').reverse().join('/') : '-'}</span></div>
+                              <div className="unit-card__info-item"><span className="unit-card__info-label">Convidados</span><span className="unit-card__info-value">{lista.total_convidados ?? 0}</span></div>
+                            </div>
+                            <div className="portaria-lista-card__actions" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                className="portaria-lista-card__open-btn"
+                                onClick={() => setListaSelecionada(lista)}
+                                title="Ver lista de convidados"
+                              >
+                                <FaUsers size={12} /> Ver Lista
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      ))
+                    )}
+                  </div>
+                </section>
+              </div>
+
+              <div className="pagination">
+                <div className="pagination-info">
+                  Página {currentPage} de {totalPages.lista_convidados || 1}
+                </div>
+                <div className="pagination-controls">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage <= 1}
+                  >
+                    Anterior
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages.lista_convidados || 1))}
+                    disabled={currentPage >= (totalPages.lista_convidados || 1)}
+                  >
+                    Próxima
+                  </button>
+                </div>
+              </div>
             </>
           )}
 
