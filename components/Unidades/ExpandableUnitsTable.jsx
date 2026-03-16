@@ -406,15 +406,27 @@ function ExpandableUnitsTable({
         })}
       </div>
 
-      {totalPages > 1 && (
-        <div className="pagination" style={{ display: 'flex', justifyContent: 'center', gap: 8, padding: '16px 0' }}>
-          <button className="page-button" disabled={currentPage <= 1} onClick={() => onPageChange && onPageChange(currentPage - 1)}>Anterior</button>
-          <span style={{ padding: '6px 12px', color: '#64748b', fontSize: '0.9rem', display: 'flex', alignItems: 'center' }}>
-            Página {currentPage} de {totalPages}
-          </span>
-          <button className="page-button" disabled={currentPage >= totalPages} onClick={() => onPageChange && onPageChange(currentPage + 1)}>Próxima</button>
+      <div className="pagination">
+        <div className="pagination-info">
+          Página {currentPage} de {totalPages}
         </div>
-      )}
+        <div className="pagination-controls">
+          <button
+            type="button"
+            onClick={() => onPageChange && onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            Anterior
+          </button>
+          <button
+            type="button"
+            onClick={() => onPageChange && onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            Próxima
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
