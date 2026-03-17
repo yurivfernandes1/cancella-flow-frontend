@@ -14,6 +14,7 @@ import PortariaPage from './pages/PortariaPage';
 
 import SidebarLayout from './components/Layout/SidebarLayout';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './components/common/Toast';
 
 // ─── Layout autenticado compartilhado ─────────────────────────
 // Fica montado UMA ÚNICA VEZ durante toda a sessão autenticada.
@@ -52,6 +53,7 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <AuthProvider>
+      <ToastProvider>
       <Router>
         <Routes>
           {/* Rotas públicas */}
@@ -78,6 +80,7 @@ root.render(
           </Route>
         </Routes>
       </Router>
+      </ToastProvider>
     </AuthProvider>
   </React.StrictMode>
 );

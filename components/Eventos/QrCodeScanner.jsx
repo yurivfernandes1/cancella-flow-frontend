@@ -71,10 +71,11 @@ export default function QrCodeScanner({ onClose, onConfirmado }) {
             try {
               const resp = await listaConvidadosAPI.confirmarPorQrCode(text.trim());
               const d = resp.data;
+              const cpf = d.cpf || d.documento || null;
               setResultado(
                 d.aviso
-                  ? { tipo: 'aviso', msg: d.aviso, nome: d.nome, lista: d.lista }
-                  : { tipo: 'sucesso', msg: 'Entrada confirmada!', nome: d.nome, lista: d.lista }
+                  ? { tipo: 'aviso', msg: d.aviso, nome: d.nome, lista: d.lista, cpf }
+                  : { tipo: 'sucesso', msg: 'Entrada confirmada!', nome: d.nome, lista: d.lista, cpf }
               );
               if (!d.aviso) onConfirmado?.(d);
             } catch (e) {
@@ -241,6 +242,15 @@ export default function QrCodeScanner({ onClose, onConfirmado }) {
               {resultado.nome && (
                 <p style={{ color: c.text, fontSize: '0.95rem', fontWeight: 600, margin: '4px 0' }}>
                   {resultado.nome}
+                </p>
+              )}
+              {resultado.cpf && (
+                <p style={{ color: c.text, fontSize: '0.85rem', margin: '4px 0', opacity: 0.9 }}>
+                  CPF: {(() => {
+                    const digits = ('' + resultado.cpf).replace(/\D/g, '');
+                    if (digits.length === 11) return `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6,9)}-${digits.slice(9)}`;
+                    return resultado.cpf;
+                  })()}
                 </p>
               )}
               {resultado.lista && (

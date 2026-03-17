@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FaCheck, FaCheckCircle, FaClock, FaCopy, FaDownload, FaEnvelope, FaPencilAlt, FaPlus, FaTimes, FaTrash, FaUsers } from 'react-icons/fa';
 import { espacoAPI, listaConvidadosAPI } from '../../services/api';
+import { useToast } from '../common/Toast';
 import { downloadQrCode } from '../../utils/qrUtils';
 
 /**
@@ -14,6 +15,7 @@ import { downloadQrCode } from '../../utils/qrUtils';
 function ListaConvidadosModal({ lista: listaInicial, onClose, readOnly = false, onUpdate }) {
   const [lista, setLista] = useState(listaInicial);
   const [erro, setErro] = useState('');
+  const toast = useToast();
 
   // Estado de edição inline por convidado: { [id]: { cpf, nome, buscando, encontrado, salvando, erro } }
   const [editStates, setEditStates] = useState({});
@@ -216,10 +218,13 @@ function ListaConvidadosModal({ lista: listaInicial, onClose, readOnly = false, 
     try {
       await listaConvidadosAPI.enviarQrCode(lista.id, convidadoId);
       setQrStatus(prev => ({ ...prev, [convidadoId]: 'ok' }));
+      // show toast
+      try { toast.push('E-mail com QR enviado.', { type: 'success' }); } catch {}
       setTimeout(() => setQrStatus(prev => ({ ...prev, [convidadoId]: 'idle' })), 3000);
     } catch (e) {
       setQrStatus(prev => ({ ...prev, [convidadoId]: 'error' }));
       setQrErro(prev => ({ ...prev, [convidadoId]: e.response?.data?.error || 'Erro ao enviar.' }));
+      try { toast.push(e.response?.data?.error || 'Falha ao enviar o e-mail.', { type: 'error' }); } catch {}
     }
   };
 

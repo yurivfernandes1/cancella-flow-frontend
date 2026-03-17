@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FaCopy, FaEnvelope, FaCheck } from 'react-icons/fa';
 import { listaConvidadosAPI } from '../../services/api';
+import { useToast } from '../common/Toast';
 
 /**
  * VisitorQRCode
@@ -30,15 +31,18 @@ function VisitorQRCode({ listaId, convidadoId, convidadoNome, qrToken }) {
     }
   };
 
+  const toast = useToast();
   const handleSendEmail = async () => {
     if (!listaId || !convidadoId) return;
     setEmailStatus('sending');
     try {
       await listaConvidadosAPI.enviarQrCode(listaId, convidadoId);
       setEmailStatus('sent');
+      toast.push('E-mail com o QR enviado.', { type: 'success' });
       setTimeout(() => setEmailStatus('idle'), 3000);
     } catch {
       setEmailStatus('error');
+      toast.push('Falha ao enviar o e-mail.', { type: 'error' });
       setTimeout(() => setEmailStatus('idle'), 3000);
     }
   };

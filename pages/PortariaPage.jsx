@@ -7,6 +7,7 @@ import ExpandableUnitsTable from '../components/Unidades/ExpandableUnitsTable';
 import { useAuth } from '../context/AuthContext';
 import api, { espacoReservaAPI, listaConvidadosAPI, ocorrenciaAPI, eventoAPI } from '../services/api';
 import ListaConvidadosModal from '../components/Eventos/ListaConvidadosModal';
+import AddVisitanteDropdown from '../components/Visitantes/AddVisitanteDropdown';
 import { formatPlaca } from '../utils/placaValidator';
 import '../styles/PortariaPage.css';
 import '../styles/UnitsCards.css';
@@ -71,6 +72,9 @@ function PortariaPage() {
   const [listaSelecionada, setListaSelecionada] = useState(null);
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [showAddOcorrencia, setShowAddOcorrencia] = useState(false);
+  const [showAddVisitante, setShowAddVisitante] = useState(false);
+  const addVisitanteButtonRef = useRef(null);
+  const [visitanteScope, setVisitanteScope] = useState('mine');
   const [ocorrenciaSelecionada, setOcorrenciaSelecionada] = useState(null);
   const [ocorrenciaStatusPending, setOcorrenciaStatusPending] = useState({});
   const [encomendaSelecionada, setEncomendaSelecionada] = useState(null);
@@ -127,7 +131,10 @@ function PortariaPage() {
           setTotalPages(prev => ({ ...prev, unidades_moradores: 1 }));
         }
       } else if (type === 'visitantes') {
-        const query = `/cadastros/visitantes/?page=${page}&search=${search}&incluir_passados=${incluirVisitantesPassados ? '1' : '0'}`;
+        const params = new URLSearchParams({ page, search, incluir_passados: incluirVisitantesPassados ? '1' : '0' });
+        // Para síndicos, permitir escopo (mine|all)
+        if (isSindicoPortaria) params.set('scope', visitanteScope === 'all' ? 'all' : 'mine');
+        const query = `/cadastros/visitantes/?${params.toString()}`;
         const response = await api.get(query);
         if (response.data.results !== undefined) {
           setTableData(prev => ({ ...prev, visitantes: response.data.results }));
@@ -1118,7 +1125,29 @@ function PortariaPage() {
                     />
                     Incluir visitantes de datas anteriores
                   </label>
+                  {isSindicoPortaria && (
+                    <div style={{ marginLeft: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <label style={{ fontSize: '0.85rem', color: '#374151' }}>Escopo:</label>
+                      <select value={visitanteScope} onChange={(e) => setVisitanteScope(e.target.value)} style={{ padding: '6px 8px', borderRadius: 6 }}>
+                        <option value="mine">Meus visitantes</option>
+                        <option value="all">Todos do condomínio</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.75rem' }}>
+                {(isPortaria || isSindicoPortaria) && (
+                  <div className="dropdown-wrapper">
+                    <button className="add-button" onClick={() => setShowAddVisitante(true)} ref={addVisitanteButtonRef}>
+                      <FaPlus /> Adicionar Visitante
+                    </button>
+                    {showAddVisitante && (
+                      <AddVisitanteDropdown onClose={() => setShowAddVisitante(false)} onSuccess={() => { fetchData('visitantes', 1, searchTerm); setShowAddVisitante(false); }} triggerRef={addVisitanteButtonRef} />
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="portaria-lista-cards-sections">

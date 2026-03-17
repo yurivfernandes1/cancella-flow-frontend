@@ -142,3 +142,28 @@
     max-height: none;
   }
 }
+
+/* Mobile: uma coluna para melhor leitura em celulares */
+@media (max-width: 600px) {
+  .ocorrencias-kanban-columns {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+
+  .ocorrencias-kanban-lane {
+    padding: 0.6rem;
+  }
+
+  .ocorrencias-kanban-column {
+    min-height: 80px;
+  }
+
+  .ocorrencias-kanban-column-cards {
+    max-height: none;
+    padding: 0.5rem;
+  }
+
+  .ocorrencias-kanban-summary {
+    font-size: 0.85rem;
+  }
+}

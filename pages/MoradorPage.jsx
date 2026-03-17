@@ -7,6 +7,7 @@ import AddVeiculoDropdown from '../components/Veiculos/AddVeiculoDropdown';
 
 import { useAuth } from '../context/AuthContext';
 import api, { avisoAPI, espacoReservaAPI, listaConvidadosAPI, ocorrenciaAPI, eventoAPI, visitanteAPI } from '../services/api';
+import { useToast } from '../components/common/Toast';
 import ListaConvidadosModal from '../components/Eventos/ListaConvidadosModal';
 import AddListaConvidadosModal from '../components/Eventos/AddListaConvidadosModal';
 import EventoModal from '../components/Eventos/EventoModal';
@@ -105,6 +106,8 @@ function MoradorPage() {
   if (!hasAccess) {
     return <Navigate to="/welcome" replace />;
   }
+
+  const toast = useToast();
 
   const fetchData = async (type, page = 1, search = '') => {
     setLoading(true);
@@ -588,9 +591,11 @@ function MoradorPage() {
     try {
       await visitanteAPI.enviarQrCode(id);
       setQrEmailStatus(prev => ({ ...prev, [id]: 'sent' }));
+      toast.push('E-mail com o QR enviado.', { type: 'success' });
       setTimeout(() => setQrEmailStatus(prev => ({ ...prev, [id]: 'idle' })), 3000);
     } catch {
       setQrEmailStatus(prev => ({ ...prev, [id]: 'error' }));
+      toast.push('Falha ao enviar o e-mail.', { type: 'error' });
       setTimeout(() => setQrEmailStatus(prev => ({ ...prev, [id]: 'idle' })), 3000);
     }
   };

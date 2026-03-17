@@ -26,6 +26,7 @@ const SINDICO_MENU = [
     group: 'Portaria',
     items: [
       { label: 'Eventos',             icon: FaCalendarAlt,   path: '/gestao-usuarios', tab: 'eventos' },
+      { label: 'Visitantes',          icon: FaUser,          path: '/portaria',        tab: 'visitantes' },
       { label: 'Reservas',            icon: FaCalendarAlt,   path: '/gestao-usuarios', tab: 'reservas' },
       { label: 'Lista de Convidados', icon: FaClipboardList, path: '/gestao-usuarios', tab: 'lista_convidados' },
       { label: 'Minhas Reservas',     icon: FaCalendarAlt,   path: '/minha-area',      tab: 'reservas' },

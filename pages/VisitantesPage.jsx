@@ -5,6 +5,7 @@ import GenericTable from '../components/GenericTable';
 import AddVisitanteDropdown from '../components/Visitantes/AddVisitanteDropdown';
 import { useAuth } from '../context/AuthContext';
 import api, { visitanteAPI } from '../services/api';
+import { useToast } from '../components/common/Toast';
 import '../styles/VisitantesPage.css';
 import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaCopy, FaEnvelope, FaDownload } from 'react-icons/fa';
 import { downloadQrCode } from '../utils/qrUtils';
@@ -18,16 +19,19 @@ function VisitantesPage() {
   const [showAddVisitante, setShowAddVisitante] = useState(false);
   const addVisitanteButtonRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [scope, setScope] = useState('mine');
   const [editingRowId, setEditingRowId] = useState(null);
   const [currentEditData, setCurrentEditData] = useState({});
   const [qrCopyStatus, setQrCopyStatus] = useState({});
   const [qrEmailStatus, setQrEmailStatus] = useState({});
   const [qrDownloadStatus, setQrDownloadStatus] = useState({});
+  const toast = useToast();
 
   // Verificar se o usuário tem acesso
   const isPortaria = user?.groups?.some(group => group.name === 'Portaria');
   const isMorador = user?.groups?.some(group => group.name === 'Moradores');
-  const hasAccess = user?.is_staff || isPortaria || isMorador;
+  const isSindico = user?.groups?.some(group => group.name === 'Síndicos');
+  const hasAccess = user?.is_staff || isPortaria || isMorador || isSindico;
 
   if (!hasAccess) {
     return <Navigate to="/welcome" replace />;
@@ -36,7 +40,10 @@ function VisitantesPage() {
   const fetchData = async (page = 1, search = '') => {
     setLoading(true);
     try {
-      const response = await api.get(`/cadastros/visitantes/?page=${page}&search=${search}`);
+      const params = new URLSearchParams({ page, search });
+      // Para síndicos, permitir escopo (mine|all)
+      if (isSindico) params.set('scope', scope === 'all' ? 'all' : 'mine');
+      const response = await api.get(`/cadastros/visitantes/?${params.toString()}`);
       if (response.data.results !== undefined) {
         setTableData(response.data.results);
         setTotalPages(response.data.num_pages || Math.ceil(response.data.count / 10));
@@ -60,6 +67,12 @@ function VisitantesPage() {
 
     return () => clearTimeout(delayDebounceFn);
   }, [currentPage, searchTerm]);
+
+  useEffect(() => {
+    // Recarrega quando muda o escopo (síndicos)
+    fetchData(1, searchTerm);
+    setCurrentPage(1);
+  }, [scope]);
 
   const handleSave = async (id, data) => {
     try {
@@ -104,9 +117,11 @@ function VisitantesPage() {
     try {
       await visitanteAPI.enviarQrCode(id);
       setQrEmailStatus(prev => ({ ...prev, [id]: 'sent' }));
+      toast.push('E-mail com o QR enviado.', { type: 'success' });
       setTimeout(() => setQrEmailStatus(prev => ({ ...prev, [id]: 'idle' })), 3000);
     } catch {
       setQrEmailStatus(prev => ({ ...prev, [id]: 'error' }));
+      toast.push('Falha ao enviar o e-mail.', { type: 'error' });
       setTimeout(() => setQrEmailStatus(prev => ({ ...prev, [id]: 'idle' })), 3000);
     }
   };
@@ -353,7 +368,7 @@ function VisitantesPage() {
           <h1>Gerenciamento de Visitantes</h1>
           
           <div className="page-actions">
-            {(isMorador || user?.is_staff) && (
+            {(isMorador || user?.is_staff || isSindico) && (
               <div className="dropdown-wrapper">
                 <button 
                   className="add-button"
@@ -387,6 +402,15 @@ function VisitantesPage() {
                 />
               </div>
             </div>
+            {isSindico && (
+              <div style={{ marginLeft: 12 }}>
+                <label style={{ marginRight: 8, fontSize: '0.85rem', color: '#374151' }}>Escopo:</label>
+                <select value={scope} onChange={(e) => setScope(e.target.value)} style={{ padding: '6px 8px', borderRadius: 6 }}>
+                  <option value="mine">Meus visitantes</option>
+                  <option value="all">Todos do condomínio</option>
+                </select>
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaCar, FaClock, FaEnvelope, FaIdCard, FaQrcode, FaUser, FaUserPlus } from 'react-icons/fa';
 import { useAuth } from '../../context/AuthContext';
-import { visitanteAPI } from '../../services/api';
+import api, { visitanteAPI } from '../../services/api';
+import { useToast } from '../common/Toast';
 import { validatePlaca, normalizePlaca, maskPlaca, formatPlaca } from '../../utils/placaValidator';
 import GenericDropdown from '../common/GenericDropdown';
 import '../../styles/GenericDropdown.css';
@@ -16,8 +17,31 @@ function AddVisitanteDropdown({ onClose, onSuccess, triggerRef }) {
     placa_veiculo: '',
     is_permanente: false,
   });
+  const isSindico = user?.groups?.some(g => g.name === 'Síndicos');
+  const canSelectMorador = user?.is_staff || isSindico;
+  const [moradoresOptions, setMoradoresOptions] = useState([]);
+  const [selectedMoradorId, setSelectedMoradorId] = useState(user?.id || null);
+  
+  // Buscar lista de moradores quando permitir seleção (síndico / admin)
+  useEffect(() => {
+    let mounted = true;
+    if (!canSelectMorador) return;
+    (async () => {
+      try {
+        const resp = await api.get('/access/users/simple/?type=moradores&page_size=500');
+        const items = (resp.data.results || resp.data || []).map(u => ({ id: u.id, label: u.full_name || u.username }));
+        if (mounted) setMoradoresOptions(items);
+      } catch (err) {
+        console.error('Erro ao buscar moradores:', err);
+        if (mounted) setMoradoresOptions([]);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [canSelectMorador]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [qrSendStatus, setQrSendStatus] = useState('idle'); // idle | sending | sent | error
+  const toast = useToast();
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -42,15 +66,25 @@ function AddVisitanteDropdown({ onClose, onSuccess, triggerRef }) {
     setLoading(true);
     setError('');
     try {
-      const resp = await visitanteAPI.create({
+      const payload = {
         ...formData,
         placa_veiculo: formData.placa_veiculo ? normalizePlaca(formData.placa_veiculo) : null,
-        morador_id: user.id,
+        morador_id: canSelectMorador ? selectedMoradorId : user.id,
         data_entrada: new Date(formData.data_entrada).toISOString(),
-      });
+      };
+
+      const resp = await visitanteAPI.create(payload);
       // Enviar QR por e-mail automaticamente se e-mail foi informado
       if (formData.email && resp?.data?.id) {
-        visitanteAPI.enviarQrCode(resp.data.id).catch(() => {});
+        setQrSendStatus('sending');
+        try {
+          await visitanteAPI.enviarQrCode(resp.data.id);
+          setQrSendStatus('sent');
+          toast.push(`QR code enviado para ${formData.email}`, { type: 'success' });
+        } catch (err) {
+          setQrSendStatus('error');
+          toast.push('Falha ao enviar o QR por e-mail.', { type: 'error' });
+        }
       }
       onSuccess();
       onClose();
@@ -133,6 +167,18 @@ function AddVisitanteDropdown({ onClose, onSuccess, triggerRef }) {
           }}>
             <FaQrcode size={13} />
             O QR Code de acesso será enviado automaticamente para este e-mail.
+          </div>
+        )}
+
+        {canSelectMorador && (
+          <div className="form-field">
+            <label>Morador *</label>
+            <select value={selectedMoradorId || ''} onChange={(e) => setSelectedMoradorId(e.target.value)} required>
+              <option value="">Selecione um morador</option>
+              {moradoresOptions.map(m => (
+                <option key={m.id} value={m.id}>{m.label}</option>
+              ))}
+            </select>
           </div>
         )}
 
