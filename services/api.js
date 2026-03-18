@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Use Vite environment variable when available, fallback para localhost.
 // Se a página estiver em HTTPS, faz upgrade automático para evitar mixed-content.
-const rawBaseURL = import.meta.env.VITE_API_URL || 'https://cancella-flow-backend.onrender.com/api';
+const rawBaseURL = import.meta.env.VITE_API_URL || 'https://api-cancellaflow.yurivf.com.br/api';
 const baseURL =
   typeof window !== 'undefined' && window.location.protocol === 'https:'
     ? rawBaseURL.replace(/^http:\/\//, 'https://')
@@ -21,7 +21,6 @@ const publicRouteRules = [
   { type: 'exact', value: '/access/signup/' },
   { type: 'prefix', value: '/access/signup/condominio/' },
   { type: 'prefix', value: '/access/check-username/' },
-  { type: 'prefix', value: '/access/check-cpf/' },
   { type: 'prefix', value: '/docs/' },
 ];
 
