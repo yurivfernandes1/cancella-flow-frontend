@@ -21,6 +21,7 @@ const publicRouteRules = [
   { type: 'exact', value: '/access/signup/' },
   { type: 'prefix', value: '/access/signup/condominio/' },
   { type: 'prefix', value: '/access/check-username/' },
+  { type: 'prefix', value: '/access/check-cpf/' },
   { type: 'prefix', value: '/docs/' },
 ];
 
@@ -300,3 +301,33 @@ export const ocorrenciaAPI = {
 };
 
 export default api;
+
+// --- Deduplicação automática de GETs ---
+// Evita múltiplas requisições idênticas em paralelo (útil em StrictMode/dev)
+// Para desabilitar em uma chamada específica, passe { dedupe: false } como config.
+api._inflightGets = new Map();
+const _originalGet = api.get.bind(api);
+api.get = function (url, config = {}) {
+  // Só aplica para GETs comuns; respeita override explicitamente desativado
+  if (config && config.dedupe === false) {
+    return _originalGet(url, config);
+  }
+
+  try {
+    const paramsKey = config && config.params ? JSON.stringify(config.params) : '';
+    const key = `${url}|${paramsKey}`;
+
+    if (api._inflightGets.has(key)) {
+      return api._inflightGets.get(key);
+    }
+
+    const promise = _originalGet(url, config).finally(() => {
+      api._inflightGets.delete(key);
+    });
+
+    api._inflightGets.set(key, promise);
+    return promise;
+  } catch (e) {
+    return _originalGet(url, config);
+  }
+};
