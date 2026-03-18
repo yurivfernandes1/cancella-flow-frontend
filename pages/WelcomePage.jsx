@@ -52,14 +52,27 @@ function WelcomePage() {
   }, []);
 
   useEffect(() => {
-    (async () => {
+    // Deduplicate aviso fetches (prevents double requests in StrictMode/dev)
+    if (WelcomePage._avisoPromise) {
+      WelcomePage._avisoPromise
+        .then((data) => setAvisosHome(Array.isArray(data) ? data : []))
+        .catch(() => setAvisosHome([]));
+      return;
+    }
+
+    WelcomePage._avisoPromise = (async () => {
       try {
         const resp = await avisoAPI.home();
-        setAvisosHome(Array.isArray(resp.data) ? resp.data : []);
+        return resp.data;
       } catch (e) {
-        setAvisosHome([]);
+        throw e;
       }
     })();
+
+    WelcomePage._avisoPromise
+      .then((data) => setAvisosHome(Array.isArray(data) ? data : []))
+      .catch(() => setAvisosHome([]))
+      .finally(() => { WelcomePage._avisoPromise = null; });
   }, []);
 
   useEffect(() => {
@@ -79,61 +92,60 @@ function WelcomePage() {
     const isPortariaGroup = user?.groups?.some(group => group.name === 'Portaria');
     const isAdminUser = user?.is_staff || user?.groups?.some(group => group.name === 'admin');
 
-    if (isAdminUser) {
-      (async () => {
-        try {
-          setLoadingStats(true);
-          const resp = await dashboardAPI.adminStats();
-          setAdminStats(resp.data);
-        } catch (e) {
-          console.error('Erro ao carregar estatísticas do admin:', e);
-          setAdminStats(null);
-        } finally {
-          setLoadingStats(false);
-        }
-      })();
-    } else if (isSindicoGroup) {
-      (async () => {
-        try {
-          setLoadingStats(true);
-          const resp = await dashboardAPI.sindicoStats();
-          setSindicoStats(resp.data);
-        } catch (e) {
-          console.error('Erro ao carregar estatísticas do síndico:', e);
-          setSindicoStats(null);
-        } finally {
-          setLoadingStats(false);
-        }
-      })();
-    } else if (isMoradorGroup) {
-      (async () => {
-        try {
-          setLoadingStats(true);
-          const resp = await dashboardAPI.moradorStats();
-          setMoradorStats(resp.data);
-        } catch (e) {
-          console.error('Erro ao carregar estatísticas do morador:', e);
-          setMoradorStats(null);
-        } finally {
-          setLoadingStats(false);
-        }
-      })();
-    } else if (isPortariaGroup) {
-      (async () => {
-        try {
-          setLoadingStats(true);
-          const resp = await dashboardAPI.portariaStats();
-          setPortariaStats(resp.data);
-        } catch (e) {
-          console.error('Erro ao carregar estatísticas da portaria:', e);
-          setPortariaStats(null);
-        } finally {
-          setLoadingStats(false);
-        }
-      })();
-    } else {
+    const key = isAdminUser ? 'admin' : isSindicoGroup ? 'sindico' : isMoradorGroup ? 'morador' : isPortariaGroup ? 'portaria' : null;
+    if (!key) {
       setLoadingStats(false);
+      return;
     }
+
+    // Use a per-key promise cache to dedupe concurrent/stat duplicate calls
+    WelcomePage._statsPromises = WelcomePage._statsPromises || {};
+    if (WelcomePage._statsPromises[key]) {
+      setLoadingStats(true);
+      WelcomePage._statsPromises[key]
+        .then((data) => {
+          if (key === 'admin') setAdminStats(data);
+          if (key === 'sindico') setSindicoStats(data);
+          if (key === 'morador') setMoradorStats(data);
+          if (key === 'portaria') setPortariaStats(data);
+        })
+        .catch((e) => console.error('Erro ao carregar estatísticas:', e))
+        .finally(() => setLoadingStats(false));
+      return;
+    }
+
+    setLoadingStats(true);
+    const fetcher = (async () => {
+      try {
+        if (key === 'admin') return (await dashboardAPI.adminStats()).data;
+        if (key === 'sindico') return (await dashboardAPI.sindicoStats()).data;
+        if (key === 'morador') return (await dashboardAPI.moradorStats()).data;
+        if (key === 'portaria') return (await dashboardAPI.portariaStats()).data;
+        return null;
+      } catch (e) {
+        throw e;
+      }
+    })();
+
+    WelcomePage._statsPromises[key] = fetcher;
+    fetcher
+      .then((data) => {
+        if (key === 'admin') setAdminStats(data);
+        if (key === 'sindico') setSindicoStats(data);
+        if (key === 'morador') setMoradorStats(data);
+        if (key === 'portaria') setPortariaStats(data);
+      })
+      .catch((e) => {
+        console.error('Erro ao carregar estatísticas:', e);
+        if (key === 'admin') setAdminStats(null);
+        if (key === 'sindico') setSindicoStats(null);
+        if (key === 'morador') setMoradorStats(null);
+        if (key === 'portaria') setPortariaStats(null);
+      })
+      .finally(() => {
+        WelcomePage._statsPromises[key] = null;
+        setLoadingStats(false);
+      });
   }, [user]);
 
   const handleCopySignupLink = async () => {

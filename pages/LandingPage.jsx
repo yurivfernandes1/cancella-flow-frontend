@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link } from 'react-router-dom';
-import { FaBuilding, FaUserShield, FaClipboardList, FaBell, FaFileInvoiceDollar, FaGlassCheers, FaUsers, FaAddressCard, FaArrowRight, FaCheckCircle, FaCheck, FaStar, FaQuoteLeft } from 'react-icons/fa';
+import { FaBuilding, FaUserShield, FaClipboardList, FaBell, FaFileInvoiceDollar, FaGlassCheers, FaUsers, FaAddressCard, FaArrowRight, FaCheckCircle, FaCheck, FaStar, FaQuoteLeft, FaWhatsapp, FaCar } from 'react-icons/fa';
 import logo from '../assets/logo_header.svg';
 import '../styles/LandingPage.css';
 
 function LandingPage() {
-  const [billingCycle, setBillingCycle] = useState('monthly');
 
   return (
     <div className="landing-root">
@@ -17,7 +16,6 @@ function LandingPage() {
           </Link>
           <nav className="public-nav">
             <a className="nav-link" href="#features">Funcionalidades</a>
-            <a className="nav-link" href="#pricing">Planos</a>
             <a className="nav-link" href="#testimonials">Depoimentos</a>
             <Link className="nav-link nav-login" to="/login">Entrar</Link>
           </nav>
@@ -31,14 +29,19 @@ function LandingPage() {
           <div className="hero-tag">🏢 A melhor solução para síndicos e administradoras</div>
           <h1>Transforme a gestão do seu condomínio</h1>
           <p>
-            Plataforma completa e intuitiva para administrar múltiplos condomínios.
-            Portaria, funcionários, encomendas, avisos, boletos, salão de festas e muito mais.
+            Plataforma completa e intuitiva para administrar seu condomínio.
+            Portaria, funcionários, encomendas, avisos, lista de convidados, gestão de áreas comuns e muito mais.
           </p>
           <div className="hero-ctas">
-            <Link to="/login" className="cta-primary">
-              Começar gratuitamente <FaArrowRight />
-            </Link>
-            <a className="cta-secondary" href="#pricing">Ver planos</a>
+            <a
+              className="cta-primary"
+              href="https://wa.me/5531991153035?text=Ol%C3%A1%20gostaria%20de%20saber%20mais%20sobre%20o%20Cancella%20Flow."
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Abrir WhatsApp"
+            >
+              Fale com o consultor <FaWhatsapp style={{ marginLeft: 8 }} />
+            </a>
           </div>
           <div className="hero-stats">
             <div className="stat-item">
@@ -85,11 +88,11 @@ function LandingPage() {
             O Cancella Flow centraliza as rotinas do seu condomínio com segurança e eficiência.
           </p>
         </div>
-        <div className="features-grid">
+          <div className="features-grid">
           <div className="feature-card">
-            <div className="feature-icon"><FaBuilding /></div>
-            <h3>Multi-Condomínios</h3>
-            <p>Administre diversos condomínios com perfis e permissões sob medida para cada tipo de usuário.</p>
+            <div className="feature-icon"><FaCar /></div>
+            <h3>Controle de Veículos</h3>
+            <p>Cadastro de veículos, controle de autorizações e validação de placas.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon"><FaUserShield /></div>
@@ -112,14 +115,14 @@ function LandingPage() {
             <p>Envie avisos segmentados por blocos, unidades ou para todo o condomínio.</p>
           </div>
           <div className="feature-card">
-            <div className="feature-icon"><FaFileInvoiceDollar /></div>
-            <h3>Gestão de Boletos</h3>
-            <p>Envio automático, controle de pagamentos e integração com principais bancos.</p>
+            <div className="feature-icon"><FaClipboardList /></div>
+            <h3>Lista de Convidados</h3>
+            <p>Organize listas de convidados para eventos e autorizações temporárias com facilidade.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon"><FaGlassCheers /></div>
-            <h3>Salão de Festas</h3>
-            <p>Agendamento online, calendário compartilhado e regras de uso personalizáveis.</p>
+            <h3>Gestão de Áreas Comuns</h3>
+            <p>Reservas e regras para áreas comuns, com calendário compartilhado e controle de acessos.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon"><FaAddressCard /></div>
@@ -129,112 +132,7 @@ function LandingPage() {
         </div>
       </section>
 
-      {/* Planos de Assinatura */}
-      <section id="pricing" className="pricing">
-        <div className="section-header">
-          <h2>Planos que se adaptam à sua necessidade</h2>
-          <p className="section-subtitle">
-            Escolha o plano ideal para o seu condomínio. Sem taxas ocultas, sem surpresas.
-          </p>
-        </div>
-
-        <div className="billing-toggle">
-          <button 
-            className={billingCycle === 'monthly' ? 'active' : ''} 
-            onClick={() => setBillingCycle('monthly')}
-          >
-            Mensal
-          </button>
-          <button 
-            className={billingCycle === 'yearly' ? 'active' : ''} 
-            onClick={() => setBillingCycle('yearly')}
-          >
-            Anual <span className="discount-badge">-20%</span>
-          </button>
-        </div>
-
-        <div className="pricing-cards">
-          {/* Plano Starter */}
-          <div className="pricing-card">
-            <div className="plan-header">
-              <h3>Starter</h3>
-              <p className="plan-description">Ideal para condomínios pequenos</p>
-            </div>
-            <div className="plan-price">
-              <span className="currency">R$</span>
-              <span className="amount">{billingCycle === 'monthly' ? '97' : '78'}</span>
-              <span className="period">/mês</span>
-            </div>
-            {billingCycle === 'yearly' && <p className="billing-info">Cobrado anualmente (R$ 936/ano)</p>}
-            <ul className="plan-features">
-              <li><FaCheck /> Até 50 unidades</li>
-              <li><FaCheck /> 2 usuários administrativos</li>
-              <li><FaCheck /> Portaria básica</li>
-              <li><FaCheck /> Gestão de encomendas</li>
-              <li><FaCheck /> Avisos e comunicados</li>
-              <li><FaCheck /> Suporte por email</li>
-            </ul>
-            <Link to="/login" className="plan-cta plan-cta-secondary">
-              Começar gratuitamente
-            </Link>
-          </div>
-
-          {/* Plano Professional - Destaque */}
-          <div className="pricing-card featured">
-            <div className="popular-badge">Mais Popular</div>
-            <div className="plan-header">
-              <h3>Professional</h3>
-              <p className="plan-description">Para condomínios em crescimento</p>
-            </div>
-            <div className="plan-price">
-              <span className="currency">R$</span>
-              <span className="amount">{billingCycle === 'monthly' ? '197' : '158'}</span>
-              <span className="period">/mês</span>
-            </div>
-            {billingCycle === 'yearly' && <p className="billing-info">Cobrado anualmente (R$ 1.896/ano)</p>}
-            <ul className="plan-features">
-              <li><FaCheck /> Até 150 unidades</li>
-              <li><FaCheck /> Usuários ilimitados</li>
-              <li><FaCheck /> Portaria completa com QR code</li>
-              <li><FaCheck /> Gestão de funcionários</li>
-              <li><FaCheck /> Controle de boletos</li>
-              <li><FaCheck /> Salão de festas</li>
-              <li><FaCheck /> Relatórios avançados</li>
-              <li><FaCheck /> Suporte prioritário</li>
-            </ul>
-            <Link to="/login" className="plan-cta plan-cta-primary">
-              Escolher Professional
-            </Link>
-          </div>
-
-          {/* Plano Enterprise */}
-          <div className="pricing-card">
-            <div className="plan-header">
-              <h3>Enterprise</h3>
-              <p className="plan-description">Para administradoras e grandes condomínios</p>
-            </div>
-            <div className="plan-price">
-              <span className="amount">Personalizado</span>
-            </div>
-            <ul className="plan-features">
-              <li><FaCheck /> Unidades ilimitadas</li>
-              <li><FaCheck /> Multi-condomínios</li>
-              <li><FaCheck /> Todas as funcionalidades</li>
-              <li><FaCheck /> API e integrações</li>
-              <li><FaCheck /> White label</li>
-              <li><FaCheck /> Suporte 24/7 com SLA</li>
-            </ul>
-            <a href="mailto:contato@cancellaflow.com.br" className="plan-cta plan-cta-secondary">
-              Falar com vendas
-            </a>
-          </div>
-        </div>
-
-        <div className="pricing-guarantee">
-          <FaCheckCircle className="guarantee-icon" />
-          <p><strong>Garantia de 14 dias.</strong> Teste sem compromisso. Cancele quando quiser.</p>
-        </div>
-      </section>
+      {/* Planos removidos por solicitação */}
 
       {/* Depoimentos */}
       <section id="testimonials" className="testimonials">
@@ -298,11 +196,14 @@ function LandingPage() {
           <h2>Pronto para transformar a gestão do seu condomínio?</h2>
           <p>Junte-se a centenas de síndicos e administradoras que já simplificaram sua rotina.</p>
           <div className="cta-final-buttons">
-            <Link to="/login" className="cta-primary cta-large">
-              Começar gratuitamente <FaArrowRight />
-            </Link>
-            <a href="#pricing" className="cta-secondary cta-large">
-              Ver planos e preços
+            <a
+              className="cta-primary cta-large"
+              href="https://wa.me/5531991153035?text=Ol%C3%A1%20gostaria%20de%20saber%20mais%20sobre%20o%20Cancella%20Flow."
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Abrir WhatsApp"
+            >
+              Fale com o consultor <FaWhatsapp style={{ marginLeft: 8 }} />
             </a>
           </div>
           <p className="cta-note">✓ Sem cartão de crédito • ✓ 14 dias grátis • ✓ Cancele quando quiser</p>

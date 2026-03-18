@@ -2,6 +2,8 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import './index.css';
+import ScrollToTop from './components/common/ScrollToTop';
+import GroupsCardsInjector from './components/Global/GroupsCardsInjector';
 import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
 import SignupPage from './pages/SignupPage';
@@ -55,6 +57,8 @@ root.render(
     <AuthProvider>
       <ToastProvider>
       <Router>
+        <ScrollToTop />
+        <GroupsCardsInjector />
         <Routes>
           {/* Rotas públicas */}
           <Route path="/" element={<LandingPage />} />

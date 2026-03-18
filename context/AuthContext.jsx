@@ -37,20 +37,41 @@ export const AuthProvider = ({ children }) => {
   };
 
   const fetchUserProfile = async (token) => {
+    // Deduplicate concurrent requests (useful in React StrictMode/dev)
+    if (AuthProvider._promise) {
+      try {
+        const userData = await AuthProvider._promise;
+        setUser(userData);
+        setFirstAccess(userData.first_access);
+        _fetchCondominioData(userData.condominio_id);
+        return;
+      } catch (err) {
+        // fall through to fresh fetch
+      }
+    }
+
+    AuthProvider._promise = (async () => {
+      try {
+        const response = await api.get('/access/profile/', {
+          headers: { Authorization: `Token ${token}` },
+        });
+        return response.data;
+      } catch (error) {
+        throw error;
+      }
+    })();
+
     try {
-      const response = await api.get('/access/profile/', {
-        headers: { Authorization: `Token ${token}` },
-      });
-      const userData = response.data;
+      const userData = await AuthProvider._promise;
       setUser(userData);
       setFirstAccess(userData.first_access);
-      // Carrega dados do condomínio em background (não bloqueia a UI)
       _fetchCondominioData(userData.condominio_id);
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
       localStorage.removeItem('token');
       setUser(null);
     } finally {
+      AuthProvider._promise = null;
       setLoading(false);
     }
   };
