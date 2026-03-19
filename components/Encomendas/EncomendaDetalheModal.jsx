@@ -99,41 +99,54 @@ function EncomendaDetalheModal({ encomenda, onClose, onUpdate }) {
         </div>
 
         <div className="modal-content">
-          <div className="form-group">
-            <label>Código de Rastreio</label>
-            <div className="modal-info">{encomenda.codigo_rastreio || '-'}</div>
+          <div className="modal-grid">
+            <div className="form-group">
+              <label>Código de Rastreio</label>
+              <div className="modal-info">{encomenda.codigo_rastreio || '-'}</div>
+            </div>
+
+            <div className="form-group">
+              <label>Status</label>
+              <div className="modal-info">
+                {isPortaria ? (
+                  <select value={statusEdit} onChange={(e) => setStatusEdit(e.target.value)} disabled={loading}>
+                    <option value="pendente">Pendente</option>
+                    <option value="retirada">Retirada</option>
+                    <option value="contestada" disabled>Contestada</option>
+                  </select>
+                ) : (
+                  (!encomenda.retirado_em ? 'Pendente' : (encomenda.contestado_em && !encomenda.contestacao_resolvida ? 'Contestada' : 'Retirada'))
+                )}
+              </div>
+            </div>
           </div>
+
           <div className="form-group">
             <label>Descrição</label>
             <div className="modal-info">{encomenda.descricao || '-'}</div>
           </div>
-          <div className="form-group">
-            <label>Destinatário</label>
-            <div className="modal-info">{encomenda.destinatario_nome || '-'}</div>
-          </div>
-          <div className="form-group">
-            <label>Unidade</label>
-            <div className="modal-info">{encomenda.unidade_identificacao || '-'}</div>
-          </div>
-          <div className="form-group">
-            <label>Status</label>
-            <div className="modal-info">
-              {isPortaria ? (
-                <select value={statusEdit} onChange={(e) => setStatusEdit(e.target.value)} disabled={loading}>
-                  <option value="pendente">Pendente</option>
-                  <option value="retirada">Retirada</option>
-                  <option value="contestada" disabled>Contestada</option>
-                </select>
-              ) : (
-                (!encomenda.retirado_em ? 'Pendente' : (encomenda.contestado_em && !encomenda.contestacao_resolvida ? 'Contestada' : 'Retirada'))
-              )}
+
+          <div className="modal-grid">
+            <div className="form-group">
+              <label>Destinatário</label>
+              <div className="modal-info">{encomenda.destinatario_nome || '-'}</div>
+            </div>
+            <div className="form-group">
+              <label>Unidade</label>
+              <div className="modal-info">{encomenda.unidade_identificacao || '-'}</div>
             </div>
           </div>
 
+          <div className="modal-grid">
             <div className="form-group">
               <label>Retirado por</label>
               <div className="modal-info">{encomenda.retirado_por || '-'}</div>
             </div>
+            <div className="form-group">
+              <label>Data de Retirada</label>
+              <div className="modal-info">{formatDateTime(encomenda.retirado_em)}</div>
+            </div>
+          </div>
 
           {encomenda.contestado_em && (
             <div className="form-group">
