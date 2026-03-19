@@ -35,6 +35,24 @@
   flex-direction: column;
 }
 
+/* Fallback: alguns modais usam diretamente a classe `modal-content` como container
+   (sem `modal-container`). Garantir que nesses casos o painel fique com fundo
+   branco e borda arredondada para evitar aparência transparente. */
+.modal-overlay > .modal-content {
+  background-color: white;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 700px;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  animation: modal-appear 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem; /* manter padding mínimo caso não haja header/footer separados */
+  box-sizing: border-box;
+}
+
 /* Estilo específico para modal de reserva */
 .modal-container.reserva-modal {
   max-width: 580px;
