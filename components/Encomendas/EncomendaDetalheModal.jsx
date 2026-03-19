@@ -92,7 +92,7 @@ function EncomendaDetalheModal({ encomenda, onClose, onUpdate }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
+      <div className="modal-container modal-large" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>Encomenda #{encomenda.id}</h2>
           <button className="modal-close" onClick={onClose}><FaTimes /></button>
@@ -129,6 +129,11 @@ function EncomendaDetalheModal({ encomenda, onClose, onUpdate }) {
               )}
             </div>
           </div>
+
+            <div className="form-group">
+              <label>Retirado por</label>
+              <div className="modal-info">{encomenda.retirado_por || '-'}</div>
+            </div>
 
           {encomenda.contestado_em && (
             <div className="form-group">
