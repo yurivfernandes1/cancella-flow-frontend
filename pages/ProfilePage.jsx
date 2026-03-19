@@ -37,6 +37,8 @@ function ProfilePage() {
     document.title = 'Cancella Flow | Meu Perfil';
   }, []);
 
+  const isPorteiro = user?.groups?.some(g => g.name === 'Portaria');
+
   useEffect(() => {
     if (!user) return;
     setFormData({
@@ -240,14 +242,16 @@ function ProfilePage() {
             <div className="cp-logo-placeholder"><FaUser /></div>
           )}
 
-          <button
-            className="cp-logo-camera"
-            onClick={() => fileInputRef.current?.click()}
-            title="Trocar foto"
-            disabled={photoSaving}
-          >
-            <FaCamera />
-          </button>
+          {!isPorteiro && (
+            <button
+              className="cp-logo-camera"
+              onClick={() => fileInputRef.current?.click()}
+              title="Trocar foto"
+              disabled={photoSaving}
+            >
+              <FaCamera />
+            </button>
+          )}
 
           <input
             ref={fileInputRef}
@@ -280,9 +284,11 @@ function ProfilePage() {
             <img src={photoPreview} alt="Pré-visualização" className="cp-photo-thumb" />
           </div>
           <span className="cp-photo-confirm-label">Nova foto selecionada — deseja salvar?</span>
-          <div className="cp-photo-confirm-actions">
+                <div className="cp-photo-confirm-actions">
             <button className="cp-btn cp-btn--outline cp-btn--sm" onClick={onPhotoCancel} disabled={photoSaving}><FaTimes /> Cancelar</button>
-            <button className="cp-btn cp-btn--primary cp-btn--sm" onClick={onPhotoSave} disabled={photoSaving}><FaSave /> {photoSaving ? 'Salvando…' : 'Salvar foto'}</button>
+            {!isPorteiro && (
+              <button className="cp-btn cp-btn--primary cp-btn--sm" onClick={onPhotoSave} disabled={photoSaving}><FaSave /> {photoSaving ? 'Salvando…' : 'Salvar foto'}</button>
+            )}
           </div>
         </div>
       )}
@@ -294,15 +300,15 @@ function ProfilePage() {
               <div className="profile-grid">
                 <label>
                   Primeiro nome
-                  <input value={formData.first_name} onChange={(e) => handleChange('first_name', e.target.value)} />
+                  <input value={formData.first_name} onChange={(e) => handleChange('first_name', e.target.value)} disabled={isPorteiro} />
                 </label>
                 <label>
                   Sobrenome
-                  <input value={formData.last_name} onChange={(e) => handleChange('last_name', e.target.value)} />
+                  <input value={formData.last_name} onChange={(e) => handleChange('last_name', e.target.value)} disabled={isPorteiro} />
                 </label>
                 <label>
                   Nome completo
-                  <input value={formData.full_name} onChange={(e) => handleChange('full_name', e.target.value)} />
+                  <input value={formData.full_name} onChange={(e) => handleChange('full_name', e.target.value)} disabled={isPorteiro} />
                 </label>
                 <label>
                   Usuário
@@ -310,6 +316,7 @@ function ProfilePage() {
                     value={formData.username}
                     onChange={(e) => handleChange('username', e.target.value)}
                     className={`${usernameStatus.available === false ? 'input-error' : ''} ${usernameStatus.available === true ? 'input-valid' : ''}`}
+                    disabled={isPorteiro}
                   />
                   {usernameStatus.message && (
                     <small className={`field-hint ${usernameStatus.available === false ? 'field-hint-error' : ''}`}>
@@ -324,6 +331,7 @@ function ProfilePage() {
                     value={formData.email}
                     onChange={(e) => handleChange('email', e.target.value)}
                     className={`${emailStatus.valid === false || emailStatus.available === false ? 'input-error' : ''} ${emailStatus.valid && emailStatus.available ? 'input-valid' : ''}`}
+                    disabled={isPorteiro}
                   />
                   {emailStatus.message && (
                     <small className={`field-hint ${emailStatus.valid === false || emailStatus.available === false ? 'field-hint-error' : ''}`}>
@@ -337,6 +345,7 @@ function ProfilePage() {
                     value={formatCPF(formData.cpf)}
                     onChange={(e) => handleChange('cpf', e.target.value)}
                     className={`${cpfStatus.valid === false || cpfStatus.available === false ? 'input-error' : ''} ${cpfStatus.valid && cpfStatus.available ? 'input-valid' : ''}`}
+                    disabled={isPorteiro}
                   />
                   {cpfStatus.message && (
                     <small className={`field-hint ${cpfStatus.valid === false || cpfStatus.available === false ? 'field-hint-error' : ''}`}>
@@ -346,7 +355,7 @@ function ProfilePage() {
                 </label>
                 <label>
                   Telefone
-                  <input value={formatTelefone(formData.phone)} onChange={(e) => handleChange('phone', e.target.value)} />
+                  <input value={formatTelefone(formData.phone)} onChange={(e) => handleChange('phone', e.target.value)} disabled={isPorteiro} />
                 </label>
                 
               </div>
@@ -355,9 +364,11 @@ function ProfilePage() {
 
               {message.text && <div className={`profile-message ${message.type}`}>{message.text}</div>}
 
-              <div className="profile-actions">
-                <button type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar alterações'}</button>
-              </div>
+              {!isPorteiro && (
+                <div className="profile-actions">
+                  <button type="submit" disabled={saving}>{saving ? 'Salvando...' : 'Salvar alterações'}</button>
+                </div>
+              )}
             </form>
           </div>
         </div>

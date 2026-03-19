@@ -19,6 +19,13 @@ function EncomendaDetalheModal({ encomenda, onClose, onUpdate }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  const getInitialStatus = () => {
+    if (!encomenda.retirado_em) return 'pendente';
+    if (encomenda.contestado_em && !encomenda.contestacao_resolvida) return 'contestada';
+    return 'retirada';
+  };
+  const [statusEdit, setStatusEdit] = useState(getInitialStatus());
+
   const canContestar = isMorador && Boolean(encomenda.retirado_em);
 
   const formatDateTime = (v) => {
@@ -59,11 +66,20 @@ function EncomendaDetalheModal({ encomenda, onClose, onUpdate }) {
     setSuccess('');
     setLoading(true);
     try {
-      await encomendaAPI.patch(encomenda.id, {
+      const payload = {
         descricao: descricaoEdit,
         codigo_rastreio: codigoEdit,
         retirado_por: retiradoPorEdit || null,
-      });
+      };
+
+      if (statusEdit === 'retirada') {
+        if (!encomenda.retirado_em) payload.retirado_em = new Date().toISOString();
+      } else if (statusEdit === 'pendente') {
+        payload.retirado_em = null;
+        payload.retirado_por = null;
+      }
+
+      await encomendaAPI.patch(encomenda.id, payload);
       setSuccess('Encomenda atualizada com sucesso.');
       onUpdate?.();
       setTimeout(() => onClose(), 850);
@@ -102,7 +118,15 @@ function EncomendaDetalheModal({ encomenda, onClose, onUpdate }) {
           <div className="form-group">
             <label>Status</label>
             <div className="modal-info">
-              {!encomenda.retirado_em ? 'Pendente' : (encomenda.contestado_em && !encomenda.contestacao_resolvida ? 'Contestada' : 'Retirada')}
+              {isPortaria ? (
+                <select value={statusEdit} onChange={(e) => setStatusEdit(e.target.value)} disabled={loading}>
+                  <option value="pendente">Pendente</option>
+                  <option value="retirada">Retirada</option>
+                  <option value="contestada" disabled>Contestada</option>
+                </select>
+              ) : (
+                (!encomenda.retirado_em ? 'Pendente' : (encomenda.contestado_em && !encomenda.contestacao_resolvida ? 'Contestada' : 'Retirada'))
+              )}
             </div>
           </div>
 

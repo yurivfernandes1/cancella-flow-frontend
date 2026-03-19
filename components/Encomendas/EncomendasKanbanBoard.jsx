@@ -55,6 +55,22 @@ function EncomendaCard({ encomenda, onClick, isPending }) {
               <span className="unit-card__info-label">Destinatário</span>
               <span className="unit-card__info-value" style={{ fontSize: '0.82rem' }}>{encomenda.destinatario_nome || '-'}</span>
             </div>
+                {encomenda.retirado_por && (
+                  <div className="unit-card__info-item">
+                    <span className="unit-card__info-label">Retirado Por</span>
+                    <span className="unit-card__info-value" style={{ fontSize: '0.82rem' }}>
+                      {typeof encomenda.retirado_por === 'string'
+                        ? encomenda.retirado_por
+                        : encomenda.retirado_por?.full_name || encomenda.retirado_por?.fullName || encomenda.retirado_por?.username || '-'}
+                    </span>
+                  </div>
+                )}
+                {encomenda.retirado_em && (
+                  <div className="unit-card__info-item">
+                    <span className="unit-card__info-label">Data Retirada</span>
+                    <span className="unit-card__info-value" style={{ fontSize: '0.82rem' }}>{formatDateTime(encomenda.retirado_em)}</span>
+                  </div>
+                )}
           </div>
           {encomenda.contestado_em && !encomenda.contestacao_resolvida && (
             <div style={{ fontSize: '0.8rem', color: '#9a3412', fontWeight: 600 }}>

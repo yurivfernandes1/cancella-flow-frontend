@@ -278,7 +278,12 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
     <>
       {showDropdown && (
         <GenericDropdown
-          title={userType === 'sindico' ? 'Novo Síndico' : userType === 'funcionario' ? 'Novo Funcionário' : existingMode ? 'Vincular Morador' : 'Novo Morador'}
+          title={
+            userType === 'sindico' ? 'Novo Síndico' :
+            userType === 'funcionario' ? 'Novo Funcionário' :
+            userType === 'porteiro' || userType === 'portaria' ? 'Adicionar Porteiro' :
+            existingMode ? 'Vincular Morador' : 'Novo Morador'
+          }
           onClose={onClose}
           icon={<FaUserPlus size={18} />}
           className="add-user-dropdown"
@@ -545,7 +550,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
                 className="button-primary"
                 disabled={Boolean(submitSuccess) || emailIsValid === false || cpfIsValid === false || phoneIsValid === false}
               >
-                <FaSave /> Criar {userType === 'sindico' ? 'Síndico' : userType === 'funcionario' ? 'Funcionário' : 'Morador'}
+                <FaSave /> {userType === 'sindico' ? 'Adicionar Síndico' : userType === 'funcionario' ? 'Adicionar Funcionário' : userType === 'porteiro' || userType === 'portaria' ? 'Adicionar Porteiro' : 'Adicionar Morador'}
               </button>
             </div>
               </>

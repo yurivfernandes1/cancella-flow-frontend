@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -15,6 +16,9 @@ function PasswordPage() {
     confirmPassword: ''
   });
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const navigate = useNavigate();
   const { logout, user } = useAuth();
@@ -77,30 +81,40 @@ function PasswordPage() {
           <form onSubmit={handleSubmit} className="password-form">
             {!user?.first_access && (
               <div className="form-group">
-                <input
-                  type="password"
-                  id="currentPassword"
-                  name="currentPassword"
-                  value={formData.currentPassword}
-                  onChange={handleChange}
-                  required
-                  placeholder=" "
-                />
+                <div className="input-with-icon">
+                  <input
+                    type={showCurrent ? 'text' : 'password'}
+                    id="currentPassword"
+                    name="currentPassword"
+                    value={formData.currentPassword}
+                    onChange={handleChange}
+                    required
+                    placeholder=" "
+                  />
+                  <button type="button" className="icon-button" onClick={() => setShowCurrent(v => !v)} aria-label="Mostrar senha">
+                    {showCurrent ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
                 <label htmlFor="currentPassword">Senha Atual</label>
               </div>
             )}
 
             <div className="form-group">
-              <input
-                type="password"
-                id="newPassword"
-                name="newPassword"
-                value={formData.newPassword}
-                onChange={handleChange}
-                required
-                placeholder=" "
-                minLength="8"
-              />
+              <div className="input-with-icon">
+                <input
+                  type={showNew ? 'text' : 'password'}
+                  id="newPassword"
+                  name="newPassword"
+                  value={formData.newPassword}
+                  onChange={handleChange}
+                  required
+                  placeholder=" "
+                  minLength="8"
+                />
+                <button type="button" className="icon-button" onClick={() => setShowNew(v => !v)} aria-label="Mostrar senha">
+                  {showNew ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
               <label htmlFor="newPassword">Nova Senha</label>
               <span className="password-hint">
                 Mínimo 8 caracteres, incluindo maiúsculas, minúsculas, números e caracteres especiais
@@ -108,16 +122,21 @@ function PasswordPage() {
             </div>
 
             <div className="form-group">
-              <input
-                type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-                placeholder=" "
-                minLength="8"
-              />
+              <div className="input-with-icon">
+                <input
+                  type={showConfirm ? 'text' : 'password'}
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  required
+                  placeholder=" "
+                  minLength="8"
+                />
+                <button type="button" className="icon-button" onClick={() => setShowConfirm(v => !v)} aria-label="Mostrar senha">
+                  {showConfirm ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
               <label htmlFor="confirmPassword">Confirmar Nova Senha</label>
               <span className="password-hint">
                 A senha deve ser idêntica à senha digitada acima

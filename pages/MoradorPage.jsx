@@ -556,7 +556,12 @@ function MoradorPage() {
       key: 'retirado_por',
       header: 'Retirado Por',
       width: '18%',
-      render: (value) => value || '-'
+      render: (value) => {
+        if (!value) return '-';
+        if (typeof value === 'string') return value;
+        if (typeof value === 'object') return value.full_name || value.fullName || value.username || '-';
+        return String(value);
+      }
     },
     {
       key: 'retirado_em',

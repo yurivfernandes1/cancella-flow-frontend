@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import '../styles/LoginPage.css';
@@ -56,6 +57,7 @@ function LoginPage() {
   });
   const [message, setMessage] = useState({ type: '', text: '' });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e) => {
     const value = e.target.value;
@@ -149,15 +151,20 @@ function LoginPage() {
 
           <div className="form-group">
             <label htmlFor="password">Senha</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              autoComplete="current-password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-            />
+            <div className="input-with-icon">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="password"
+                name="password"
+                autoComplete="current-password"
+                value={formData.password}
+                onChange={handleChange}
+                required
+              />
+              <button type="button" className="icon-button" onClick={() => setShowPassword(v => !v)} aria-label="Mostrar senha">
+                {showPassword ? <FaEyeSlash /> : <FaEye />}
+              </button>
+            </div>
           </div>
 
           {message.text && (

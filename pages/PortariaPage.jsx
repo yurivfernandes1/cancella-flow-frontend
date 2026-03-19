@@ -1686,7 +1686,6 @@ function PortariaPage() {
       {listaSelecionada && (
         <ListaConvidadosModal
           lista={listaSelecionada}
-          readOnly={true}
           onClose={() => setListaSelecionada(null)}
         />
       )}
