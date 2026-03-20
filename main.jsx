@@ -11,6 +11,7 @@ import WelcomePage from './pages/WelcomePage';
 import PasswordPage from './pages/PasswordPage';
 import ProfilePage from './pages/ProfilePage';
 import UsersPage from './pages/UsersPage';
+import UsersPageWrapper from './pages/UsersPageWrapper';
 import MoradorPage from './pages/MoradorPage';
 import PortariaPage from './pages/PortariaPage';
 
@@ -73,7 +74,7 @@ root.render(
               path="/gestao-usuarios"
               element={
                 <ProtectedGestaoUsuariosRoute>
-                  <UsersPage />
+                  <UsersPageWrapper />
                 </ProtectedGestaoUsuariosRoute>
               }
             />

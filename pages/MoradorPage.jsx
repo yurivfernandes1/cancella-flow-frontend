@@ -11,6 +11,8 @@ import { useToast } from '../components/common/Toast';
 import ListaConvidadosModal from '../components/Eventos/ListaConvidadosModal';
 import AddListaConvidadosModal from '../components/Eventos/AddListaConvidadosModal';
 import EventoModal from '../components/Eventos/EventoModal';
+import EventoCard from '../components/Eventos/EventoCard';
+import EventoDetalheModal from '../components/Eventos/EventoDetalheModal';
 import { FaUsers } from 'react-icons/fa';
 import AvisosKanbanBoard from '../components/Avisos/AvisosKanbanBoard';
 import EncomendasKanbanBoard from '../components/Encomendas/EncomendasKanbanBoard';
@@ -80,10 +82,12 @@ function MoradorPage() {
   const [currentEditData, setCurrentEditData] = useState({});
   const [showReservaModal, setShowReservaModal] = useState(false);
   const [eventoSelecionado, setEventoSelecionado] = useState(null);
-  const [listaSelecionada, setListaSelecionada] = useState(null);
-  const [showAddLista, setShowAddLista] = useState(false);
+  const [incluirEventosConcluidos, setIncluirEventosConcluidos] = useState(false);
   const [showEventoModal, setShowEventoModal] = useState(false);
   const [editingEvento, setEditingEvento] = useState(null);
+  const [listaSelecionada, setListaSelecionada] = useState(null);
+  const [showAddLista, setShowAddLista] = useState(false);
+  
   const [qrCopyStatus, setQrCopyStatus] = useState({});
   const [qrEmailStatus, setQrEmailStatus] = useState({});
   const [qrDownloadStatus, setQrDownloadStatus] = useState({});
@@ -174,17 +178,25 @@ function MoradorPage() {
           setTotalPages(prev => ({ ...prev, reservas: 1 }));
         }
       } else if (type === 'eventos') {
-        const response = await api.get(`/cadastros/eventos/?page=${page}&search=${search}`);
-        if (response.data.results !== undefined) {
-          setTableData(prev => ({ ...prev, eventos: response.data.results }));
-          setTotalPages(prev => ({
-            ...prev,
-            eventos: response.data.num_pages || Math.ceil(response.data.count / 10)
-          }));
-        } else {
-          setTableData(prev => ({ ...prev, eventos: response.data }));
-          setTotalPages(prev => ({ ...prev, eventos: 1 }));
+        const params = { page, search };
+        if (isSindico && incluirEventosConcluidos) params.incluir_finalizados = 1;
+        const response = await eventoAPI.list(params);
+        const eventosData = response.data.results !== undefined ? response.data.results : response.data;
+        let eventosArray = Array.isArray(eventosData) ? eventosData : [];
+        if (!isSindico) {
+          const now = new Date();
+          eventosArray = eventosArray.filter(ev => {
+            const fim = ev.datetime_fim || (ev.data_evento && ev.hora_fim ? `${ev.data_evento}T${ev.hora_fim}` : null);
+            if (!fim) return true;
+            const dt = new Date(fim);
+            return isNaN(dt.getTime()) ? true : dt >= now;
+          });
         }
+        setTableData(prev => ({ ...prev, eventos: eventosArray }));
+        setTotalPages(prev => ({
+          ...prev,
+          eventos: response.data.num_pages || Math.ceil((response.data.count || eventosArray.length || 1) / 10)
+        }));
       } else if (type === 'lista_convidados') {
         const paramsLista = { search };
         const response = await listaConvidadosAPI.getListas(paramsLista);
@@ -1733,29 +1745,78 @@ function MoradorPage() {
             </div>
           </>
         ) : (
-          <GenericTable
-            columns={
-              activeTab === 'reservas'
-                    ? reservasColumns
-                    : activeTab === 'eventos'
-                      ? eventosColumns
+          activeTab === 'eventos' ? (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginTop: 12 }}>
+                <div>
+                  {isSindico && (
+                    <label className="checkbox-label">
+                      <input type="checkbox" checked={incluirEventosConcluidos} onChange={(e) => { setIncluirEventosConcluidos(e.target.checked); setCurrentPage(1); }} />
+                      Incluir eventos concluídos
+                    </label>
+                  )}
+                </div>
+                <div>
+                  {isSindico && (
+                    <button className="add-button" onClick={() => { setEditingEvento(null); setShowEventoModal(true); }}><FaPlus /> Novo Evento</button>
+                  )}
+                </div>
+              </div>
+
+              <div className="units-cards-grid" style={{ marginTop: 12 }}>
+                {(tableData.eventos || []).length === 0 ? (
+                  <div className="empty-state compact"><p>Nenhum evento encontrado.</p></div>
+                ) : (
+                  (tableData.eventos || []).map((ev) => (
+                    <EventoCard key={ev.id} evento={ev} onOpen={(e) => setEventoSelecionado(e)} />
+                  ))
+                )}
+              </div>
+
+              <div className="pagination" style={{ marginTop: 12 }}>
+                <div className="pagination-info">Página {currentPage} de {totalPages.eventos || 1}</div>
+                <div className="pagination-controls">
+                  <button type="button" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage <= 1}>Anterior</button>
+                  <button type="button" onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages.eventos || 1))} disabled={currentPage >= (totalPages.eventos || 1)}>Próxima</button>
+                </div>
+              </div>
+
+              {eventoSelecionado && (
+                <EventoDetalheModal isOpen={!!eventoSelecionado} evento={eventoSelecionado} onClose={() => setEventoSelecionado(null)} />
+              )}
+
+              {showEventoModal && (
+                <EventoModal
+                  isOpen={showEventoModal}
+                  onClose={() => { setShowEventoModal(false); setEditingEvento(null); }}
+                  onSuccess={() => { setShowEventoModal(false); setEditingEvento(null); fetchData('eventos', currentPage, searchTerm); }}
+                  evento={editingEvento}
+                />
+              )}
+            </>
+          ) : (
+            <GenericTable
+              columns={
+                activeTab === 'reservas'
+                      ? reservasColumns
                       : veiculosColumns
-            }
-            data={tableData[activeTab]}
-            loading={loading}
-            onPageChange={(page) => setCurrentPage(page)}
-            totalPages={totalPages[activeTab]}
-            currentPage={currentPage}
-            onSave={
-              undefined
-            }
-            className="full-width-table allow-horizontal-scroll"
-            editingRowId={null}
-            onEditRow={undefined}
-            onEditDataChange={undefined}
-            hideEditButton={activeTab === 'encomendas' || activeTab === 'eventos' || activeTab === 'lista_convidados' || activeTab === 'ocorrencias'}
-            titleColumnKey={activeTab === 'encomendas' ? 'codigo_rastreio' : undefined}
-          />
+              }
+              data={tableData[activeTab]}
+              loading={loading}
+              onPageChange={(page) => setCurrentPage(page)}
+              totalPages={totalPages[activeTab]}
+              currentPage={currentPage}
+              onSave={
+                undefined
+              }
+              className="full-width-table allow-horizontal-scroll"
+              editingRowId={null}
+              onEditRow={undefined}
+              onEditDataChange={undefined}
+              hideEditButton={activeTab === 'encomendas' || activeTab === 'lista_convidados' || activeTab === 'ocorrencias'}
+              titleColumnKey={activeTab === 'encomendas' ? 'codigo_rastreio' : undefined}
+            />
+          )
         )}
       </main>
 

@@ -26,6 +26,12 @@ export function invalidateBlobCache(url) {
   }
 }
 
+// Retorna um blob URL cacheado (ou undefined)
+export function getCachedBlobUrl(url) {
+  if (!url) return null;
+  return blobCache.get(url);
+}
+
 // Componente que carrega imagens protegidas (endpoint que exige token) retornando um blob URL.
 // Exibe spinner durante o carregamento e fallback após erro definitivo.
 // Uso: <ProtectedImage src={url} alt="..." className="..." style={{}} />
@@ -33,14 +39,14 @@ export default function ProtectedImage({ src, alt, fallbackSrc, ...rest }) {
   const cached = src ? blobCache.get(src) : null;
   const [blobUrl, setBlobUrl] = useState(cached || null);
   const [loading, setLoading] = useState(
-    () => !!(src && src.includes('/logo-db/') && !cached)
+    () => !!(src && (src.includes('/logo-db/') || src.includes('/imagem-db/') || src.includes('/foto-db/')) && !cached)
   );
   const [error, setError] = useState(false);
 
   useEffect(() => {
     let mounted = true;
 
-    const shouldFetch = src && (src.includes('/logo-db/') || src.includes('/foto-db/'));
+    const shouldFetch = src && (src.includes('/logo-db/') || src.includes('/foto-db/') || src.includes('/imagem-db/'));
 
     if (!shouldFetch) {
       setBlobUrl(null);
@@ -65,14 +71,48 @@ export default function ProtectedImage({ src, alt, fallbackSrc, ...rest }) {
         // Reutiliza a promise em andamento se outro componente já iniciou o fetch
         let promise = pendingFetches.get(src);
         if (!promise) {
-          const fetchUrl =
-            typeof window !== 'undefined' && window.location.protocol === 'https:'
-              ? src.replace(/^http:\/\//, 'https://')
-              : src;
-          promise = api.get(fetchUrl, { responseType: 'blob' }).then((resp) => {
+          // Tentar usar caminho relativo quando a URL for mesma origem
+          let fetchUrl = src;
+          try {
+            const parsed = new URL(src, window.location.origin);
+            if (parsed.origin === window.location.origin) {
+              fetchUrl = parsed.pathname + (parsed.search || '');
+            } else if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+              fetchUrl = src.replace(/^http:\/\//, 'https://');
+            }
+          } catch (e) {
+            // se URL inválida, usa src cru
+            fetchUrl = src;
+          }
+
+          // Garantir envio do header Authorization usando o token do localStorage
+          const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+          const headers = token ? { Authorization: `Token ${token}` } : {};
+
+          promise = api.get(fetchUrl, { responseType: 'blob', headers }).then((resp) => {
             const objectUrl = URL.createObjectURL(resp.data);
             blobCache.set(src, objectUrl);
             return objectUrl;
+          }).catch(async (err) => {
+            // Se 401, tenta um fallback direto com fetch() incluindo Authorization
+            try {
+              const status = err?.response?.status || (err && err.status) || null;
+              if (status === 401) {
+                console.debug('ProtectedImage: axios returned 401, trying fetch fallback', fetchUrl);
+                const token2 = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+                const fallbackHeaders = token2 ? { Authorization: `Token ${token2}` } : {};
+                const fResp = await fetch(fetchUrl, { headers: fallbackHeaders });
+                if (!fResp.ok) throw new Error(`Fallback fetch failed: ${fResp.status}`);
+                const blob = await fResp.blob();
+                const objectUrl2 = URL.createObjectURL(blob);
+                blobCache.set(src, objectUrl2);
+                return objectUrl2;
+              }
+            } catch (e2) {
+              // continue to throw original error below
+              console.debug('ProtectedImage fallback failed', e2);
+            }
+            throw err;
           }).finally(() => {
             pendingFetches.delete(src);
           });

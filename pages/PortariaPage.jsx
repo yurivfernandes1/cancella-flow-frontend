@@ -7,6 +7,9 @@ import ExpandableUnitsTable from '../components/Unidades/ExpandableUnitsTable';
 import { useAuth } from '../context/AuthContext';
 import api, { espacoReservaAPI, listaConvidadosAPI, ocorrenciaAPI, eventoAPI } from '../services/api';
 import ListaConvidadosModal from '../components/Eventos/ListaConvidadosModal';
+import EventoCard from '../components/Eventos/EventoCard';
+import EventoDetalheModal from '../components/Eventos/EventoDetalheModal';
+import EventoModal from '../components/Eventos/EventoModal';
 import AddVisitanteDropdown from '../components/Visitantes/AddVisitanteDropdown';
 import { formatPlaca } from '../utils/placaValidator';
 import '../styles/PortariaPage.css';
@@ -71,6 +74,8 @@ function PortariaPage() {
   const [eventoSelecionado, setEventoSelecionado] = useState(null);
   const [listaSelecionada, setListaSelecionada] = useState(null);
   const [showQrScanner, setShowQrScanner] = useState(false);
+  const [showEventoModal, setShowEventoModal] = useState(false);
+  const [editingEvento, setEditingEvento] = useState(null);
   const [showAddOcorrencia, setShowAddOcorrencia] = useState(false);
   const [showAddVisitante, setShowAddVisitante] = useState(false);
   const addVisitanteButtonRef = useRef(null);
@@ -92,6 +97,7 @@ function PortariaPage() {
   const hasAccess = isPortaria || isSindicoPortaria;
 
   const [incluirReservasPassadas, setIncluirReservasPassadas] = useState(false);
+  const [incluirEventosConcluidos, setIncluirEventosConcluidos] = useState(false);
   const encomendaStatusTimerRef = useRef({});
   const encomendaStatusQueueRef = useRef({});
   const encomendaStatusInFlightRef = useRef({});
@@ -217,12 +223,27 @@ function PortariaPage() {
           setTotalPages(prev => ({ ...prev, reservas: 1 }));
         }
       } else if (type === 'eventos') {
-        const response = await eventoAPI.list({ page, search });
+        const params = { page, search };
+        // só incluir eventos concluídos quando o usuário for síndico/portaia com permissão e flag marcada
+        if (isSindicoPortaria && incluirEventosConcluidos) params.incluir_finalizados = 1;
+        const response = await eventoAPI.list(params);
         const eventosData = response.data.results !== undefined ? response.data.results : response.data;
-        setTableData(prev => ({ ...prev, eventos: Array.isArray(eventosData) ? eventosData : [] }));
+        let eventosArray = Array.isArray(eventosData) ? eventosData : [];
+        // Para usuários não síndicos, filtrar eventos já finalizados localmente como segurança
+        if (!isSindicoPortaria) {
+          const now = new Date();
+          eventosArray = eventosArray.filter(ev => {
+            // usar datetime_fim se disponível, senão comparar data_evento+hora_fim
+            const fim = ev.datetime_fim || (ev.data_evento && ev.hora_fim ? `${ev.data_evento}T${ev.hora_fim}` : null);
+            if (!fim) return true;
+            const dt = new Date(fim);
+            return isNaN(dt.getTime()) ? true : dt >= now;
+          });
+        }
+        setTableData(prev => ({ ...prev, eventos: eventosArray }));
         setTotalPages(prev => ({
           ...prev,
-          eventos: response.data.num_pages || Math.ceil((response.data.count || 1) / 10)
+          eventos: response.data.num_pages || Math.ceil((response.data.count || eventosArray.length || 1) / 10)
         }));
       }
     } catch (error) {
@@ -240,7 +261,7 @@ function PortariaPage() {
     }, 500);
 
     return () => clearTimeout(delayDebounceFn);
-  }, [activeTab, currentPage, searchTerm, incluirReservasPassadas, incluirVisitantesPassados]);
+  }, [activeTab, currentPage, searchTerm, incluirReservasPassadas, incluirVisitantesPassados, incluirEventosConcluidos]);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -1618,18 +1639,56 @@ function PortariaPage() {
                 </div>
               </div>
 
-              <GenericTable
-                data={tableData.eventos}
-                columns={eventosColumns}
-                loading={loading}
-                currentPage={currentPage}
-                totalPages={totalPages.eventos}
-                onPageChange={setCurrentPage}
-                editingRowId={null}
-                currentEditData={{}}
-                hideEditButton={true}
-                className="full-width-table allow-horizontal-scroll"
-              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginTop: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  {isSindicoPortaria && (
+                    <label className="checkbox-label">
+                      <input type="checkbox" checked={incluirEventosConcluidos} onChange={(e) => { setIncluirEventosConcluidos(e.target.checked); setCurrentPage(1); }} />
+                      Incluir eventos concluídos
+                    </label>
+                  )}
+                </div>
+                {isSindicoPortaria && (
+                  <div>
+                    <button className="add-button" onClick={() => { setEditingEvento(null); setShowEventoModal(true); }}><FaPlus /> Novo Evento</button>
+                  </div>
+                )}
+              </div>
+
+              <div className="units-cards-grid" style={{ marginTop: 12 }}>
+                {(tableData.eventos || []).length === 0 ? (
+                  <div className="empty-state compact"><p>Nenhum evento encontrado.</p></div>
+                ) : (
+                  (tableData.eventos || []).map((ev) => (
+                    <EventoCard key={ev.id} evento={ev} onOpen={(e) => setEventoSelecionado(e)} />
+                  ))
+                )}
+              </div>
+
+              <div className="pagination" style={{ marginTop: 12 }}>
+                <div className="pagination-info">Página {currentPage} de {totalPages.eventos || 1}</div>
+                <div className="pagination-controls">
+                  <button type="button" onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage <= 1}>Anterior</button>
+                  <button type="button" onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages.eventos || 1))} disabled={currentPage >= (totalPages.eventos || 1)}>Próxima</button>
+                </div>
+              </div>
+
+              {eventoSelecionado && (
+                <EventoDetalheModal
+                  isOpen={!!eventoSelecionado}
+                  evento={eventoSelecionado}
+                  onClose={() => setEventoSelecionado(null)}
+                />
+              )}
+
+              {showEventoModal && (
+                <EventoModal
+                  isOpen={showEventoModal}
+                  onClose={() => { setShowEventoModal(false); setEditingEvento(null); }}
+                  onSuccess={() => { setShowEventoModal(false); setEditingEvento(null); fetchData('eventos', currentPage, searchTerm); }}
+                  evento={editingEvento}
+                />
+              )}
             </>
           )}
 

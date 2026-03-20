@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FaTimes, FaUpload, FaTrash } from 'react-icons/fa';
 import { espacoAPI, eventoAPI } from '../../services/api';
+import { invalidateBlobCache, getCachedBlobUrl } from '../common/ProtectedImage';
 import '../../styles/Modal.css';
 
 function EventoModal({ isOpen, onClose, onSuccess, evento = null }) {
@@ -34,7 +35,31 @@ function EventoModal({ isOpen, onClose, onSuccess, evento = null }) {
           imagem: null
         });
         if (evento.imagem_url) {
-          setImagePreview(evento.imagem_url);
+          // Reuse ProtectedImage blob if already fetched by the card
+          const cached = getCachedBlobUrl(evento.imagem_url);
+          if (cached) {
+            setImagePreview(cached);
+          } else {
+            // Try to fetch the protected image using fetch+token and create a blob URL
+            (async () => {
+              try {
+                const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+                const headers = token ? { Authorization: `Token ${token}` } : {};
+                const resp = await fetch(evento.imagem_url, { headers });
+                if (!resp.ok) {
+                  console.debug('EventoModal: failed to fetch imagem_url', resp.status);
+                  setImagePreview(evento.imagem_url); // fallback to raw URL
+                  return;
+                }
+                const blob = await resp.blob();
+                const objectUrl = URL.createObjectURL(blob);
+                setImagePreview(objectUrl);
+              } catch (e) {
+                console.error('EventoModal: erro ao buscar imagem protegida', e);
+                setImagePreview(evento.imagem_url);
+              }
+            })();
+          }
         }
       } else {
         // Modo criação
@@ -211,13 +236,23 @@ function EventoModal({ isOpen, onClose, onSuccess, evento = null }) {
         formDataToSend.append('imagem', formData.imagem);
       }
 
+      let resp = null;
       if (evento) {
         // Editar evento existente (PATCH para suportar upload parcial)
-        await eventoAPI.patch(evento.id, formDataToSend);
+        resp = await eventoAPI.patch(evento.id, formDataToSend);
       } else {
         // Criar novo evento
-        await eventoAPI.create(formDataToSend);
+        resp = await eventoAPI.create(formDataToSend);
       }
+
+      // Log de debug para verificar se o backend retornou a URL da imagem
+      try { console.log('Evento salvo - resposta API:', resp?.data); } catch (e) { /* silent */ }
+
+      // Se o backend retornou uma URL de imagem, invalida cache para forçar re-fetch protegido
+      try {
+        const imagemUrl = resp?.data?.imagem_url || resp?.data?.imagem;
+        if (imagemUrl) invalidateBlobCache(imagemUrl);
+      } catch (e) { /* silent */ }
 
       onSuccess();
       onClose();
