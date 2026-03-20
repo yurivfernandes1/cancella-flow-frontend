@@ -99,6 +99,31 @@ if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && import.m
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {
         console.log('SW registered: ', registration);
+
+        // If there's an updated worker waiting, ask it to skip waiting.
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+
+        // Listen for updates found (a new worker installing)
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New update available — ask it to activate immediately
+              if (registration.waiting) {
+                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+              }
+            }
+          });
+        });
+
+        // When the controlling service worker changes, reload the page
+        // so the user gets the latest assets.
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          window.location.reload();
+        });
       })
       .catch((registrationError) => {
         console.log('SW registration failed: ', registrationError);

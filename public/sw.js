@@ -8,6 +8,13 @@ const urlsToCache = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
+      // Force the waiting service worker to become the active service worker
+      // so updates can be applied immediately on installed devices.
+      try {
+        await self.skipWaiting();
+      } catch (e) {
+        // skipWaiting may not be necessary in some browsers
+      }
       const cache = await caches.open(CACHE_NAME);
       await Promise.all(urlsToCache.map(async (url) => {
         try {
@@ -60,4 +67,24 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+});
+
+// Claim clients immediately after activation so pages are controlled
+// by the newest service worker.
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    try {
+      await self.clients.claim();
+    } catch (e) {
+      // ignore
+    }
+  })());
+});
+
+// Listen for messages from the page (e.g. to trigger skipWaiting)
+self.addEventListener('message', (event) => {
+  if (!event.data) return;
+  if (event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
