@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { condominioAPI } from '../../services/api';
 import ProtectedImage, { invalidateBlobCache } from '../common/ProtectedImage';
@@ -30,6 +30,31 @@ function CondominioProfile() {
   const fileInputRef = useRef(null);
 
   const condominioId = condominioData?.id || user?.condominio_id;
+
+  // Esconde caixas de busca que pertencem ao layout pai enquanto esta tela estiver ativa
+  useEffect(() => {
+    const selectors = [
+      '.page-header .search-container',
+      '.tecnicos-header .search-box',
+      '.search-box',
+      '.search-container'
+    ];
+    const hidden = [];
+    selectors.forEach((sel) => {
+      document.querySelectorAll(sel).forEach((el) => {
+        // guarda display anterior e esconde o elemento
+        hidden.push({ el, prev: el.style.display });
+        el.style.display = 'none';
+      });
+    });
+
+    return () => {
+      // restaura displays anteriores
+      hidden.forEach(({ el, prev }) => {
+        try { el.style.display = prev || ''; } catch (e) { /* ignore */ }
+      });
+    };
+  }, []);
 
   // ── Handlers ───────────────────────────────────────────────────
   const startEdit = (field) => {
