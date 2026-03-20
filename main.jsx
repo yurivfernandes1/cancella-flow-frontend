@@ -91,7 +91,8 @@ root.render(
 );
 
 // Register service worker for PWA
-if ('serviceWorker' in navigator) {
+// Register service worker for PWA only in production build
+if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && import.meta.env && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((registration) => {

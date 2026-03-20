@@ -76,17 +76,19 @@ export default function QrCodeScanner({ onClose, onConfirmado }) {
                 const cpfRaw = (parts[1] || '').replace(/\D/g, '');
                 if (!cpfRaw) throw new Error('CPF inválido no QR.');
                 try {
-                  const resp = await api.get(`/access/users/simple/?type=moradores&search=${encodeURIComponent(cpfRaw)}`);
-                  const users = resp.data.results || resp.data || [];
-                  if (users.length === 0) {
+                  // Usar endpoint buscarCpfSimples que busca por CPF na base interna
+                  const resp = await listaConvidadosAPI.buscarCpfSimples(cpfRaw);
+                  const d = resp.data;
+                  if (!d || !d.encontrado) {
                     setResultado({ tipo: 'invalido', msg: 'Morador não encontrado.' });
                   } else {
-                    const u = users[0];
-                    setResultado({ tipo: 'sucesso', msg: 'Morador identificado', nome: u.full_name || u.username || '', cpf: cpfRaw });
-                    onConfirmado?.(u);
+                    const nome = d.nome || '';
+                    setResultado({ tipo: 'sucesso', msg: 'Morador identificado', nome, cpf: cpfRaw });
+                    // Não temos o objeto 'user' completo aqui; notificar caller com dados mínimos
+                    onConfirmado?.({ nome, cpf: cpfRaw, fonte: d.fonte || 'sistema' });
                   }
                 } catch (err) {
-                  setResultado({ tipo: 'invalido', msg: 'Erro ao buscar morador.' });
+                  setResultado({ tipo: 'invalido', msg: err.response?.data?.error || 'Erro ao buscar morador por CPF.' });
                 }
               } else {
                 const resp = await listaConvidadosAPI.confirmarPorQrCode(trimmed);
