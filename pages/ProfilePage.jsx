@@ -7,6 +7,7 @@ import { signupAPI } from '../services/api';
 import ProtectedImage, { invalidateBlobCache } from '../components/common/ProtectedImage';
 import { formatCPF, formatTelefone } from '../utils/formatters';
 import { validateCPF } from '../utils/validators';
+import QRCode from 'qrcode';
 import '../styles/ProfilePage.css';
 import '../styles/CondominioProfile.css';
 
@@ -32,6 +33,8 @@ function ProfilePage() {
   const [usernameStatus, setUsernameStatus] = useState({ checking: false, available: null, message: '' });
   const [cpfStatus, setCpfStatus] = useState({ checking: false, valid: null, available: null, message: '' });
   const [emailStatus, setEmailStatus] = useState({ checking: false, valid: null, available: null, message: '' });
+  const [qrDataUrl, setQrDataUrl] = useState(null);
+  const [qrToken, setQrToken] = useState('');
 
   useEffect(() => {
     document.title = 'Cancella Flow | Meu Perfil';
@@ -50,7 +53,26 @@ function ProfilePage() {
       cpf: (user.cpf || '').replace(/\D/g, ''),
       phone: (user.phone || '').replace(/\D/g, ''),
     });
+    // atualizar token de QR quando o usuário mudar
+    const cpfDigits = (user.cpf || '').replace(/\D/g, '');
+    const token = cpfDigits ? `MORADOR:${cpfDigits}` : '';
+    setQrToken(token);
   }, [user]);
+
+  useEffect(() => {
+    const cpfDigits = String(formData.cpf || '').replace(/\D/g, '');
+    const token = cpfDigits ? `MORADOR:${cpfDigits}` : '';
+    setQrToken(token);
+  }, [formData.cpf]);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!qrToken) { setQrDataUrl(null); return; }
+    QRCode.toDataURL(qrToken, { margin: 1, width: 380 })
+      .then(url => { if (mounted) setQrDataUrl(url); })
+      .catch(() => { if (mounted) setQrDataUrl(null); });
+    return () => { mounted = false; };
+  }, [qrToken]);
 
   // Username live check
   useEffect(() => {
@@ -358,6 +380,40 @@ function ProfilePage() {
                   <input value={formatTelefone(formData.phone)} onChange={(e) => handleChange('phone', e.target.value)} disabled={isPorteiro} />
                 </label>
                 
+              </div>
+
+              <div style={{ marginTop: 14, borderTop: '1px dashed #e6eef0', paddingTop: 14 }}>
+                <h3 style={{ margin: '6px 0 10px', fontSize: '0.95rem' }}>QR de Acesso</h3>
+                {qrDataUrl ? (
+                  <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <img src={qrDataUrl} alt="QR de acesso" style={{ width: 160, height: 160, borderRadius: 8, background: '#fff', border: '1px solid #e6eef0' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ fontWeight: 700 }}>{(formData.full_name || `${formData.first_name} ${formData.last_name}`).split(/\s+/)[0]}</div>
+                      <div style={{ color: '#64748b' }}>CPF: {(() => { const d = (formData.cpf || '').replace(/\D/g, ''); return d.length === 11 ? `***.***.***-${d.slice(-3)}` : (formData.cpf || '-'); })()}</div>
+                      <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                        <button
+                          type="button"
+                          className="cp-btn cp-btn--primary cp-btn--sm"
+                          onClick={() => {
+                            const link = document.createElement('a');
+                            link.href = qrDataUrl;
+                            link.download = `qrcode-morador.png`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                        >Baixar QR</button>
+                        <button
+                          type="button"
+                          className="cp-btn cp-btn--outline cp-btn--sm"
+                          onClick={() => { try { navigator.clipboard.writeText(qrToken || ''); } catch {} }}
+                        >Copiar token</button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ color: '#64748b' }}>Preencha o CPF completo para gerar o QR de acesso.</div>
+                )}
               </div>
 
 

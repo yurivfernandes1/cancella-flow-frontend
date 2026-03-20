@@ -126,6 +126,19 @@ function ExpandableUnitsTable({
     return cpf.length === 11 ? cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : value;
   };
 
+  const getFirstName = (fullName) => {
+    if (!fullName) return '';
+    return String(fullName).trim().split(/\s+/)[0] || String(fullName).trim();
+  };
+
+  const maskCpfLast3 = (value) => {
+    if (!value) return '-';
+    const cpf = String(value).replace(/\D/g, '');
+    if (cpf.length !== 11) return formatCpfDisplay(value);
+    const last3 = cpf.slice(-3);
+    return `***.***.***-${last3}`;
+  };
+
   const isMoradorPending = (morador) => {
     const status = morador?.is_active;
     if (typeof status === 'boolean') return !status;
@@ -333,7 +346,7 @@ function ExpandableUnitsTable({
                       {moradores.map(morador => {
                         const isEditingThis = isSindico && editingMoradorId === morador.id;
                         const isPendingApproval = isMoradorPending(morador);
-                        const displayName = morador.full_name || morador.username || 'Morador sem nome';
+                        const displayName = getFirstName(morador.full_name || morador.username || 'Morador sem nome');
                         return (
                           <div key={morador.id} className={`unit-card__resident-item ${isPendingApproval ? 'unit-card__resident-item--pending' : ''}`}>
                             {isEditingThis ? (
@@ -403,7 +416,7 @@ function ExpandableUnitsTable({
                                     {displayName}
                                       {/* Pendente moved to unit header */}
                                   </span>
-                                  <span className="unit-card__resident-cpf">{formatCpfDisplay(morador.cpf)}</span>
+                                  <span className="unit-card__resident-cpf">{maskCpfLast3(morador.cpf)}</span>
                                   {morador.phone && (
                                     <span className="unit-card__resident-phone">{formatTelefone(morador.phone)}</span>
                                   )}

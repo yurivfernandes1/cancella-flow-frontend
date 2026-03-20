@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { FaTimes, FaRedo, FaCheckCircle, FaExclamationTriangle, FaExclamationCircle } from 'react-icons/fa';
-import { listaConvidadosAPI, condominioAPI } from '../../services/api';
+import api, { listaConvidadosAPI, condominioAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import ProtectedImage from '../common/ProtectedImage';
 
@@ -68,18 +68,39 @@ export default function QrCodeScanner({ onClose, onConfirmado }) {
             processingRef.current = true;
             await pararScanner();
             setFase('loading');
+            const trimmed = String(text || '').trim();
             try {
-              const resp = await listaConvidadosAPI.confirmarPorQrCode(text.trim());
-              const d = resp.data;
-              const cpf = d.cpf || d.documento || null;
-              setResultado(
-                d.aviso
-                  ? { tipo: 'aviso', msg: d.aviso, nome: d.nome, lista: d.lista, cpf }
-                  : { tipo: 'sucesso', msg: 'Entrada confirmada!', nome: d.nome, lista: d.lista, cpf }
-              );
-              if (!d.aviso) onConfirmado?.(d);
+              // Caso o QR seja do tipo morador (gerado pelo perfil): "MORADOR:<cpf>"
+              if (trimmed.toUpperCase().startsWith('MORADOR:')) {
+                const parts = trimmed.split(':');
+                const cpfRaw = (parts[1] || '').replace(/\D/g, '');
+                if (!cpfRaw) throw new Error('CPF inválido no QR.');
+                try {
+                  const resp = await api.get(`/access/users/simple/?type=moradores&search=${encodeURIComponent(cpfRaw)}`);
+                  const users = resp.data.results || resp.data || [];
+                  if (users.length === 0) {
+                    setResultado({ tipo: 'invalido', msg: 'Morador não encontrado.' });
+                  } else {
+                    const u = users[0];
+                    setResultado({ tipo: 'sucesso', msg: 'Morador identificado', nome: u.full_name || u.username || '', cpf: cpfRaw });
+                    onConfirmado?.(u);
+                  }
+                } catch (err) {
+                  setResultado({ tipo: 'invalido', msg: 'Erro ao buscar morador.' });
+                }
+              } else {
+                const resp = await listaConvidadosAPI.confirmarPorQrCode(trimmed);
+                const d = resp.data;
+                const cpf = d.cpf || d.documento || null;
+                setResultado(
+                  d.aviso
+                    ? { tipo: 'aviso', msg: d.aviso, nome: d.nome, lista: d.lista, cpf }
+                    : { tipo: 'sucesso', msg: 'Entrada confirmada!', nome: d.nome, lista: d.lista, cpf }
+                );
+                if (!d.aviso) onConfirmado?.(d);
+              }
             } catch (e) {
-              setResultado({ tipo: 'invalido', msg: e.response?.data?.error || 'QR Code inválido ou expirado.' });
+              setResultado({ tipo: 'invalido', msg: e.response?.data?.error || e.message || 'QR Code inválido ou expirado.' });
             } finally {
               setFase('resultado');
             }
@@ -241,14 +262,14 @@ export default function QrCodeScanner({ onClose, onConfirmado }) {
               </p>
               {resultado.nome && (
                 <p style={{ color: c.text, fontSize: '0.95rem', fontWeight: 600, margin: '4px 0' }}>
-                  {resultado.nome}
+                  {(() => { const n = String(resultado.nome || ''); return (n.split(/\s+/)[0] || n); })()}
                 </p>
               )}
               {resultado.cpf && (
                 <p style={{ color: c.text, fontSize: '0.85rem', margin: '4px 0', opacity: 0.9 }}>
                   CPF: {(() => {
                     const digits = ('' + resultado.cpf).replace(/\D/g, '');
-                    if (digits.length === 11) return `${digits.slice(0,3)}.${digits.slice(3,6)}.${digits.slice(6,9)}-${digits.slice(9)}`;
+                    if (digits.length === 11) return `***.***.***-${digits.slice(-3)}`;
                     return resultado.cpf;
                   })()}
                 </p>
