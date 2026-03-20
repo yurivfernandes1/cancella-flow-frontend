@@ -515,6 +515,24 @@ function WelcomePage() {
     </div>
   );
 
+  // Meu QR de Acesso - primeiro card clicável para moradores/síndicos
+  const meuQrCard = (isMorador || isSindico) && (
+    <div
+      className="dashboard-card clickable"
+      onClick={() => navigate('/perfil/qr')}
+      style={{ cursor: 'pointer' }}
+    >
+      <div className="dashboard-card-icon" style={{ color: '#2abb98' }}>
+        <FaQrcode size={32} />
+      </div>
+      <div className="dashboard-card-content">
+        <h3>QR Code de acesso</h3>
+        <div className="dashboard-card-value" style={{ color: '#2abb98' }}>Mostrar</div>
+        <p className="dashboard-card-description">Qr Code de acesso ao condomínio</p>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <div className="welcome-container">
@@ -635,6 +653,7 @@ function WelcomePage() {
               </section>
             )}
             <main className="dashboard-grid">
+              {meuQrCard}
               {portariaQrCard}
               {(isAdmin ? adminDashboardStats : isSindico ? sindicoDashboardStats : isPortaria ? portariaDashboardStats : moradorDashboardStats).map((stat, index) => (
                 <div 

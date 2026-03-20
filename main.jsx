@@ -10,6 +10,7 @@ import SignupPage from './pages/SignupPage';
 import WelcomePage from './pages/WelcomePage';
 import PasswordPage from './pages/PasswordPage';
 import ProfilePage from './pages/ProfilePage';
+import AccessQrPage from './pages/AccessQrPage';
 import UsersPage from './pages/UsersPage';
 import UsersPageWrapper from './pages/UsersPageWrapper';
 import MoradorPage from './pages/MoradorPage';
@@ -81,6 +82,7 @@ root.render(
             <Route path="/minha-area"   element={<MoradorPage />} />
             <Route path="/portaria"     element={<PortariaPage />} />
             <Route path="/perfil/meu" element={<ProfilePage />} />
+            <Route path="/perfil/qr" element={<AccessQrPage />} />
             <Route path="/perfil/senha" element={<PasswordPage />} />
           </Route>
         </Routes>
