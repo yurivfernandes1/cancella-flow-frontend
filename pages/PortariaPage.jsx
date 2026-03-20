@@ -96,6 +96,23 @@ function PortariaPage() {
   const isSindicoPortaria = user?.groups?.some(group => group.name === 'Síndicos') || user?.is_staff;
   const hasAccess = isPortaria || isSindicoPortaria;
 
+  // Helper: determina se o usuário atual pode editar a lista selecionada.
+  const canEditLista = (lista) => {
+    if (!user) return false;
+    const isMorador = user?.groups?.some(g => g.name === 'Moradores');
+    if (isMorador) return true;
+    const isSindico = user?.groups?.some(g => g.name === 'Síndicos') || user?.is_staff;
+    if (isSindico) {
+      // Síndico só pode editar listas que pertençam à sua unidade (ou onde ele seja o morador proprietário)
+      // Verifica propriedades comuns retornadas pela API: `unidade_evento` ou `morador_id`.
+      if (!lista) return false;
+      if (lista.unidade_evento && user.unidade_id && lista.unidade_evento === user.unidade_id) return true;
+      if (lista.morador_id && user.id && lista.morador_id === user.id) return true;
+      return false;
+    }
+    return false;
+  };
+
   const [incluirReservasPassadas, setIncluirReservasPassadas] = useState(false);
   const [incluirEventosConcluidos, setIncluirEventosConcluidos] = useState(false);
   const encomendaStatusTimerRef = useRef({});
@@ -1745,7 +1762,9 @@ function PortariaPage() {
       {listaSelecionada && (
         <ListaConvidadosModal
           lista={listaSelecionada}
+          readOnly={!canEditLista(listaSelecionada)}
           onClose={() => setListaSelecionada(null)}
+          onUpdate={() => fetchData('lista_convidados', currentPage, searchTerm)}
         />
       )}
 

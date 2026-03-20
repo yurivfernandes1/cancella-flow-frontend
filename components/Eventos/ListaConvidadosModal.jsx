@@ -634,30 +634,7 @@ function ListaConvidadosModal({ lista: listaInicial, onClose, readOnly = false, 
                                       <FaCheckCircle size={11} /> Confirmar
                                     </button>
                                   )}
-                                  <button
-                                    onClick={() => handleCopyQr(c.id, c.qr_token)}
-                                    disabled={!c.qr_token}
-                                    title="Copiar QR Code"
-                                    style={{
-                                      ...iconBtn,
-                                      color: qrCopyStatus[c.id] === 'copied' ? '#059669' : qrCopyStatus[c.id] === 'error' ? '#dc2626' : '#374151',
-                                      borderColor: qrCopyStatus[c.id] === 'copied' ? '#86efac' : qrCopyStatus[c.id] === 'error' ? '#fca5a5' : '#e5e7eb',
-                                    }}
-                                  >
-                                    {qrCopyStatus[c.id] === 'copied' ? <FaCheck size={11} /> : <FaCopy size={11} />}
-                                  </button>
-                                  <button
-                                    onClick={() => handleDownloadQr(c.id, c.qr_token, c.nome)}
-                                    disabled={!c.qr_token || qrDownloadStatus[c.id] === 'downloading'}
-                                    title="Baixar QR Code"
-                                    style={{
-                                      ...iconBtn,
-                                      color: qrDownloadStatus[c.id] === 'done' ? '#059669' : qrDownloadStatus[c.id] === 'error' ? '#dc2626' : '#374151',
-                                      borderColor: qrDownloadStatus[c.id] === 'done' ? '#86efac' : qrDownloadStatus[c.id] === 'error' ? '#fca5a5' : '#e5e7eb',
-                                    }}
-                                  >
-                                    {qrDownloadStatus[c.id] === 'done' ? <FaCheck size={11} /> : <FaDownload size={11} />}
-                                  </button>
+                                  {/* readOnly: apenas visualizar e confirmar. Sem ações de copiar/enviar/baixar QR */}
                                 </>
                               ) : (
                                 <>

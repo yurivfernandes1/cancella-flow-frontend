@@ -285,9 +285,21 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
       
     } catch (error) {
       console.error('Erro ao criar condomínio:', error);
-      const errorMessage = error.response?.data?.error || 
-                          error.response?.data?.message || 
-                          'Erro ao criar condomínio';
+      let errorMessage = 'Erro ao criar condomínio';
+      const respData = error.response?.data;
+      if (respData) {
+        if (typeof respData === 'string') {
+          errorMessage = respData;
+        } else if (respData.error) {
+          errorMessage = respData.error;
+        } else if (respData.message) {
+          errorMessage = respData.message;
+        } else {
+          try { errorMessage = JSON.stringify(respData); } catch (e) { /* fallback */ }
+        }
+      } else if (error.userMessage) {
+        errorMessage = error.userMessage;
+      }
       alert(errorMessage);
     }
   };

@@ -72,6 +72,22 @@
   }
 }
 
+/* Ajustes específicos para modal de reservas em mobile: garantir footer visível e área rolável */
+@media (max-width: 768px) {
+  .modal-container.reserva-modal .modal-actions {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    padding: 0.75rem 0.75rem 0.5rem 0.75rem;
+    border-top: 1px solid #e2e8f0;
+    z-index: 8;
+  }
+
+  .modal-container.reserva-modal .modal-content {
+    padding-bottom: 6rem; /* espaço para o footer sticky */
+  }
+}
+
 /* O formulário dentro do container vira um flex container em coluna */
 .modal-container > form {
   display: flex;
