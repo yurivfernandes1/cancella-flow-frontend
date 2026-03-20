@@ -191,9 +191,11 @@
 
 /* Mantém o cadastro de usuário/morador dentro da viewport em qualquer altura de tela */
 .add-user-dropdown.generic-dropdown {
-  max-height: calc(100dvh - 24px);
+  /* diminuir um pouco a altura máxima para modais de criação (ficar mais compacto) */
+  max-height: calc(100dvh - 120px);
   display: flex;
   flex-direction: column;
+  padding: 1rem; /* reduzir padding para modal ficar menor verticalmente */
 }
 
 .add-user-dropdown .dropdown-content {

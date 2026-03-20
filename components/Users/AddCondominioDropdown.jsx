@@ -24,6 +24,7 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
     first_name: '',
     last_name: '',
     email: '',
+    cpf: ''
   });
   const [showSindicoSection, setShowSindicoSection] = useState(false);
   const [sindicoCreated, setSindicoCreated] = useState(null);
@@ -147,6 +148,32 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
     }
   };
 
+  const formatCPF = (value) => {
+    const clean = value.replace(/\D/g, '').substring(0, 11);
+    return clean
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4')
+      .substring(0, 14);
+  };
+
+  const validateCPF = (cpf) => {
+    const str = (cpf || '').replace(/\D/g, '');
+    if (str.length !== 11) return false;
+    if (/^(\d)\1+$/.test(str)) return false;
+
+    const calc = (t) => {
+      let s = 0;
+      for (let i = 0; i < t; i++) s += parseInt(str.charAt(i)) * (t + 1 - i);
+      const r = s % 11;
+      return r < 2 ? 0 : 11 - r;
+    };
+
+    const v1 = calc(9);
+    const v2 = calc(10);
+    return v1 === parseInt(str.charAt(9)) && v2 === parseInt(str.charAt(10));
+  };
+
   const validateTelefone = (telefone) => {
     const cleanTelefone = telefone.replace(/\D/g, '');
     return cleanTelefone.length >= 10 && cleanTelefone.length <= 11;
@@ -252,6 +279,11 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
 
       // Criar síndico opcionalmente
       if (showSindicoSection && sindicoData.first_name.trim() && sindicoData.email.trim()) {
+        // Se ítem síndico foi aberto, exigir CPF válido
+        if (!sindicoData.cpf || !validateCPF(sindicoData.cpf)) {
+          alert('CPF do síndico é obrigatório e deve ser válido.');
+          return;
+        }
         const password = generateStrongPassword();
         const username = formatUsername(sindicoData.first_name, sindicoData.last_name);
         try {
@@ -262,6 +294,7 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
             last_name: sindicoData.last_name.trim(),
             full_name: `${sindicoData.first_name.trim()} ${sindicoData.last_name.trim()}`,
             email: sindicoData.email.trim(),
+            cpf: sindicoData.cpf.replace(/\D/g, ''),
             username,
             password,
           });
@@ -437,7 +470,7 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
                     alignItems: 'center',
                     gap: '8px',
                     padding: '8px 16px',
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    background: 'linear-gradient(135deg, #19294a 0%, #2abb98 100%)',
                     color: 'white',
                     border: 'none',
                     borderRadius: '6px',
@@ -565,6 +598,33 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
                       maxLength={254}
                     />
                     <label>E-mail</label>
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-field">
+                    <input
+                      type="text"
+                      value={sindicoData.cpf}
+                      onChange={(e) => {
+                        const val = formatCPF(e.target.value);
+                        setSindicoData((p) => ({ ...p, cpf: val }));
+                        setValidationErrors((prev) => {
+                          const copy = { ...prev };
+                          if (val.replace(/\D/g, '').length === 11) {
+                            copy.sindico_cpf = validateCPF(val) ? 'valid' : 'invalid';
+                          } else {
+                            delete copy.sindico_cpf;
+                          }
+                          return copy;
+                        });
+                      }}
+                      placeholder="XXX.XXX.XXX-XX"
+                      maxLength={14}
+                      className={validationErrors.sindico_cpf === 'invalid' ? 'error' : validationErrors.sindico_cpf === 'valid' ? 'valid' : ''}
+                    />
+                    <label>CPF</label>
+                    {validationErrors.sindico_cpf === 'invalid' && <span className="error-message">CPF inválido</span>}
                   </div>
                 </div>
               </>
