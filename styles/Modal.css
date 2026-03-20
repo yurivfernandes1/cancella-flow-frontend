@@ -383,6 +383,48 @@
   }
 }
 
+/* Melhorias específicas para modais de detalhe (ex.: EventoDetalheModal) em telas pequenas */
+@media (max-width: 768px) {
+  /* Forçar layout em coluna para que imagem e texto fiquem empilhados */
+  .modal-content {
+    flex-direction: column !important;
+  }
+
+  /* Garantir que o primeiro bloco (imagem) ocupe 100% da largura e limite a altura */
+  .modal-content > div:first-child {
+    width: 100% !important;
+    flex: none !important;
+    max-height: 50vh !important;
+    overflow: hidden !important;
+    margin-bottom: 0.5rem;
+  }
+
+  /* Imagens responsivas dentro da modal */
+  .modal-content img,
+  .modal-content picture,
+  .modal-content video {
+    width: 100% !important;
+    height: auto !important;
+    object-fit: contain !important;
+    display: block;
+  }
+
+  /* Tornar o footer sticky para ficar sempre acessível */
+  .modal-container .modal-footer {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid #e2e8f0;
+    z-index: 8;
+  }
+
+  /* Espaço extra para não ficar oculto atrás do footer */
+  .modal-container .modal-content {
+    padding-bottom: 5.5rem;
+  }
+}
+
 @media (max-width: 520px) {
   .morador-grid {
     grid-template-columns: 1fr !important;
