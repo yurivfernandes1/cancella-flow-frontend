@@ -277,36 +277,44 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
       const response = await condominioAPI.create(formDataToSend);
       console.log('Condomínio criado:', response.data);
 
-      // Criar síndico opcionalmente
+      // Após criar o condomínio, tratar criação opcional do síndico em um segundo passo
       if (showSindicoSection && sindicoData.first_name.trim() && sindicoData.email.trim()) {
-        // Se ítem síndico foi aberto, exigir CPF válido
-        if (!sindicoData.cpf || !validateCPF(sindicoData.cpf)) {
-          alert('CPF do síndico é obrigatório e deve ser válido.');
-          return;
-        }
-        const password = generateStrongPassword();
-        const username = formatUsername(sindicoData.first_name, sindicoData.last_name);
-        try {
-          await api.post('/access/create/', {
-            user_type: 'sindico',
-            condominio_id: response.data.id,
-            first_name: sindicoData.first_name.trim(),
-            last_name: sindicoData.last_name.trim(),
-            full_name: `${sindicoData.first_name.trim()} ${sindicoData.last_name.trim()}`,
-            email: sindicoData.email.trim(),
-            cpf: sindicoData.cpf.replace(/\D/g, ''),
-            username,
-            password,
-          });
-          setShowDropdown(false);
-          setSindicoCreated({ username, password, condominioData: response.data });
-          return; // onSuccess chamado ao fechar o modal
-        } catch (sindicoError) {
-          console.error('Erro ao criar síndico:', sindicoError);
-          const msg = sindicoError.response?.data?.error ||
-                      sindicoError.response?.data?.message ||
-                      'Condomínio criado, mas houve um erro ao criar o síndico.';
-          alert(msg);
+        // perguntar ao usuário se deseja criar o síndico agora
+        const wantCreate = window.confirm('Condomínio criado. Deseja adicionar o síndico agora?');
+        if (wantCreate) {
+          // validar CPF antes de criar
+          if (!sindicoData.cpf || !validateCPF(sindicoData.cpf)) {
+            alert('CPF do síndico é obrigatório e deve ser válido. Síndico NÃO foi criado.');
+            if (onSuccess) onSuccess(response.data);
+            handleClose();
+            return;
+          }
+
+          const password = generateStrongPassword();
+          const username = formatUsername(sindicoData.first_name, sindicoData.last_name);
+          try {
+            await api.post('/access/create/', {
+              user_type: 'sindico',
+              condominio_id: response.data.id,
+              first_name: sindicoData.first_name.trim(),
+              last_name: sindicoData.last_name.trim(),
+              full_name: `${sindicoData.first_name.trim()} ${sindicoData.last_name.trim()}`,
+              email: sindicoData.email.trim(),
+              cpf: sindicoData.cpf.replace(/\D/g, ''),
+              username,
+              password,
+            });
+            setShowDropdown(false);
+            setSindicoCreated({ username, password, condominioData: response.data });
+            return; // mostra PasswordResetModal e onSuccess será chamado ao fechar
+          } catch (sindicoError) {
+            console.error('Erro ao criar síndico:', sindicoError);
+            const msg = sindicoError.response?.data?.error || sindicoError.response?.data?.message || 'Condomínio criado, mas houve um erro ao criar o síndico.';
+            alert(msg);
+            if (onSuccess) onSuccess(response.data);
+            handleClose();
+            return;
+          }
         }
       }
 
@@ -565,7 +573,7 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
             </button>
 
             {showSindicoSection && (
-              <>
+              <div className="sindico-section">
                 <div className="form-row">
                   <div className="form-field">
                     <input
@@ -599,9 +607,7 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
                     />
                     <label>E-mail</label>
                   </div>
-                </div>
 
-                <div className="form-row">
                   <div className="form-field">
                     <input
                       type="text"
@@ -627,7 +633,7 @@ function AddCondominioDropdown({ onClose, onSuccess, triggerRef }) {
                     {validationErrors.sindico_cpf === 'invalid' && <span className="error-message">CPF inválido</span>}
                   </div>
                 </div>
-              </>
+              </div>
             )}
           </div>
 

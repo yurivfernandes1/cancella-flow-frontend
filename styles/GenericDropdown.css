@@ -278,6 +278,18 @@
   color: #475569;
 }
 
+/* Forçar cor de hover correta para botões de ação dentro de dropdowns/modais
+   (corrige casos onde regras globais aplicam tons roxos/pink inesperados) */
+.add-user-dropdown .button-primary:hover,
+.generic-dropdown .button-primary:hover,
+.generic-dropdown .save-button:hover,
+.add-user-dropdown .save-button:hover {
+  background-color: #239a80 !important; /* verde-água do tema, ligeiramente escuro */
+  box-shadow: 0 4px 12px rgba(35,154,128,0.16) !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+}
+
 /* Estilos para campos de formulário */
 .form-row {
   display: flex;
@@ -304,14 +316,14 @@
   width: 100%;
   padding: 0.5rem;
   padding-top: 0.6rem;
-  background: #f8f9fa;
-  border: 1px solid rgba(25, 41, 74, 0.2);
+  background: #ffffff; /* branco do tema */
+  border: 1px solid #cbd5e1; /* borda neutra */
   border-radius: 8px;
   color: #19294a;
   font-size: 0.9rem;
-  transition: all 0.3s ease;
+  transition: all 0.2s ease;
   box-sizing: border-box;
-  margin-top: 2px; /* Pequena margem adicional no topo do input */
+  margin-top: 2px;
   line-height: 1.2;
 }
 
@@ -321,6 +333,91 @@
 
 .form-field input {
   height: 40px; /* Altura fixa para inputs */
+}
+
+/* Foco padrão dos inputs com cor do tema (verde-água) */
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus {
+  outline: none;
+  border-color: #2abb98 !important;
+  box-shadow: 0 0 0 4px #2abb9814 !important; /* suavemente visível */
+  background: #ffffff !important;
+}
+
+/* Estado válido usa a mesma cor do tema */
+.form-field input.valid {
+  border-color: #2abb98 !important;
+  box-shadow: 0 0 0 3px #2abb9811 !important;
+}
+
+.form-field label {
+  color: #19294a; /* título do campo */
+}
+
+/* Estilos para a seção de síndico para ficar mais agradável */
+.sindico-section {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fffb 100%);
+  border: 1px solid rgba(42,187,152,0.12);
+  padding: 0.85rem;
+  border-radius: 10px;
+  margin-top: 0.6rem;
+  margin-bottom: 0.9rem;
+}
+
+.sindico-section .form-row {
+  gap: 12px;
+}
+
+.sindico-section .form-field label {
+  background: transparent; /* evitar que o label branco sobreponha bordas */
+  padding: 0 0.2rem;
+}
+
+/* Overrides fortes para remover tonalidade roxa residual e forçar cores do tema
+   aplicados apenas nas dropdown/modais de criação para evitar mudanças globais */
+.add-user-dropdown .form-field input,
+.add-user-dropdown .form-field select,
+.add-user-dropdown .form-field textarea {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: none !important;
+}
+
+.add-user-dropdown .form-field input:focus,
+.add-user-dropdown .form-field select:focus,
+.add-user-dropdown .form-field textarea:focus {
+  outline: none !important;
+  border-color: #2abb98 !important;
+  box-shadow: 0 0 0 6px rgba(42,187,152,0.08) !important;
+}
+
+.add-user-dropdown .form-field input.error,
+.add-user-dropdown .form-field textarea.error,
+.add-user-dropdown .form-field select.error {
+  border-color: #ef4444 !important;
+  box-shadow: none !important;
+}
+
+.add-user-dropdown .form-field input.valid,
+.add-user-dropdown .form-field textarea.valid,
+.add-user-dropdown .form-field select.valid {
+  border-color: #2abb98 !important;
+  box-shadow: 0 0 0 4px rgba(42,187,152,0.06) !important;
+}
+
+/* Reduzir espaços verticais e tornar a modal mais compacta */
+.add-user-dropdown .form-row {
+  gap: 12px !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.add-user-dropdown .form-actions {
+  margin-top: 1rem !important;
+  padding-top: 0.6rem !important;
+}
+
+/* Remover qualquer box-shadow roxo residual em botões/elementos dentro da dropdown */
+.add-user-dropdown .dropdown-content * {
+  --override-shadow: none !important;
 }
 
 .form-field textarea {
