@@ -54,39 +54,39 @@ function UsersPageWrapper() {
   const [listaSelecionadaSindico, setListaSelecionadaSindico] = useState(null);
   const [showAddListaSindico, setShowAddListaSindico] = useState(false);
 
+  // Função reutilizável para buscar eventos (pode ser chamada por modais após criação/edição)
+  const fetchEvents = async (page = currentPage, search = searchTerm) => {
+    let cancelled = false; // usado localmente para proteger quando chamada diretamente
+    setLoading(true);
+    try {
+      const params = { page, search };
+      if (isSindico && incluirEventosConcluidos) params.incluir_finalizados = 1;
+      const response = await eventoAPI.list(params);
+      const eventosData = response.data.results !== undefined ? response.data.results : response.data;
+      let eventosArray = Array.isArray(eventosData) ? eventosData : [];
+
+      if (!isSindico) {
+        eventosArray = eventosArray.filter(ev => {
+          const fim = ev.datetime_fim || (ev.data_evento && ev.hora_fim ? `${ev.data_evento}T${ev.hora_fim}` : null);
+          return !fim || new Date(fim) > new Date();
+        });
+      }
+
+      if (!cancelled) {
+        setEventos(eventosArray);
+        setTotalPages(response.data.num_pages || Math.ceil((response.data.count || eventosArray.length || 1) / 10));
+      }
+    } catch (err) {
+      console.error('Erro ao buscar eventos', err);
+    } finally {
+      if (!cancelled) setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab !== 'eventos') return;
-    let cancelled = false;
-
-    const fetchEvents = async () => {
-      setLoading(true);
-      try {
-        const params = { page: currentPage, search: searchTerm };
-        if (isSindico && incluirEventosConcluidos) params.incluir_finalizados = 1;
-        const response = await eventoAPI.list(params);
-        const eventosData = response.data.results !== undefined ? response.data.results : response.data;
-        let eventosArray = Array.isArray(eventosData) ? eventosData : [];
-
-        if (!isSindico) {
-          eventosArray = eventosArray.filter(ev => {
-            const fim = ev.datetime_fim || (ev.data_evento && ev.hora_fim ? `${ev.data_evento}T${ev.hora_fim}` : null);
-            return !fim || new Date(fim) > new Date();
-          });
-        }
-
-        if (!cancelled) {
-          setEventos(eventosArray);
-          setTotalPages(response.data.num_pages || Math.ceil((response.data.count || eventosArray.length || 1) / 10));
-        }
-      } catch (err) {
-        console.error('Erro ao buscar eventos', err);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
     fetchEvents();
-    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, currentPage, searchTerm, incluirEventosConcluidos, isSindico]);
 
   // Fetch listas de convidados when sindico opens that tab
@@ -290,7 +290,7 @@ function UsersPageWrapper() {
           <EventoModal
             isOpen={showEventoModal}
             onClose={() => { setShowEventoModal(false); setEditingEvento(null); }}
-            onSuccess={() => { setShowEventoModal(false); setEditingEvento(null); setCurrentPage(1); }}
+            onSuccess={() => { setShowEventoModal(false); setEditingEvento(null); setCurrentPage(1); fetchEvents(1, searchTerm); }}
             evento={editingEvento}
           />
         )}
