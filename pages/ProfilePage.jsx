@@ -246,7 +246,6 @@ function ProfilePage() {
             <div className="cp-logo-placeholder"><FaUser /></div>
           )}
 
-          {!isPorteiro && (
             <button
               className="cp-logo-camera"
               onClick={() => fileInputRef.current?.click()}
@@ -255,7 +254,6 @@ function ProfilePage() {
             >
               <FaCamera />
             </button>
-          )}
 
           <input
             ref={fileInputRef}
@@ -288,12 +286,10 @@ function ProfilePage() {
             <img src={photoPreview} alt="Pré-visualização" className="cp-photo-thumb" />
           </div>
           <span className="cp-photo-confirm-label">Nova foto selecionada — deseja salvar?</span>
-                <div className="cp-photo-confirm-actions">
-            <button className="cp-btn cp-btn--outline cp-btn--sm" onClick={onPhotoCancel} disabled={photoSaving}><FaTimes /> Cancelar</button>
-            {!isPorteiro && (
-              <button className="cp-btn cp-btn--primary cp-btn--sm" onClick={onPhotoSave} disabled={photoSaving}><FaSave /> {photoSaving ? 'Salvando…' : 'Salvar foto'}</button>
-            )}
-          </div>
+              <div className="cp-photo-confirm-actions">
+                <button className="cp-btn cp-btn--outline cp-btn--sm" onClick={onPhotoCancel} disabled={photoSaving}><FaTimes /> Cancelar</button>
+                <button className="cp-btn cp-btn--primary cp-btn--sm" onClick={onPhotoSave} disabled={photoSaving}><FaSave /> {photoSaving ? 'Salvando…' : 'Salvar foto'}</button>
+              </div>
         </div>
       )}
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ProtectedImage from '../common/ProtectedImage';
 import Select from 'react-select';
 import { FaEdit, FaKey, FaCheck, FaTimes, FaChevronDown, FaChevronRight } from 'react-icons/fa';
 import { formatCPF, formatTelefone } from '../../utils/formatters';
@@ -91,7 +92,16 @@ function UsersCards({
                 style={{ cursor: isEd ? 'default' : 'pointer' }}
                 onClick={() => !isEd && toggleCard(u.id)}
               >
-                <div className="unit-card__header-left">
+                <div className="unit-card__header-left" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{ width: 40, height: 40, flex: '0 0 40px', borderRadius: '50%', overflow: 'hidden', background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {(() => {
+                      const photoSrc = u.foto_url || u.foto || u.avatar || u.profile_picture || null;
+                      if (photoSrc) {
+                        return <ProtectedImage src={photoSrc} alt="Foto" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />;
+                      }
+                      return <div style={{ color: '#9ca3af', fontWeight: 600, fontSize: '0.95rem' }}>{(u.full_name || u.username || '?')[0].toUpperCase()}</div>;
+                    })()}
+                  </div>
                   <span className="unit-card__title">{u.full_name || u.username}</span>
                 </div>
                 <div className="unit-card__header-right">

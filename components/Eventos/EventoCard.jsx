@@ -5,8 +5,20 @@ import '../../styles/UnitsCards.css';
 function EventoCard({ evento, onOpen }) {
   const titulo = evento.titulo || 'Sem título';
   const imagem = evento.imagem_url || null;
-  const data = evento.data_evento || '';
+  const rawData = evento.data_evento || '';
   const hora = evento.hora_inicio ? `${(evento.hora_inicio || '').slice(0,5)}${evento.hora_fim ? ` - ${evento.hora_fim.slice(0,5)}` : ''}` : '';
+
+  const formatDatePt = (d) => {
+    if (!d) return null;
+    // Accept formats: YYYY-MM-DD or ISO date-time
+    const dateOnly = d.split('T')[0];
+    const parts = dateOnly.split('-');
+    if (parts.length === 3) {
+      return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+    }
+    return d;
+  };
+  const data = formatDatePt(rawData) || '';
 
   return (
     <article
