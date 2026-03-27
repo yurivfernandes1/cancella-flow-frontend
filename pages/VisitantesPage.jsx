@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import api, { visitanteAPI } from '../services/api';
 import { useToast } from '../components/common/Toast';
 import '../styles/VisitantesPage.css';
-import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaCopy, FaEnvelope, FaDownload } from 'react-icons/fa';
+import { FaPlus, FaSearch, FaEdit, FaCheck, FaTimes, FaEnvelope, FaDownload } from 'react-icons/fa';
 import { downloadQrCode } from '../utils/qrUtils';
 
 function VisitantesPage() {
@@ -22,7 +22,6 @@ function VisitantesPage() {
   const [scope, setScope] = useState('mine');
   const [editingRowId, setEditingRowId] = useState(null);
   const [currentEditData, setCurrentEditData] = useState({});
-  const [qrCopyStatus, setQrCopyStatus] = useState({});
   const [qrEmailStatus, setQrEmailStatus] = useState({});
   const [qrDownloadStatus, setQrDownloadStatus] = useState({});
   const toast = useToast();
@@ -99,17 +98,6 @@ function VisitantesPage() {
     setEditingRowId(rowId);
   };
 
-  const handleCopyQr = async (id, token) => {
-    if (!token) return;
-    try {
-      await navigator.clipboard.writeText(String(token));
-      setQrCopyStatus(prev => ({ ...prev, [id]: 'copied' }));
-      setTimeout(() => setQrCopyStatus(prev => ({ ...prev, [id]: 'idle' })), 2000);
-    } catch {
-      setQrCopyStatus(prev => ({ ...prev, [id]: 'error' }));
-      setTimeout(() => setQrCopyStatus(prev => ({ ...prev, [id]: 'idle' })), 2500);
-    }
-  };
 
   const handleSendEmail = async (id, email) => {
     if (!email) return;
@@ -270,7 +258,7 @@ function VisitantesPage() {
     width: '10%',
     render: (row) => {
       const isEditing = editingRowId === row.id;
-      const copyStatus = qrCopyStatus[row.id] || 'idle';
+      const copyStatus = 'idle';
       const emailStatus = qrEmailStatus[row.id] || 'idle';
       const downloadStatus = qrDownloadStatus[row.id] || 'idle';
 
@@ -301,18 +289,7 @@ function VisitantesPage() {
             </>
           ) : (
             <>
-              <button
-                className={`edit-button${copyStatus === 'copied' ? ' save-button' : copyStatus === 'error' ? ' cancel-button' : ''}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleCopyQr(row.id, row.qr_token);
-                }}
-                title={row.qr_token ? 'Copiar QR Code' : 'QR indisponível'}
-                disabled={!row.qr_token}
-                style={{ color: copyStatus === 'copied' ? '#2abb98' : copyStatus === 'error' ? '#dc2626' : undefined }}
-              >
-                {copyStatus === 'copied' ? <FaCheck /> : <FaCopy />}
-              </button>
+              {/* Copiar QR removido por solicitação */}
               <button
                 className={`edit-button${emailStatus === 'sent' ? ' save-button' : emailStatus === 'error' ? ' cancel-button' : ''}`}
                 onClick={(e) => {

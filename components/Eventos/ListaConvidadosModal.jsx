@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { FaCheck, FaCheckCircle, FaClock, FaCopy, FaDownload, FaEnvelope, FaPencilAlt, FaPlus, FaTimes, FaTrash, FaUsers } from 'react-icons/fa';
+import { FaCheck, FaCheckCircle, FaClock, FaDownload, FaEnvelope, FaPencilAlt, FaPlus, FaTimes, FaTrash, FaUsers } from 'react-icons/fa';
 import { espacoAPI, listaConvidadosAPI } from '../../services/api';
 import { useToast } from '../common/Toast';
 import { downloadQrCode } from '../../utils/qrUtils';
@@ -38,7 +38,6 @@ function ListaConvidadosModal({ lista: listaInicial, onClose, readOnly = false, 
   // Estado de envio de QR por convidado: { [id]: 'idle' | 'sending' | 'ok' | 'error' }
   const [qrStatus, setQrStatus] = useState({});
   const [qrErro, setQrErro] = useState({});
-  const [qrCopyStatus, setQrCopyStatus] = useState({});
   const [qrDownloadStatus, setQrDownloadStatus] = useState({});
 
   // Edição do cabeçalho (título / data)
@@ -228,17 +227,6 @@ function ListaConvidadosModal({ lista: listaInicial, onClose, readOnly = false, 
     }
   };
 
-  const handleCopyQr = async (convidadoId, qrToken) => {
-    if (!qrToken) return;
-    try {
-      await navigator.clipboard.writeText(String(qrToken));
-      setQrCopyStatus(prev => ({ ...prev, [convidadoId]: 'copied' }));
-      setTimeout(() => setQrCopyStatus(prev => ({ ...prev, [convidadoId]: 'idle' })), 2000);
-    } catch {
-      setQrCopyStatus(prev => ({ ...prev, [convidadoId]: 'error' }));
-      setTimeout(() => setQrCopyStatus(prev => ({ ...prev, [convidadoId]: 'idle' })), 2500);
-    }
-  };
 
   const handleDownloadQr = async (convidadoId, qrToken, nome) => {
     if (!qrToken) return;
@@ -638,18 +626,7 @@ function ListaConvidadosModal({ lista: listaInicial, onClose, readOnly = false, 
                                 </>
                               ) : (
                                 <>
-                                  <button
-                                    onClick={() => handleCopyQr(c.id, c.qr_token)}
-                                    disabled={!c.qr_token}
-                                    title="Copiar QR Code"
-                                    style={{
-                                      ...iconBtn,
-                                      color: qrCopyStatus[c.id] === 'copied' ? '#059669' : qrCopyStatus[c.id] === 'error' ? '#dc2626' : '#374151',
-                                      borderColor: qrCopyStatus[c.id] === 'copied' ? '#86efac' : qrCopyStatus[c.id] === 'error' ? '#fca5a5' : '#e5e7eb',
-                                    }}
-                                  >
-                                    {qrCopyStatus[c.id] === 'copied' ? <FaCheck size={11} /> : <FaCopy size={11} />}
-                                  </button>
+                                  {/* Copiar QR removido por solicitação */}
                                   <button
                                     onClick={() => handleEnviarQrCode(c.id)}
                                     disabled={!c.email || qrStatus[c.id] === 'sending'}
