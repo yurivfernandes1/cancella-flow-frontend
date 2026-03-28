@@ -232,7 +232,7 @@ export default function EditEspacoModal({ espaco, onClose, onSaved, onDeleted })
             </h3>
 
             {/* Linha de adição de item */}
-            <div className="inventory-add-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
               <input
                 type="text"
                 className="item-name"
@@ -240,25 +240,29 @@ export default function EditEspacoModal({ espaco, onClose, onSaved, onDeleted })
                 onChange={(e) => setNewItem(prev => ({ ...prev, nome: e.target.value }))}
                 placeholder="Nome do item"
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddItem())}
-                style={{ height: 44, padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, background: '#fff', fontSize: '0.95rem', boxSizing: 'border-box', minWidth: 0, flex: '1 1 220px' }}
+                style={{ height: 44, padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, background: '#fff', fontSize: '0.95rem', boxSizing: 'border-box', width: '100%' }}
               />
-              <input
-                type="text"
-                className="item-code"
-                value={newItem.codigo}
-                onChange={(e) => setNewItem(prev => ({ ...prev, codigo: e.target.value }))}
-                placeholder="Código"
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddItem())}
-                style={{ height: 44, padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, background: '#fff', fontSize: '0.95rem', boxSizing: 'border-box', minWidth: 0, flex: '0 0 140px' }}
-              />
-              <button
-                type="button"
-                onClick={handleAddItem}
-                className="button-primary add-button"
-                style={{ height: 44, minWidth: 120, padding: '0 18px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: 'auto', alignSelf: 'center', flex: '0 0 auto' }}
-              >
-                <FaPlus /> Adicionar
-              </button>
+
+              <div className="inventory-add-row-inline" style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <input
+                  type="text"
+                  className="item-code"
+                  value={newItem.codigo}
+                  onChange={(e) => setNewItem(prev => ({ ...prev, codigo: e.target.value }))}
+                  placeholder="Código"
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddItem())}
+                  style={{ height: 44, padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, background: '#fff', fontSize: '0.95rem', boxSizing: 'border-box', minWidth: 0, width: 160 }}
+                />
+
+                <button
+                  type="button"
+                  onClick={handleAddItem}
+                  className="button-primary add-button"
+                  style={{ height: 44, minWidth: 120, padding: '0 18px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginLeft: 'auto' }}
+                >
+                  <FaPlus /> Adicionar
+                </button>
+              </div>
             </div>
 
             {/* Tabela de itens */}
