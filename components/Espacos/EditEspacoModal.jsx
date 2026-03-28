@@ -7,10 +7,20 @@ export default function EditEspacoModal({ espaco, onClose, onSaved, onDeleted })
   const [form, setForm] = useState({
     id: espaco?.id,
     nome: espaco?.nome || '',
-    capacidade_pessoas: espaco?.capacidade_pessoas || 0,
-    valor_aluguel: espaco?.valor_aluguel || 0,
+    capacidade_pessoas: espaco?.capacidade_pessoas ?? '',
+    valor_aluguel: espaco?.valor_aluguel != null ? `R$ ${Number(espaco.valor_aluguel).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '',
     is_active: espaco?.is_active !== undefined ? espaco.is_active : true
   });
+
+  useEffect(() => {
+    setForm({
+      id: espaco?.id,
+      nome: espaco?.nome || '',
+      capacidade_pessoas: espaco?.capacidade_pessoas ?? '',
+      valor_aluguel: espaco?.valor_aluguel != null ? `R$ ${Number(espaco.valor_aluguel).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '',
+      is_active: espaco?.is_active !== undefined ? espaco.is_active : true
+    });
+  }, [espaco]);
   const [inventario, setInventario] = useState([]);
   const [newItem, setNewItem] = useState({ nome: '', codigo: '' });
   const [editingItem, setEditingItem] = useState(null);
@@ -32,7 +42,11 @@ export default function EditEspacoModal({ espaco, onClose, onSaved, onDeleted })
       const payload = {
         nome: form.nome?.trim() || '',
         capacidade_pessoas: Number(form.capacidade_pessoas) || 0,
-        valor_aluguel: parseFloat(form.valor_aluguel) || 0,
+        valor_aluguel: (function(v){
+          if (!v) return 0;
+          const num = parseFloat(String(v).replace(/[^0-9,-]/g, '').replace(/\./g, '').replace(',', '.'));
+          return isNaN(num) ? 0 : num;
+        })(form.valor_aluguel),
         is_active: form.is_active
       };
       await espacoAPI.patch(form.id, payload);
@@ -139,7 +153,7 @@ export default function EditEspacoModal({ espaco, onClose, onSaved, onDeleted })
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 860, width: '95%' }}>
+      <div className="modal-container modal-space" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 860, width: '95%' }}>
         <div className="modal-header">
           <h2>Editar Espaço</h2>
           <button className="modal-close" onClick={onClose}>
@@ -152,38 +166,48 @@ export default function EditEspacoModal({ espaco, onClose, onSaved, onDeleted })
 
             {/* Campos principais */}
             <div style={{ display: 'flex', gap: 16, marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-              <div className="form-field" style={{ flex: '1 1 260px', minWidth: 0 }}>
+              <div className="form-group" style={{ flex: '1 1 260px', minWidth: 0, position: 'relative' }}>
+                <label>Nome do Espaço*</label>
                 <input
                   type="text"
                   value={form.nome}
                   onChange={(e) => setForm(prev => ({ ...prev, nome: e.target.value }))}
                   required
-                  placeholder="Nome do espaço"
+                  placeholder=" "
                 />
-                <label>Nome do Espaço*</label>
               </div>
 
-              <div className="form-field" style={{ width: 110, flexShrink: 0 }}>
+              <div className="form-group small-field" style={{ width: 110, flexShrink: 0, position: 'relative' }}>
+                <label>Pessoas</label>
                 <input
                   type="number"
                   min="0"
                   value={form.capacidade_pessoas}
-                  onChange={(e) => setForm(prev => ({ ...prev, capacidade_pessoas: e.target.value }))}
-                  placeholder="0"
+                  onChange={(e) => setForm(prev => ({ ...prev, capacidade_pessoas: e.target.value.replace(/[^0-9]/g, '') }))}
+                  placeholder=" "
+                  style={{ width: '100%', marginTop: 0 }}
                 />
-                <label>Pessoas</label>
               </div>
 
-              <div className="form-field" style={{ width: 140, flexShrink: 0 }}>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.valor_aluguel}
-                  onChange={(e) => setForm(prev => ({ ...prev, valor_aluguel: e.target.value }))}
-                  placeholder="0.00"
-                />
+              <div className="form-group small-field" style={{ width: 140, flexShrink: 0, position: 'relative' }}>
                 <label>Valor (R$)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={form.valor_aluguel}
+                  onChange={(e) => {
+                    const onlyDigits = e.target.value.replace(/\D/g, '');
+                    if (!onlyDigits) {
+                      setForm(prev => ({ ...prev, valor_aluguel: '' }));
+                      return;
+                    }
+                    const number = parseInt(onlyDigits, 10);
+                    const formatted = (number / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    setForm(prev => ({ ...prev, valor_aluguel: `R$ ${formatted}` }));
+                  }}
+                  placeholder=" "
+                  style={{ width: '100%', marginTop: 0 }}
+                />
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', paddingTop: 8, flexShrink: 0 }}>
@@ -208,28 +232,30 @@ export default function EditEspacoModal({ espaco, onClose, onSaved, onDeleted })
             </h3>
 
             {/* Linha de adição de item */}
-            <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+            <div className="inventory-add-row" style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <input
                 type="text"
+                className="item-name"
                 value={newItem.nome}
                 onChange={(e) => setNewItem(prev => ({ ...prev, nome: e.target.value }))}
                 placeholder="Nome do item"
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddItem())}
-                style={{ flex: '1 1 200px', padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: '0.9rem', outline: 'none' }}
+                style={{ height: 44, padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, background: '#fff', fontSize: '0.95rem', boxSizing: 'border-box', minWidth: 0, flex: '1 1 220px' }}
               />
               <input
                 type="text"
+                className="item-code"
                 value={newItem.codigo}
                 onChange={(e) => setNewItem(prev => ({ ...prev, codigo: e.target.value }))}
                 placeholder="Código"
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddItem())}
-                style={{ width: 160, padding: '9px 12px', border: '1px solid #cbd5e1', borderRadius: 6, fontSize: '0.9rem', outline: 'none' }}
+                style={{ height: 44, padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: 10, background: '#fff', fontSize: '0.95rem', boxSizing: 'border-box', minWidth: 0, flex: '0 0 140px' }}
               />
               <button
                 type="button"
                 onClick={handleAddItem}
-                className="button-primary"
-                style={{ padding: '9px 18px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}
+                className="button-primary add-button"
+                style={{ height: 44, minWidth: 120, padding: '0 18px', borderRadius: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8, width: 'auto', alignSelf: 'center', flex: '0 0 auto' }}
               >
                 <FaPlus /> Adicionar
               </button>
