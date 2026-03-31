@@ -31,6 +31,22 @@ export default function GroupsCardsInjector() {
       pageHeader.parentNode.insertBefore(container, pageHeader.nextSibling);
     }
 
+    // Hide any table(s) in the page content when showing groups cards
+    const hiddenTables = [];
+    try {
+      const tables = pageHeader.parentNode.querySelectorAll('.table-container, .generic-table');
+      tables.forEach((t) => {
+        // store previous inline display to restore later
+        const prev = t.style.display || '';
+        t.setAttribute('data-prev-display', prev);
+        t.setAttribute('data-hidden-by-groups-injector', '1');
+        t.style.display = 'none';
+        hiddenTables.push(t);
+      });
+    } catch (e) {
+      // ignore DOM errors
+    }
+
     // mount with createRoot (React 18)
     try {
       const root = ReactDOM.createRoot(container);
@@ -42,6 +58,19 @@ export default function GroupsCardsInjector() {
 
     return () => {
       try { container._reactRoot && container._reactRoot.unmount(); } catch (e) {}
+      // restore any hidden tables
+      try {
+        hiddenTables.forEach((t) => {
+          const prev = t.getAttribute('data-prev-display');
+          if (prev) {
+            t.style.display = prev;
+          } else {
+            t.style.removeProperty('display');
+          }
+          t.removeAttribute('data-prev-display');
+          t.removeAttribute('data-hidden-by-groups-injector');
+        });
+      } catch (e) {}
     };
   }, [location.pathname, location.search]);
 
