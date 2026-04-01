@@ -90,8 +90,6 @@ const CERIMONIALISTA_MENU = [
     group: 'Eventos',
     items: [
       { label: 'Eventos',             icon: FaCalendarAlt,   path: '/cerimonialista', tab: 'eventos' },
-      { label: 'Lista de Convidados', icon: FaClipboardList, path: '/cerimonialista', tab: 'lista_convidados' },
-      { label: 'Lista de Funcionários', icon: FaUsers,       path: '/cerimonialista', tab: 'lista_funcionarios' },
     ],
   },
   {

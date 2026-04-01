@@ -2209,6 +2209,8 @@ input:checked + .slider:before {
 .convidado-col-header .col-cpf   { width: 150px; }
 .convidado-col-header .col-nome  { flex: 1; }
 .convidado-col-header .col-email { flex: 1; }
+.convidado-col-header .col-vip { width: 72px; text-align: center; }
+.convidado-col-header .col-confirmado { width: 102px; text-align: center; }
 .convidado-col-header .col-acao  { width: 34px; }
 
 .convidado-row {
@@ -2221,6 +2223,15 @@ input:checked + .slider:before {
 .convidado-row .col-cpf   { width: 150px; flex-shrink: 0; }
 .convidado-row .col-nome  { flex: 1; position: relative; }
 .convidado-row .col-email { flex: 1; }
+.convidado-row .col-vip,
+.convidado-row .col-confirmado {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.convidado-row .col-vip { width: 72px; }
+.convidado-row .col-confirmado { width: 102px; }
 .convidado-row .col-acao  { flex-shrink: 0; }
 
 @media (max-width: 560px) {
@@ -2241,6 +2252,11 @@ input:checked + .slider:before {
   .convidado-row .col-cpf   { width: 100%; }
   .convidado-row .col-nome  { width: 100%; flex: none; }
   .convidado-row .col-email { width: 100%; flex: none; }
+  .convidado-row .col-vip,
+  .convidado-row .col-confirmado {
+    width: calc(50% - 4px);
+    justify-content: flex-start;
+  }
 
   .convidado-row .col-acao {
     position: absolute;

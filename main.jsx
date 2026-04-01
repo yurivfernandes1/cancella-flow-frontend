@@ -7,6 +7,7 @@ import GroupsCardsInjector from './components/Global/GroupsCardsInjector';
 import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
 import SignupPage from './pages/SignupPage';
+import SignupEventoPage from './pages/SignupEventoPage';
 import WelcomePage from './pages/WelcomePage';
 import PasswordPage from './pages/PasswordPage';
 import ProfilePage from './pages/ProfilePage';
@@ -79,6 +80,7 @@ root.render(
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/signup/:slug" element={<SignupPage />} />
+          <Route path="/signup/evento/:token" element={<SignupEventoPage />} />
 
           {/* Rotas autenticadas — SidebarLayout monta UMA VEZ */}
           <Route element={<AuthenticatedLayout />}>
