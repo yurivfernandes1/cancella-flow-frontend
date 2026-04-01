@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Use Vite environment variable when available, fallback para localhost.
 // Se a página estiver em HTTPS, faz upgrade automático para evitar mixed-content.
-const rawBaseURL = import.meta.env.VITE_API_URL || 'https://api-cancellaflow.com.br/api';
+const rawBaseURL = import.meta.env.VITE_API_URL || 'http://api-backend.cancellaflow.com.br/';
 const baseURL =
   typeof window !== 'undefined' && window.location.protocol === 'https:'
     ? rawBaseURL.replace(/^http:\/\//, 'https://')

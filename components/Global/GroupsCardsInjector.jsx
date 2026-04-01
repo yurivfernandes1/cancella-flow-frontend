@@ -21,28 +21,42 @@ export default function GroupsCardsInjector() {
     }
 
     const pageHeader = document.querySelector('.page-header');
-    if (!pageHeader) return;
 
     let container = document.getElementById('groups-cards-injected');
     if (!container) {
       container = document.createElement('div');
       container.id = 'groups-cards-injected';
       container.style.marginBottom = '1rem';
-      pageHeader.parentNode.insertBefore(container, pageHeader.nextSibling);
+      if (pageHeader && pageHeader.parentNode) {
+        pageHeader.parentNode.insertBefore(container, pageHeader.nextSibling);
+      } else {
+        // fallback to append to a reasonable location if pageHeader isn't available yet
+        const main = document.querySelector('main') || document.getElementById('root') || document.body;
+        try { main.appendChild(container); } catch (e) { document.body.appendChild(container); }
+      }
     }
 
-    // Hide any table(s) in the page content when showing groups cards
-    const hiddenTables = [];
+    // Add a global CSS rule (via body class) to hide tables when the groups tab is active.
+    // This is more robust than trying to locate specific containers in the DOM tree.
+    const STYLE_ID = 'groups-hide-table-style';
+    const BODY_CLASS = 'groups-hide-tables-active';
+    let styleCreated = false;
     try {
-      const tables = pageHeader.parentNode.querySelectorAll('.table-container, .generic-table');
-      tables.forEach((t) => {
-        // store previous inline display to restore later
-        const prev = t.style.display || '';
-        t.setAttribute('data-prev-display', prev);
-        t.setAttribute('data-hidden-by-groups-injector', '1');
-        t.style.display = 'none';
-        hiddenTables.push(t);
-      });
+      if (!document.getElementById(STYLE_ID)) {
+        const style = document.createElement('style');
+        style.id = STYLE_ID;
+        style.innerHTML = `
+          body.${BODY_CLASS} .table-container,
+          body.${BODY_CLASS} table.generic-table,
+          body.${BODY_CLASS} .full-width-table,
+          body.${BODY_CLASS} .allow-horizontal-scroll {
+            display: none !important;
+          }
+        `;
+        document.head.appendChild(style);
+        styleCreated = true;
+      }
+      document.body.classList.add(BODY_CLASS);
     } catch (e) {
       // ignore DOM errors
     }
@@ -58,18 +72,13 @@ export default function GroupsCardsInjector() {
 
     return () => {
       try { container._reactRoot && container._reactRoot.unmount(); } catch (e) {}
-      // restore any hidden tables
+      // remove the body class and cleanup the injected style if we added it
       try {
-        hiddenTables.forEach((t) => {
-          const prev = t.getAttribute('data-prev-display');
-          if (prev) {
-            t.style.display = prev;
-          } else {
-            t.style.removeProperty('display');
-          }
-          t.removeAttribute('data-prev-display');
-          t.removeAttribute('data-hidden-by-groups-injector');
-        });
+        document.body.classList.remove(BODY_CLASS);
+        if (styleCreated) {
+          const s = document.getElementById(STYLE_ID);
+          if (s && s.parentNode) s.parentNode.removeChild(s);
+        }
       } catch (e) {}
     };
   }, [location.pathname, location.search]);
