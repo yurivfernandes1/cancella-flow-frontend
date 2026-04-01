@@ -260,7 +260,8 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
 
       const response = await api.post('/access/create/', userData);
       const emailEnviado = Boolean(response?.data?.email_enviado);
-      const successMessage = userType === 'cerimonialista'
+      const deveEnviarAcessoPorEmail = ['cerimonialista', 'organizador_evento', 'recepcao'].includes(userType);
+      const successMessage = deveEnviarAcessoPorEmail
         ? emailEnviado
           ? 'Cadastro concluído. A senha foi enviada por e-mail.'
           : 'Cadastro concluído. Não foi possível confirmar o envio da senha por e-mail.'
@@ -290,6 +291,8 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
           title={
             userType === 'sindico' ? 'Novo Síndico' :
             userType === 'cerimonialista' ? 'Novo Cerimonialista' :
+            userType === 'organizador_evento' ? 'Novo Organizador de Evento' :
+            userType === 'recepcao' ? 'Novo Funcionário de Recepção' :
             userType === 'funcionario' ? 'Novo Funcionário' :
             userType === 'porteiro' || userType === 'portaria' ? 'Adicionar Porteiro' :
             existingMode ? 'Vincular Morador' : 'Novo Morador'

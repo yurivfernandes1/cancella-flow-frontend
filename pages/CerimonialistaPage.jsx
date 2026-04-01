@@ -1,16 +1,21 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import ProtectedImage from '../components/common/ProtectedImage';
+import AddUserDropdown from '../components/Users/AddUserDropdown';
+import UsersCards from '../components/Users/UsersCards';
+import PasswordResetModal from '../components/Users/PasswordResetModal';
 import api, {
   eventoCerimonialAPI,
   listaConvidadosCerimonialAPI,
 } from '../services/api';
+import { generateStrongPassword } from '../utils/passwordGenerator';
 import '../styles/UsersPage.css';
 import '../styles/UnitsCards.css';
 import '../styles/Modal.css';
 import {
   FaCopy,
+  FaDownload,
   FaEye,
   FaEyeSlash,
   FaEdit,
@@ -268,8 +273,30 @@ function CerimonialistaPage() {
     pagamento_realizado: false,
     valor_pagamento: '0.00',
   });
-  const [eventoOrganizadoresSelecionadoId, setEventoOrganizadoresSelecionadoId] = useState('');
-  const [eventoFuncionariosSelecionadoId, setEventoFuncionariosSelecionadoId] = useState('');
+
+  const addOrganizadorButtonRef = useRef(null);
+  const addFuncionarioButtonRef = useRef(null);
+
+  const [organizadoresCadastro, setOrganizadoresCadastro] = useState([]);
+  const [organizadoresCadastroLoading, setOrganizadoresCadastroLoading] = useState(false);
+  const [organizadoresCadastroSearch, setOrganizadoresCadastroSearch] = useState('');
+  const [organizadoresCadastroPage, setOrganizadoresCadastroPage] = useState(1);
+  const [organizadoresCadastroTotalPages, setOrganizadoresCadastroTotalPages] = useState(1);
+  const [showAddOrganizadorCadastro, setShowAddOrganizadorCadastro] = useState(false);
+
+  const [funcionariosCadastro, setFuncionariosCadastro] = useState([]);
+  const [funcionariosCadastroLoading, setFuncionariosCadastroLoading] = useState(false);
+  const [funcionariosCadastroSearch, setFuncionariosCadastroSearch] = useState('');
+  const [funcionariosCadastroPage, setFuncionariosCadastroPage] = useState(1);
+  const [funcionariosCadastroTotalPages, setFuncionariosCadastroTotalPages] = useState(1);
+  const [showAddFuncionarioCadastro, setShowAddFuncionarioCadastro] = useState(false);
+
+  const [resetInfo, setResetInfo] = useState({
+    show: false,
+    title: '',
+    subtitle: '',
+    message: '',
+  });
 
   const eventosFiltrados = useMemo(() => {
     if (!eventosSearch.trim()) return eventos;
@@ -402,6 +429,118 @@ function CerimonialistaPage() {
     }
   };
 
+  const loadUsuariosCadastro = async (tipo, page, search) => {
+    const isOrganizadores = tipo === 'organizadores_evento';
+    if (isOrganizadores) {
+      setOrganizadoresCadastroLoading(true);
+    } else {
+      setFuncionariosCadastroLoading(true);
+    }
+
+    try {
+      const response = await api.get('/access/users/', {
+        params: {
+          type: tipo,
+          page,
+          search,
+        },
+      });
+
+      const list = response.data?.results || [];
+      const totalPages = response.data?.num_pages || 1;
+
+      if (isOrganizadores) {
+        setOrganizadoresCadastro(Array.isArray(list) ? list : []);
+        setOrganizadoresCadastroTotalPages(totalPages);
+      } else {
+        setFuncionariosCadastro(Array.isArray(list) ? list : []);
+        setFuncionariosCadastroTotalPages(totalPages);
+      }
+    } catch (error) {
+      console.error(`Erro ao carregar usuários (${tipo})`, error);
+      if (isOrganizadores) {
+        setOrganizadoresCadastro([]);
+        setOrganizadoresCadastroTotalPages(1);
+      } else {
+        setFuncionariosCadastro([]);
+        setFuncionariosCadastroTotalPages(1);
+      }
+    } finally {
+      if (isOrganizadores) {
+        setOrganizadoresCadastroLoading(false);
+      } else {
+        setFuncionariosCadastroLoading(false);
+      }
+    }
+  };
+
+  const loadOrganizadoresCadastro = async (page = organizadoresCadastroPage, search = organizadoresCadastroSearch) => {
+    await loadUsuariosCadastro('organizadores_evento', page, search);
+  };
+
+  const loadFuncionariosCadastro = async (page = funcionariosCadastroPage, search = funcionariosCadastroSearch) => {
+    await loadUsuariosCadastro('recepcao', page, search);
+  };
+
+  const handleSaveUsuarioCadastro = async (tipo, id, data) => {
+    const payload = {
+      full_name: data.full_name,
+      email: data.email,
+      cpf: data.cpf,
+      phone: data.phone,
+      is_active: Boolean(data.is_active),
+    };
+
+    if (data.username) payload.username = data.username;
+
+    await api.patch(`/access/profile/${id}/`, payload);
+    if (tipo === 'organizadores_evento') {
+      await loadOrganizadoresCadastro();
+      await loadOrganizadoresUsers();
+    } else {
+      await loadFuncionariosCadastro();
+      await loadRecepcaoUsers();
+    }
+  };
+
+  const handleDeactivateUsuarioCadastro = async (tipo, userItem) => {
+    if (!userItem?.id) return;
+    if (!window.confirm(`Desativar usuário "${userItem.full_name || userItem.username}"?`)) return;
+
+    await api.patch(`/access/profile/${userItem.id}/`, {
+      is_active: false,
+    });
+
+    if (tipo === 'organizadores_evento') {
+      await loadOrganizadoresCadastro();
+      await loadOrganizadoresUsers();
+    } else {
+      await loadFuncionariosCadastro();
+      await loadRecepcaoUsers();
+    }
+  };
+
+  const handleResetPasswordUsuarioCadastro = async (id, username) => {
+    const password = generateStrongPassword();
+
+    const response = await api.patch(`/access/profile/${id}/`, {
+      password,
+    });
+    const senhaEmailEnviado = Boolean(response?.data?.senha_email_enviado);
+    const senhaEmailErro = response?.data?.senha_email_erro;
+
+    setResetInfo({
+      show: true,
+      title: 'Senha redefinida',
+      subtitle: username ? `Usuário: ${username}` : '',
+      message: senhaEmailEnviado
+        ? 'Uma nova senha foi enviada por e-mail para o usuário.'
+        : `Senha redefinida, mas não foi possível enviar e-mail${
+            senhaEmailErro ? `: ${senhaEmailErro}` : ''
+          }.`,
+    });
+  };
+
   useEffect(() => {
     if (!hasAccess) return;
     loadEventos();
@@ -411,34 +550,20 @@ function CerimonialistaPage() {
   }, [hasAccess]);
 
   useEffect(() => {
-    if (!eventos.length) {
-      setEventoOrganizadoresSelecionadoId('');
-      setEventoFuncionariosSelecionadoId('');
-      return;
-    }
-
-    if (!eventoOrganizadoresSelecionadoId) {
-      setEventoOrganizadoresSelecionadoId(String(eventos[0].id));
-    }
-
-    if (!eventoFuncionariosSelecionadoId) {
-      setEventoFuncionariosSelecionadoId(String(eventos[0].id));
-    }
-  }, [eventos, eventoOrganizadoresSelecionadoId, eventoFuncionariosSelecionadoId]);
+    if (!hasAccess || activeTab !== 'organizadores_evento') return;
+    const t = setTimeout(() => {
+      loadOrganizadoresCadastro(organizadoresCadastroPage, organizadoresCadastroSearch);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [hasAccess, activeTab, organizadoresCadastroPage, organizadoresCadastroSearch]);
 
   useEffect(() => {
-    if (activeTab !== 'organizadores_evento' || !eventoOrganizadoresSelecionadoId) return;
-    if (!Object.prototype.hasOwnProperty.call(organizadoresPorEvento, eventoOrganizadoresSelecionadoId)) {
-      loadOrganizadoresEvento(eventoOrganizadoresSelecionadoId);
-    }
-  }, [activeTab, eventoOrganizadoresSelecionadoId, organizadoresPorEvento]);
-
-  useEffect(() => {
-    if (activeTab !== 'funcionarios' || !eventoFuncionariosSelecionadoId) return;
-    if (!Object.prototype.hasOwnProperty.call(funcionariosPorEvento, eventoFuncionariosSelecionadoId)) {
-      loadFuncionariosEvento(eventoFuncionariosSelecionadoId);
-    }
-  }, [activeTab, eventoFuncionariosSelecionadoId, funcionariosPorEvento]);
+    if (!hasAccess || activeTab !== 'funcionarios') return;
+    const t = setTimeout(() => {
+      loadFuncionariosCadastro(funcionariosCadastroPage, funcionariosCadastroSearch);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [hasAccess, activeTab, funcionariosCadastroPage, funcionariosCadastroSearch]);
 
   const openCreateEvento = () => {
     setEventoEditing(null);
@@ -1020,20 +1145,32 @@ function CerimonialistaPage() {
     }
   };
 
-  const generateConviteOrganizador = async (eventoId) => {
+  const generateConviteOrganizador = async (eventoId, eventoNome = '') => {
     try {
       const response = await eventoCerimonialAPI.gerarConvite(eventoId, 'organizador');
-      setConviteModal({ open: true, data: response.data });
+      setConviteModal({
+        open: true,
+        data: {
+          ...response.data,
+          evento_nome: eventoNome || response?.data?.evento_nome || '',
+        },
+      });
     } catch (err) {
       console.error('Erro ao gerar convite', err);
       alert(err.response?.data?.error || 'Erro ao gerar convite.');
     }
   };
 
-  const generateConviteRecepcao = async (eventoId) => {
+  const generateConviteRecepcao = async (eventoId, eventoNome = '') => {
     try {
       const response = await eventoCerimonialAPI.gerarConvite(eventoId, 'recepcao');
-      setConviteModal({ open: true, data: response.data });
+      setConviteModal({
+        open: true,
+        data: {
+          ...response.data,
+          evento_nome: eventoNome || response?.data?.evento_nome || '',
+        },
+      });
     } catch (err) {
       console.error('Erro ao gerar convite', err);
       alert(err.response?.data?.error || 'Erro ao gerar convite.');
@@ -1048,6 +1185,112 @@ function CerimonialistaPage() {
       alert('Link copiado.');
     } catch {
       alert('Não foi possível copiar o link.');
+    }
+  };
+
+  const saveInviteQrImage = async () => {
+    const qrDataUrl = conviteModal?.data?.qr_code_data_url;
+    if (!qrDataUrl) {
+      alert('QR Code indisponível para download.');
+      return;
+    }
+
+    const eventoNome = String(conviteModal?.data?.evento_nome || '').trim() || 'Evento';
+    const tipoConvite = conviteModal?.data?.tipo === 'organizador' ? 'Organizador do Evento' : 'Recepção';
+
+    const sanitizeFileName = (value) => String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9-_\s]/g, '')
+      .trim()
+      .replace(/\s+/g, '-');
+
+    const drawWrappedText = (ctx, text, x, y, maxWidth, lineHeight) => {
+      const words = String(text || '').split(/\s+/);
+      const lines = [];
+      let currentLine = '';
+
+      words.forEach((word) => {
+        const candidate = currentLine ? `${currentLine} ${word}` : word;
+        if (ctx.measureText(candidate).width > maxWidth && currentLine) {
+          lines.push(currentLine);
+          currentLine = word;
+        } else {
+          currentLine = candidate;
+        }
+      });
+
+      if (currentLine) lines.push(currentLine);
+      lines.forEach((line, index) => {
+        ctx.fillText(line, x, y + (index * lineHeight));
+      });
+      return lines.length;
+    };
+
+    try {
+      const qrImage = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = qrDataUrl;
+      });
+
+      const padding = 24;
+      const canvasWidth = Math.max(360, qrImage.width + (padding * 2));
+      const maxTextWidth = canvasWidth - (padding * 2);
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas indisponível');
+
+      ctx.font = '700 20px Arial';
+      const tituloHeight = 28;
+      ctx.font = '600 15px Arial';
+      const tipoHeight = 22;
+      ctx.font = '600 16px Arial';
+      const linhasEvento = Math.max(1, Math.ceil(ctx.measureText(`Evento: ${eventoNome}`).width / maxTextWidth));
+      const eventoBlockHeight = linhasEvento * 22;
+
+      const headerHeight = padding + tituloHeight + tipoHeight + eventoBlockHeight + 10;
+      const footerHeight = padding;
+      const canvasHeight = headerHeight + qrImage.height + footerHeight;
+
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+      let y = padding;
+      ctx.fillStyle = '#111827';
+      ctx.font = '700 20px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('QR Code de Convite', canvasWidth / 2, y);
+
+      y += tituloHeight;
+      ctx.fillStyle = '#334155';
+      ctx.font = '600 15px Arial';
+      ctx.fillText(tipoConvite, canvasWidth / 2, y);
+
+      y += tipoHeight;
+      ctx.fillStyle = '#0f172a';
+      ctx.font = '600 16px Arial';
+      const eventoText = `Evento: ${eventoNome}`;
+      drawWrappedText(ctx, eventoText, canvasWidth / 2, y, maxTextWidth, 22);
+
+      const qrX = (canvasWidth - qrImage.width) / 2;
+      const qrY = headerHeight;
+      ctx.drawImage(qrImage, qrX, qrY, qrImage.width, qrImage.height);
+
+      const link = document.createElement('a');
+      const tipoSlug = conviteModal?.data?.tipo === 'organizador' ? 'organizador' : 'recepcao';
+      const eventoSlug = sanitizeFileName(eventoNome || 'evento');
+      link.download = `convite-${tipoSlug}-${eventoSlug}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    } catch (err) {
+      console.error('Erro ao salvar imagem do QR Code', err);
+      alert('Não foi possível salvar a imagem do QR Code.');
     }
   };
 
@@ -1321,7 +1564,7 @@ function CerimonialistaPage() {
                     <button
                       type="button"
                       className="add-button"
-                      onClick={() => generateConviteOrganizador(ev.id)}
+                      onClick={() => generateConviteOrganizador(ev.id, ev.nome)}
                       style={{ padding: '6px 10px', background: '#1f3a68' }}
                     >
                       <FaQrcode /> QR novo organizador
@@ -1583,297 +1826,125 @@ function CerimonialistaPage() {
   );
 
   const renderOrganizadoresCadastro = () => {
-    const eventoSelecionado = eventos.find((ev) => String(ev.id) === String(eventoOrganizadoresSelecionadoId));
-    const eventoId = eventoSelecionado?.id;
-    const organizadores = eventoId ? (organizadoresPorEvento[eventoId] || []) : [];
-    const organizadoresLoading = eventoId ? Boolean(organizadoresLoadingPorEvento[eventoId]) : false;
-    const organizadoresSaving = eventoId ? Boolean(organizadoresSavingPorEvento[eventoId]) : false;
-    const organizadoresBusca = eventoId ? (organizadoresBuscaPorEvento[eventoId] || '') : '';
-    const organizadoresSelecionados = eventoId ? (organizadoresSelecionadosPorEvento[eventoId] || []) : [];
-    const organizadoresSistemaFiltrados = (organizadoresUsers || []).filter((u) => {
-      const q = organizadoresBusca.trim().toLowerCase();
-      if (!q) return true;
-      return (
-        (u.full_name || '').toLowerCase().includes(q)
-        || (u.username || '').toLowerCase().includes(q)
-      );
-    });
-
     return (
       <>
-        <div className="page-header" style={{ marginBottom: 10 }}>
-          <div className="search-container" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <select
-              value={eventoOrganizadoresSelecionadoId}
-              onChange={(e) => setEventoOrganizadoresSelecionadoId(e.target.value)}
-              style={{
-                width: '100%',
-                maxWidth: 420,
-                border: '1px solid #d1d5db',
-                borderRadius: 8,
-                padding: '8px 10px',
-                background: '#fff',
-              }}
+        <div className="page-header">
+          <div className="page-actions">
+            <button
+              ref={addOrganizadorButtonRef}
+              className="add-button"
+              onClick={() => setShowAddOrganizadorCadastro(true)}
             >
-              {eventos.map((ev) => (
-                <option key={ev.id} value={ev.id}>{ev.nome}</option>
-              ))}
-            </select>
+              <FaPlus /> Novo Organizador de Evento
+            </button>
           </div>
 
-          <button
-            className="add-button"
-            type="button"
-            disabled={!eventoSelecionado}
-            onClick={() => eventoSelecionado && generateConviteOrganizador(eventoSelecionado.id)}
-            style={{ opacity: eventoSelecionado ? 1 : 0.7 }}
-          >
-            <FaQrcode /> Criar Organizador (QR)
-          </button>
+          <div className="search-container">
+            <div className="search-wrapper">
+              <FaSearch className="search-icon" />
+              <input
+                className="search-input"
+                type="text"
+                placeholder="Buscar organizadores..."
+                value={organizadoresCadastroSearch}
+                onChange={(e) => {
+                  setOrganizadoresCadastroSearch(e.target.value);
+                  setOrganizadoresCadastroPage(1);
+                }}
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="units-cards-grid">
-          {!eventos.length ? (
-            <div className="empty-state compact"><p>Crie um evento antes de cadastrar organizadores.</p></div>
-          ) : !eventoSelecionado ? (
-            <div className="empty-state compact"><p>Selecione um evento para continuar.</p></div>
-          ) : (
-            <article className="unit-card morador-record-card">
-              <div className="unit-card__header">
-                <div className="unit-card__header-left">
-                  <span className="unit-card__title">Organizadores - {eventoSelecionado.nome}</span>
-                </div>
-                <div className="unit-card__header-right">
-                  <span className={`unit-card__status-badge ${eventoSelecionado.evento_confirmado ? 'unit-card__status-badge--active' : 'unit-card__status-badge--inactive'}`}>
-                    {eventoSelecionado.evento_confirmado ? 'Evento confirmado' : 'Evento pendente'}
-                  </span>
-                </div>
-              </div>
+        <UsersCards
+          users={organizadoresCadastro}
+          loading={organizadoresCadastroLoading}
+          userType="cerimonialista"
+          currentPage={organizadoresCadastroPage}
+          totalPages={organizadoresCadastroTotalPages}
+          onPageChange={setOrganizadoresCadastroPage}
+          onSave={(id, data) => handleSaveUsuarioCadastro('organizadores_evento', id, data)}
+          onResetPassword={(id) => {
+            const target = organizadoresCadastro.find((u) => u.id === id);
+            handleResetPasswordUsuarioCadastro(id, target?.username);
+          }}
+          onDelete={(u) => handleDeactivateUsuarioCadastro('organizadores_evento', u)}
+        />
 
-              <div style={{ display: 'grid', gap: 10, paddingTop: 8 }}>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <input
-                    value={organizadoresBusca}
-                    onChange={(e) => setOrganizadoresBuscaPorEvento((prev) => ({ ...prev, [eventoSelecionado.id]: e.target.value }))}
-                    placeholder="Buscar organizador existente..."
-                    style={{
-                      flex: 1,
-                      minWidth: 220,
-                      border: '1px solid #d1d5db',
-                      borderRadius: 8,
-                      padding: '8px 10px',
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="add-button"
-                    onClick={() => salvarOrganizadoresEvento(eventoSelecionado.id)}
-                    disabled={organizadoresSaving}
-                    style={{ padding: '8px 12px', background: '#2563eb', opacity: organizadoresSaving ? 0.7 : 1 }}
-                  >
-                    {organizadoresSaving ? 'Salvando...' : 'Salvar seleção'}
-                  </button>
-                </div>
-
-                {organizadoresLoading ? (
-                  <p style={{ margin: 0, color: '#64748b' }}>Carregando organizadores...</p>
-                ) : (
-                  <>
-                    <div style={{ maxHeight: 230, overflowY: 'auto', display: 'grid', gap: 6 }}>
-                      {organizadoresSistemaFiltrados.length === 0 ? (
-                        <div style={{ color: '#64748b', fontSize: 13 }}>Nenhum organizador encontrado.</div>
-                      ) : (
-                        organizadoresSistemaFiltrados.map((orgSistema) => (
-                          <label
-                            key={orgSistema.id}
-                            style={{
-                              border: '1px solid #dbeafe',
-                              borderRadius: 8,
-                              padding: '7px 9px',
-                              background: '#fff',
-                              color: '#1e293b',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 8,
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={organizadoresSelecionados.includes(String(orgSistema.id))}
-                              onChange={() => toggleOrganizadorSelecionado(eventoSelecionado.id, orgSistema.id)}
-                            />
-                            <span style={{ fontWeight: 600 }}>{orgSistema.full_name || orgSistema.username}</span>
-                          </label>
-                        ))
-                      )}
-                    </div>
-
-                    <div style={{ color: '#334155', fontSize: 13 }}>
-                      Selecionados: <strong>{organizadoresSelecionados.length}</strong>
-                    </div>
-
-                    {organizadores.length > 0 && (
-                      <div style={{ display: 'grid', gap: 6 }}>
-                        <div style={{ fontWeight: 700, color: '#1d4ed8', fontSize: 13 }}>Atualmente associados</div>
-                        {organizadores.map((org) => (
-                          <div
-                            key={org.id}
-                            style={{
-                              border: '1px solid #dbeafe',
-                              borderRadius: 8,
-                              padding: '8px 10px',
-                              background: '#fff',
-                              color: '#1e293b',
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              gap: 8,
-                              flexWrap: 'wrap',
-                            }}
-                          >
-                            <strong>{org.full_name || org.username}</strong>
-                            <span style={{ color: '#64748b', fontSize: 13 }}>{org.phone || '-'}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            </article>
-          )}
-        </div>
+        {showAddOrganizadorCadastro && (
+          <AddUserDropdown
+            onClose={() => setShowAddOrganizadorCadastro(false)}
+            onSuccess={() => {
+              setShowAddOrganizadorCadastro(false);
+              loadOrganizadoresCadastro(1, organizadoresCadastroSearch);
+            }}
+            triggerRef={addOrganizadorButtonRef}
+            userType="organizador_evento"
+            position="center"
+          />
+        )}
       </>
     );
   };
 
   const renderFuncionariosCadastro = () => {
-    const eventoSelecionado = eventos.find((ev) => String(ev.id) === String(eventoFuncionariosSelecionadoId));
-    const eventoId = eventoSelecionado?.id;
-    const funcionariosEvento = eventoId ? (funcionariosPorEvento[eventoId] || []) : [];
-    const funcionariosLoading = eventoId ? Boolean(funcionariosLoadingPorEvento[eventoId]) : false;
-
     return (
       <>
-        <div className="page-header" style={{ marginBottom: 10 }}>
-          <div className="search-container" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <select
-              value={eventoFuncionariosSelecionadoId}
-              onChange={(e) => setEventoFuncionariosSelecionadoId(e.target.value)}
-              style={{
-                width: '100%',
-                maxWidth: 420,
-                border: '1px solid #d1d5db',
-                borderRadius: 8,
-                padding: '8px 10px',
-                background: '#fff',
-              }}
-            >
-              {eventos.map((ev) => (
-                <option key={ev.id} value={ev.id}>{ev.nome}</option>
-              ))}
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div className="page-header">
+          <div className="page-actions">
             <button
+              ref={addFuncionarioButtonRef}
               className="add-button"
-              type="button"
-              disabled={!eventoSelecionado}
-              onClick={() => eventoSelecionado && generateConviteRecepcao(eventoSelecionado.id)}
-              style={{ opacity: eventoSelecionado ? 1 : 0.7, background: '#1f3a68' }}
-            >
-              <FaQrcode /> Cadastro de Funcionário (QR)
-            </button>
-
-            <button
-              className="add-button"
-              type="button"
-              disabled={!eventoSelecionado}
-              onClick={() => eventoSelecionado && openAddFuncionario(eventoSelecionado.id)}
-              style={{ opacity: eventoSelecionado ? 1 : 0.7 }}
+              onClick={() => setShowAddFuncionarioCadastro(true)}
             >
               <FaPlus /> Novo Funcionário
             </button>
           </div>
+
+          <div className="search-container">
+            <div className="search-wrapper">
+              <FaSearch className="search-icon" />
+              <input
+                className="search-input"
+                type="text"
+                placeholder="Buscar funcionários..."
+                value={funcionariosCadastroSearch}
+                onChange={(e) => {
+                  setFuncionariosCadastroSearch(e.target.value);
+                  setFuncionariosCadastroPage(1);
+                }}
+              />
+            </div>
+          </div>
         </div>
 
-        <div className="units-cards-grid">
-          {!eventos.length ? (
-            <div className="empty-state compact"><p>Crie um evento antes de cadastrar funcionários.</p></div>
-          ) : !eventoSelecionado ? (
-            <div className="empty-state compact"><p>Selecione um evento para continuar.</p></div>
-          ) : (
-            <article className="unit-card morador-record-card">
-              <div className="unit-card__header">
-                <div className="unit-card__header-left">
-                  <span className="unit-card__title">Funcionários - {eventoSelecionado.nome}</span>
-                </div>
-                <div className="unit-card__header-right">
-                  <span className={`unit-card__status-badge ${eventoSelecionado.evento_confirmado ? 'unit-card__status-badge--active' : 'unit-card__status-badge--inactive'}`}>
-                    {eventoSelecionado.evento_confirmado ? 'Evento confirmado' : 'Evento pendente'}
-                  </span>
-                </div>
-              </div>
+        <UsersCards
+          users={funcionariosCadastro}
+          loading={funcionariosCadastroLoading}
+          userType="cerimonialista"
+          currentPage={funcionariosCadastroPage}
+          totalPages={funcionariosCadastroTotalPages}
+          onPageChange={setFuncionariosCadastroPage}
+          onSave={(id, data) => handleSaveUsuarioCadastro('recepcao', id, data)}
+          onResetPassword={(id) => {
+            const target = funcionariosCadastro.find((u) => u.id === id);
+            handleResetPasswordUsuarioCadastro(id, target?.username);
+          }}
+          onDelete={(u) => handleDeactivateUsuarioCadastro('recepcao', u)}
+        />
 
-              <div style={{ display: 'grid', gap: 8, paddingTop: 8 }}>
-                {funcionariosLoading ? (
-                  <p style={{ margin: 0, color: '#64748b' }}>Carregando funcionários...</p>
-                ) : funcionariosEvento.length === 0 ? (
-                  <p style={{ margin: 0, color: '#64748b' }}>Nenhum funcionário cadastrado para este evento.</p>
-                ) : (
-                  funcionariosEvento.map((item) => (
-                    <div
-                      key={item.id}
-                      style={{
-                        border: '1px solid #e5e7eb',
-                        borderRadius: 8,
-                        padding: '10px 12px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: 10,
-                        background: '#fff',
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <div style={{ display: 'grid', gap: 4 }}>
-                        <div style={{ fontWeight: 600, color: '#111827' }}>{item.nome}</div>
-                        <div style={{ color: '#6b7280', fontSize: 13 }}>
-                          Documento: {item.documento_mascarado || item.documento || '-'} • Função: {item.funcao || '-'}
-                        </div>
-                        <div style={{ color: '#6b7280', fontSize: 13 }}>
-                          Entrada: {formatDateTime(item.horario_entrada)} • Saída: {formatDateTime(item.horario_saida)}
-                        </div>
-                        <div style={{ color: '#6b7280', fontSize: 13 }}>
-                          Valor: {formatCurrency(item.valor_pagamento)} • {item.pagamento_realizado ? 'Pago' : 'Pendente'}
-                        </div>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          className="add-button"
-                          onClick={() => openEditFuncionario(eventoSelecionado.id, item)}
-                          style={{ padding: '6px 10px' }}
-                        >
-                          <FaEdit /> Editar
-                        </button>
-                        <button
-                          type="button"
-                          className="add-button"
-                          onClick={() => deleteFuncionario(eventoSelecionado.id, item)}
-                          style={{ padding: '6px 10px', background: '#b91c1c' }}
-                        >
-                          <FaTrash /> Excluir
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </article>
-          )}
-        </div>
+        {showAddFuncionarioCadastro && (
+          <AddUserDropdown
+            onClose={() => setShowAddFuncionarioCadastro(false)}
+            onSuccess={() => {
+              setShowAddFuncionarioCadastro(false);
+              loadFuncionariosCadastro(1, funcionariosCadastroSearch);
+            }}
+            triggerRef={addFuncionarioButtonRef}
+            userType="recepcao"
+            position="center"
+          />
+        )}
       </>
     );
   };
@@ -1884,6 +1955,17 @@ function CerimonialistaPage() {
         {activeTab === 'eventos' && renderEventos()}
         {activeTab === 'organizadores_evento' && renderOrganizadoresCadastro()}
         {activeTab === 'funcionarios' && renderFuncionariosCadastro()}
+
+        {resetInfo.show && (
+          <PasswordResetModal
+            title={resetInfo.title}
+            subtitle={resetInfo.subtitle}
+            message={resetInfo.message}
+            onClose={() =>
+              setResetInfo({ show: false, title: '', subtitle: '', message: '' })
+            }
+          />
+        )}
 
         {eventoModalOpen && (
           <div className="modal-overlay" onClick={() => setEventoModalOpen(false)}>
@@ -2057,7 +2139,7 @@ function CerimonialistaPage() {
                                       alert('Salve o evento primeiro para gerar o QR de convite do organizador.');
                                       return;
                                     }
-                                    generateConviteOrganizador(eventoEditing.id);
+                                    generateConviteOrganizador(eventoEditing.id, eventoEditing?.nome || eventoForm.nome);
                                   }}
                                   style={{ padding: '8px 12px', background: '#1f3a68' }}
                                 >
@@ -2191,11 +2273,19 @@ function CerimonialistaPage() {
                 <p style={{ color: '#475569', marginTop: 0 }}>
                   {conviteModal?.data?.tipo === 'organizador' ? 'Convite para Organizador do Evento' : 'Convite para Recepção'}
                 </p>
+                {conviteModal?.data?.evento_nome && (
+                  <p style={{ color: '#0f172a', fontWeight: 700, marginTop: -6, marginBottom: 10 }}>
+                    {conviteModal.data.evento_nome}
+                  </p>
+                )}
                 {conviteModal?.data?.qr_code_data_url && (
                   <img src={conviteModal.data.qr_code_data_url} alt="QR Code" style={{ width: 220, height: 220, borderRadius: 8 }} />
                 )}
                 <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
                   <input value={conviteModal?.data?.signup_url || ''} readOnly style={{ flex: 1, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8 }} />
+                  <button type="button" className="add-button" onClick={saveInviteQrImage} style={{ padding: '8px 12px', background: '#0f766e' }}>
+                    <FaDownload /> Salvar imagem
+                  </button>
                   <button type="button" className="add-button" onClick={copyInviteLink} style={{ padding: '8px 12px' }}>
                     <FaCopy /> Copiar
                   </button>
@@ -2374,7 +2464,7 @@ function CerimonialistaPage() {
                           Convidados
                         </p>
                         <p style={{ fontSize: '0.74rem', color: '#64748b', marginTop: 0, marginBottom: '0.6rem' }}>
-                          Dica: cole várias linhas do Excel/DBeaver diretamente no campo CPF, Nome ou E-mail.
+                          Dica: cole várias linhas do Excel diretamente no campo CPF, Nome ou E-mail.
                         </p>
 
                         <div className="convidado-col-header">
