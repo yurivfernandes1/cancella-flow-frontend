@@ -7,10 +7,7 @@ import AddUserDropdown from '../components/Users/AddUserDropdown';
 import UsersCards from '../components/Users/UsersCards';
 import PasswordResetModal from '../components/Users/PasswordResetModal';
 import GenericTable from '../components/GenericTable';
-import api, {
-  eventoCerimonialAPI,
-  listaConvidadosCerimonialAPI,
-} from '../services/api';
+import api, * as apiServices from '../services/api';
 import { generateStrongPassword } from '../utils/passwordGenerator';
 import '../styles/UsersPage.css';
 import '../styles/UnitsCards.css';
@@ -29,6 +26,36 @@ import {
   FaUserFriends,
   FaUsers,
 } from 'react-icons/fa';
+
+const eventoCerimonialAPI = apiServices.eventoCerimonialAPI || {
+  list: (params = {}) => api.get('/cadastros/eventos-cerimonial/', { params }),
+  create: (data) => api.post('/cadastros/eventos-cerimonial/create/', data),
+  get: (id) => api.get(`/cadastros/eventos-cerimonial/${id}/`),
+  patch: (id, data) => api.patch(`/cadastros/eventos-cerimonial/${id}/update/`, data),
+  delete: (id) => api.delete(`/cadastros/eventos-cerimonial/${id}/delete/`),
+  gerarConvite: (id, tipo) => api.post(`/cadastros/eventos-cerimonial/${id}/convites/${tipo}/gerar/`),
+  listFuncionariosCadastrados: (params = {}) => api.get('/cadastros/eventos-cerimonial/funcionarios-cadastrados/', { params }),
+  listFuncionarios: (id) => api.get(`/cadastros/eventos-cerimonial/${id}/funcionarios/`),
+  addFuncionario: (id, data) => api.post(`/cadastros/eventos-cerimonial/${id}/funcionarios/`, data),
+  patchFuncionario: (id, funcionarioId, data) => api.patch(`/cadastros/eventos-cerimonial/${id}/funcionarios/${funcionarioId}/`, data),
+  deleteFuncionario: (id, funcionarioId) => api.delete(`/cadastros/eventos-cerimonial/${id}/funcionarios/${funcionarioId}/`),
+  listFuncoesFesta: (params = {}) => api.get('/cadastros/eventos-cerimonial/funcoes/', { params }),
+  createFuncaoFesta: (data) => api.post('/cadastros/eventos-cerimonial/funcoes/', data),
+  patchFuncaoFesta: (funcaoId, data) => api.patch(`/cadastros/eventos-cerimonial/funcoes/${funcaoId}/`, data),
+  deleteFuncaoFesta: (funcaoId) => api.delete(`/cadastros/eventos-cerimonial/funcoes/${funcaoId}/`),
+};
+
+const listaConvidadosCerimonialAPI = apiServices.listaConvidadosCerimonialAPI || {
+  getListas: (params = {}) => api.get('/cadastros/listas-convidados-cerimonial/', { params }),
+  criarLista: (data) => api.post('/cadastros/listas-convidados-cerimonial/', data),
+  buscarCpfSimples: (cpf) => api.get('/cadastros/listas-convidados-cerimonial/buscar-cpf/', { params: { cpf } }),
+  buscarConvidadosAnteriores: (q = '') => api.get('/cadastros/listas-convidados-cerimonial/convidados-anteriores/', { params: { q } }),
+  adicionarConvidado: (listaId, data) => api.post(`/cadastros/listas-convidados-cerimonial/${listaId}/adicionar-convidado/`, data),
+  atualizarConvidado: (listaId, convidadoId, data) => api.patch(`/cadastros/listas-convidados-cerimonial/${listaId}/convidados/${convidadoId}/update/`, data),
+  removerConvidado: (listaId, convidadoId) => api.delete(`/cadastros/listas-convidados-cerimonial/${listaId}/convidados/${convidadoId}/delete/`),
+  confirmarEntrada: (listaId, convidadoId) => api.patch(`/cadastros/listas-convidados-cerimonial/${listaId}/convidados/${convidadoId}/confirmar-entrada/`),
+  enviarQrCode: (listaId, convidadoId) => api.post(`/cadastros/listas-convidados-cerimonial/${listaId}/convidados/${convidadoId}/enviar-qrcode/`),
+};
 
 const formatDateTime = (value) => {
   if (!value) return '-';
