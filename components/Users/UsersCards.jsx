@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import ProtectedImage from '../common/ProtectedImage';
 import Select from 'react-select';
-import { FaEdit, FaKey, FaCheck, FaTimes, FaChevronDown, FaChevronRight } from 'react-icons/fa';
+import { FaEdit, FaKey, FaCheck, FaTimes, FaChevronDown, FaChevronRight, FaTrash } from 'react-icons/fa';
 import { formatCPF, formatTelefone } from '../../utils/formatters';
 import { validateCPF, validatePhone } from '../../utils/validators';
 import '../../styles/GenericMobileCard.css';
@@ -13,7 +13,7 @@ import '../../styles/UnitsCards.css';
  * Props:
  *  - users: array de objetos de usuário
  *  - loading: boolean
- *  - userType: 'sindico' | 'portaria'
+ *  - userType: 'sindico' | 'portaria' | 'cerimonialista'
  *  - condominios: lista de condomínios (para síndicos)
  *  - onSave(id, data): callback para salvar edição
  *  - onResetPassword(id): callback para resetar senha
@@ -26,6 +26,7 @@ function UsersCards({
   condominios = [],
   onSave,
   onResetPassword,
+  onDelete,
   currentPage = 1,
   totalPages = 1,
   onPageChange,
@@ -80,6 +81,7 @@ function UsersCards({
           const isEd = editingCard === u.id;
           const isActive = u.is_active !== false;
           const isMorador = u.groups?.some(g => g.name === 'Moradores') || false;
+          const showCondominioField = userType === 'sindico';
 
           return (
             <div
@@ -140,7 +142,7 @@ function UsersCards({
                       <span className="unit-card__info-value" style={{ fontSize: '0.85rem', fontWeight: 400 }}>{formatTelefone(u.phone)}</span>
                     </div>
                   )}
-                  {userType === 'sindico' && u.condominio_nome && (
+                  {showCondominioField && u.condominio_nome && (
                     <div className="unit-card__info-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
                       <span className="unit-card__info-label">Condomínio</span>
                       <span className="unit-card__info-value" style={{ fontSize: '0.85rem', fontWeight: 500 }}>{u.condominio_nome}</span>
@@ -208,7 +210,7 @@ function UsersCards({
                         </div>
                       </div>
 
-                      {userType === 'portaria' && (
+                      {(userType === 'portaria' || userType === 'cerimonialista') && (
                         <div className="unit-card__edit-row">
                           <div className="unit-card__edit-field">
                             <label className="unit-card__edit-label">Usuário</label>
@@ -318,6 +320,15 @@ function UsersCards({
                             onClick={e => { e.stopPropagation(); onResetPassword(u.id); }}
                           >
                             <FaKey />
+                          </button>
+                        )}
+                        {onDelete && (
+                          <button
+                            className="delete-button"
+                            title="Desativar usuário"
+                            onClick={e => { e.stopPropagation(); onDelete(u); }}
+                          >
+                            <FaTrash />
                           </button>
                         )}
                       </div>

@@ -85,11 +85,48 @@ const MORADOR_MENU = [
   },
 ];
 
+const CERIMONIALISTA_MENU = [
+  {
+    group: 'Eventos',
+    items: [
+      { label: 'Eventos',             icon: FaCalendarAlt,   path: '/cerimonialista', tab: 'eventos' },
+      { label: 'Lista de Convidados', icon: FaClipboardList, path: '/cerimonialista', tab: 'lista_convidados' },
+      { label: 'Lista de Funcionários', icon: FaUsers,       path: '/cerimonialista', tab: 'lista_funcionarios' },
+    ],
+  },
+  {
+    group: 'Cadastros',
+    items: [
+      { label: 'Organizador de Eventos', icon: FaIdCard, path: '/cerimonialista', tab: 'organizadores_evento' },
+      { label: 'Funcionários',           icon: FaUsers,  path: '/cerimonialista', tab: 'funcionarios' },
+    ],
+  },
+];
+
+const RECEPCAO_MENU = [
+  {
+    group: 'Eventos',
+    items: [
+      { label: 'Eventos', icon: FaCalendarAlt, path: '/recepcao', tab: 'eventos' },
+    ],
+  },
+];
+
+const ORGANIZADOR_EVENTO_MENU = [
+  {
+    group: 'Eventos',
+    items: [
+      { label: 'Eventos', icon: FaCalendarAlt, path: '/organizador-evento', tab: 'eventos' },
+    ],
+  },
+];
+
 const ADMIN_MENU = [
   {
     group: 'Gestão do Sistema',
     items: [
       { label: 'Condomínios e Síndicos', icon: FaBuilding,    path: '/gestao-usuarios', tab: 'condominios' },
+      { label: 'Cerimonialistas',         icon: FaIdCard,      path: '/admin/cerimonialistas', tab: 'lista' },
       { label: 'Grupos',                 icon: FaUserFriends, path: '/gestao-usuarios', tab: 'grupos' },
     ],
   },
@@ -107,11 +144,17 @@ function Sidebar({ isOpen, isMobileOpen, onToggle, onClose }) {
   const isSindico  = hasGroup('Síndicos');
   const isMorador  = hasGroup('Moradores');
   const isPortaria = hasGroup('Portaria');
+  const isCerimonialista = hasGroup('Cerimonialista');
+  const isRecepcao = hasGroup('Recepção');
+  const isOrganizadorEvento = hasGroup('Organizador do Evento');
 
   let menu = [];
   if (isAdmin)         menu = ADMIN_MENU;
   else if (isSindico)  menu = SINDICO_MENU;
   else if (isPortaria) menu = PORTARIA_MENU;
+  else if (isCerimonialista) menu = CERIMONIALISTA_MENU;
+  else if (isRecepcao) menu = RECEPCAO_MENU;
+  else if (isOrganizadorEvento) menu = ORGANIZADOR_EVENTO_MENU;
   else if (isMorador)  menu = MORADOR_MENU;
 
   // Grupos expandidos: todos fechados por padrão

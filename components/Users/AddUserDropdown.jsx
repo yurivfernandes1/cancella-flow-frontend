@@ -12,6 +12,7 @@ import GenericDropdown from '../common/GenericDropdown';
 
 function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionario', defaultUnidadeId = null, defaultCondominioId = null, position = 'relative' }) {
   const { user: currentUser } = useAuth();
+  const needsCondominioSelection = userType === 'sindico';
   const [formData, setFormData] = useState({
     username: '',
     first_name: '',
@@ -58,7 +59,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
 
   useEffect(() => {
     const fetchCondominios = async () => {
-      if (userType === 'sindico') {
+      if (needsCondominioSelection) {
         try {
           setLoadingCondominios(true);
           const response = await condominioAPI.options();
@@ -74,7 +75,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
     };
 
     fetchCondominios();
-  }, [userType]);
+  }, [needsCondominioSelection]);
 
   // Carregar unidades para moradores ou síndicos que também são moradores
   useEffect(() => {
@@ -177,8 +178,8 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
     setSubmitError('');
     setSubmitSuccess('');
 
-    if (userType === 'sindico' && !formData.condominio_id) {
-      alert('Por favor, selecione um condomínio para o síndico');
+    if (needsCondominioSelection && !formData.condominio_id) {
+      alert('Por favor, selecione um condomínio.');
       return;
     }
 
@@ -245,19 +246,27 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
 
       // Para síndicos, usar o condomínio selecionado
       // Para funcionários e moradores, usar o condomínio do usuário logado
-      if (userType === 'sindico') {
+      if (needsCondominioSelection) {
         if (formData.condominio_id) {
           userData.condominio_id = formData.condominio_id;
         }
       } else {
-        // Usar condomínio do usuário logado
-        if (currentUser?.condominio_id) {
+        // Cerimonialista não usa condomínio.
+        // Para os demais, usar condomínio do usuário logado.
+        if (userType !== 'cerimonialista' && currentUser?.condominio_id) {
           userData.condominio_id = currentUser.condominio_id;
         }
       }
 
-      await api.post('/access/create/', userData);
-      setSubmitSuccess('Cadastro concluído com sucesso.');
+      const response = await api.post('/access/create/', userData);
+      const emailEnviado = Boolean(response?.data?.email_enviado);
+      const successMessage = userType === 'cerimonialista'
+        ? emailEnviado
+          ? 'Cadastro concluído. A senha foi enviada por e-mail.'
+          : 'Cadastro concluído. Não foi possível confirmar o envio da senha por e-mail.'
+        : 'Cadastro concluído com sucesso.';
+
+      setSubmitSuccess(successMessage);
       setTimeout(() => {
         if (typeof onSuccess === 'function') onSuccess();
         if (typeof onClose === 'function') onClose();
@@ -280,6 +289,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
         <GenericDropdown
           title={
             userType === 'sindico' ? 'Novo Síndico' :
+            userType === 'cerimonialista' ? 'Novo Cerimonialista' :
             userType === 'funcionario' ? 'Novo Funcionário' :
             userType === 'porteiro' || userType === 'portaria' ? 'Adicionar Porteiro' :
             existingMode ? 'Vincular Morador' : 'Novo Morador'
@@ -450,7 +460,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
                     />
                   )}
                 </div>
-              ) : userType === 'sindico' ? (
+              ) : needsCondominioSelection ? (
                 <div className="form-field">
                   <label>Condomínio*</label>
                   {loadingCondominios ? (
@@ -550,7 +560,7 @@ function AddUserDropdown({ onClose, onSuccess, triggerRef, userType = 'funcionar
                 className="button-primary"
                 disabled={Boolean(submitSuccess) || emailIsValid === false || cpfIsValid === false || phoneIsValid === false}
               >
-                <FaSave /> {userType === 'sindico' ? 'Adicionar Síndico' : userType === 'funcionario' ? 'Adicionar Funcionário' : userType === 'porteiro' || userType === 'portaria' ? 'Adicionar Porteiro' : 'Adicionar Morador'}
+                <FaSave /> {userType === 'sindico' ? 'Adicionar Síndico' : userType === 'cerimonialista' ? 'Adicionar Cerimonialista' : userType === 'funcionario' ? 'Adicionar Funcionário' : userType === 'porteiro' || userType === 'portaria' ? 'Adicionar Porteiro' : 'Adicionar Morador'}
               </button>
             </div>
               </>

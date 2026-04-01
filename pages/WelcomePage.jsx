@@ -350,6 +350,11 @@ function WelcomePage() {
           name: 'Gestão de Síndicos', 
           icon: <FaUserTie size={16} />, 
           path: '/gestao-usuarios?tab=sindicos'
+        },
+        {
+          name: 'Gestão de Cerimonialistas',
+          icon: <FaUserCog size={16} />,
+          path: '/admin/cerimonialistas?tab=lista'
         }
       );
     }
@@ -400,6 +405,36 @@ function WelcomePage() {
   const isSindico = user?.groups?.some(group => group.name === 'Síndicos');
   const isMorador = user?.groups?.some(group => group.name === 'Moradores');
   const isPortaria = user?.groups?.some(group => group.name === 'Portaria');
+  const isCerimonialista = user?.groups?.some(group => group.name === 'Cerimonialista');
+  const isRecepcao = user?.groups?.some(group => group.name === 'Recepção');
+  const isOrganizadorEvento = user?.groups?.some(group => group.name === 'Organizador do Evento');
+
+  if ((isCerimonialista || isRecepcao || isOrganizadorEvento) && cards.length === 0) {
+    const rolePanelPath = isCerimonialista
+      ? '/cerimonialista?tab=eventos'
+      : isRecepcao
+        ? '/recepcao?tab=eventos'
+        : '/organizador-evento?tab=eventos';
+
+    cards.push({
+      title: 'Minha Área',
+      description: 'Acesse seu painel e configurações de perfil.',
+      active: true,
+      icon: <FaUserCog size={32} />,
+      subItems: [
+        {
+          name: 'Painel',
+          icon: <FaChartLine size={16} />,
+          path: rolePanelPath,
+        },
+        {
+          name: 'Meu Perfil',
+          icon: <FaUserShield size={16} />,
+          path: '/perfil/meu',
+        },
+      ],
+    });
+  }
   const showDashboard = isAdmin || isSindico || isMorador || isPortaria;
 
   // Nome e logo do condomínio vêm do contexto — sem fetch adicional

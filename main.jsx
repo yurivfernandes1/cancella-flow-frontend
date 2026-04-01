@@ -15,6 +15,10 @@ import UsersPage from './pages/UsersPage';
 import UsersPageWrapper from './pages/UsersPageWrapper';
 import MoradorPage from './pages/MoradorPage';
 import PortariaPage from './pages/PortariaPage';
+import CerimonialistasAdminPage from './pages/CerimonialistasAdminPage';
+import CerimonialistaPage from './pages/CerimonialistaPage';
+import RecepcaoPage from './pages/RecepcaoPage';
+import OrganizadorEventoPage from './pages/OrganizadorEventoPage';
 
 import SidebarLayout from './components/Layout/SidebarLayout';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -51,6 +55,14 @@ const ProtectedGestaoUsuariosRoute = ({ children }) => {
   return children;
 };
 
+const ProtectedAdminRoute = ({ children }) => {
+  const { user } = useAuth();
+  const hasAccess = user?.is_staff || user?.groups?.some((g) => g.name === 'admin');
+
+  if (!hasAccess) return <Navigate to="/welcome" replace />;
+  return children;
+};
+
 // ─── Root ──────────────────────────────────────────────────────
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
@@ -81,6 +93,17 @@ root.render(
             />
             <Route path="/minha-area"   element={<MoradorPage />} />
             <Route path="/portaria"     element={<PortariaPage />} />
+            <Route path="/cerimonialista" element={<CerimonialistaPage />} />
+            <Route path="/recepcao" element={<RecepcaoPage />} />
+            <Route path="/organizador-evento" element={<OrganizadorEventoPage />} />
+            <Route
+              path="/admin/cerimonialistas"
+              element={
+                <ProtectedAdminRoute>
+                  <CerimonialistasAdminPage />
+                </ProtectedAdminRoute>
+              }
+            />
             <Route path="/perfil/meu" element={<ProfilePage />} />
             <Route path="/perfil/qr" element={<AccessQrPage />} />
             <Route path="/perfil/senha" element={<PasswordPage />} />
