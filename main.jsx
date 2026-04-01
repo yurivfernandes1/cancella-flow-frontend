@@ -151,3 +151,67 @@ if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && import.m
     });
   }
 }
+
+// --- Version polling to allow remote cache clearing ---
+if (import.meta.env && import.meta.env.PROD) {
+  (function startAppVersionPolling() {
+    const VERSION_URL = '/app-version.json';
+    const POLL_INTERVAL_MS = 60 * 1000; // 60s
+
+    async function fetchVersion() {
+      try {
+        const res = await fetch(VERSION_URL, { cache: 'no-store' });
+        if (!res || !res.ok) return null;
+        const json = await res.json();
+        return json && json.version ? String(json.version) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    (async () => {
+      const initial = await fetchVersion();
+      if (initial) localStorage.setItem('appVersion', initial);
+
+      setInterval(async () => {
+        const v = await fetchVersion();
+        if (!v) return;
+        const old = localStorage.getItem('appVersion');
+        if (!old) {
+          localStorage.setItem('appVersion', v);
+          return;
+        }
+        if (v !== old) {
+          // Version changed: instruct SW to clear caches, then reload
+          localStorage.setItem('appVersion', v);
+          try {
+            if ('serviceWorker' in navigator) {
+              const regs = await navigator.serviceWorker.getRegistrations();
+              await Promise.all(regs.map(async (reg) => {
+                try {
+                  if (reg.waiting) {
+                    reg.waiting.postMessage({ type: 'CLEAR_CACHES' });
+                  } else if (reg.active) {
+                    reg.active.postMessage({ type: 'CLEAR_CACHES' });
+                  }
+                } catch (e) {
+                  // ignore
+                }
+              }));
+            }
+
+            if (window.caches) {
+              const keys = await caches.keys();
+              await Promise.all(keys.map((k) => caches.delete(k)));
+            }
+          } catch (e) {
+            // ignore
+          }
+
+          // Force reload so client fetches latest assets
+          try { location.reload(); } catch (e) { /* ignore */ }
+        }
+      }, POLL_INTERVAL_MS);
+    })();
+  })();
+}
