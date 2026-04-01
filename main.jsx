@@ -95,38 +95,59 @@ root.render(
 // Register service worker for PWA
 // Register service worker for PWA only in production build
 if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator && import.meta.env && import.meta.env.PROD) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((registration) => {
-        console.log('SW registered: ', registration);
-
-        // If there's an updated worker waiting, ask it to skip waiting.
-        if (registration.waiting) {
-          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+  // If user passed ?clearCache=1, try to unregister existing SWs and clear caches,
+  // then reload without registering a new worker. Useful for remote support.
+  const _url = new URL(window.location.href);
+  if (_url.searchParams.get('clearCache') === '1') {
+    (async () => {
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map((r) => r.unregister()));
+        if (window.caches) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((k) => caches.delete(k)));
         }
+      } catch (e) {
+        console.warn('Error clearing service worker caches', e);
+      } finally {
+        _url.searchParams.delete('clearCache');
+        window.location.replace(_url.toString());
+      }
+    })();
+  } else {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then((registration) => {
+          console.log('SW registered: ', registration);
 
-        // Listen for updates found (a new worker installing)
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (!newWorker) return;
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              // New update available — ask it to activate immediately
-              if (registration.waiting) {
-                registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          // If there's an updated worker waiting, ask it to skip waiting.
+          if (registration.waiting) {
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+
+          // Listen for updates found (a new worker installing)
+          registration.addEventListener('updatefound', () => {
+            const newWorker = registration.installing;
+            if (!newWorker) return;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // New update available — ask it to activate immediately
+                if (registration.waiting) {
+                  registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
               }
-            }
+            });
           });
-        });
 
-        // When the controlling service worker changes, reload the page
-        // so the user gets the latest assets.
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          window.location.reload();
+          // When the controlling service worker changes, reload the page
+          // so the user gets the latest assets.
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            window.location.reload();
+          });
+        })
+        .catch((registrationError) => {
+          console.log('SW registration failed: ', registrationError);
         });
-      })
-      .catch((registrationError) => {
-        console.log('SW registration failed: ', registrationError);
-      });
-  });
+    });
+  }
 }

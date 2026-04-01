@@ -32,6 +32,7 @@ self.addEventListener('install', (event) => {
 // Fetch event — network-first for navigations, cache-first for others
 self.addEventListener('fetch', (event) => {
   const req = event.request;
+
   // For navigation requests, try network then fallback to cache (SPA navigation)
   if (req.mode === 'navigate') {
     event.respondWith((async () => {
@@ -47,10 +48,40 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For other requests, serve from cache first then network
-  event.respondWith(
-    caches.match(req).then((cached) => cached || fetch(req))
-  );
+  // Heurística: trate chamadas de API (JSON / endpoints do backend) como network-first
+  const isApiRequest = (() => {
+    try {
+      const url = new URL(req.url);
+      const path = url.pathname || '';
+      const accept = (req.headers.get('accept') || '').toLowerCase();
+
+      if (accept.includes('application/json')) return true;
+      if (req.method && req.method !== 'GET') return true;
+      if (path.startsWith('/api') || path.startsWith('/access') || path.startsWith('/cadastros') || path.startsWith('/media')) return true;
+    } catch (e) {
+      // se algo falhar no parse, não trate como API
+    }
+    return false;
+  })();
+
+  if (isApiRequest) {
+    event.respondWith((async () => {
+      try {
+        const networkResponse = await fetch(req);
+        return networkResponse;
+      } catch (err) {
+        // Se falhar, tente devolver do cache (se houver), senão resposta JSON de erro offline
+        const cache = await caches.open(CACHE_NAME);
+        const cached = await cache.match(req);
+        if (cached) return cached;
+        return new Response(JSON.stringify({ error: 'offline' }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+      }
+    })());
+    return;
+  }
+
+  // Para os demais recursos (assets estáticos), estratégia cache-first
+  event.respondWith(caches.match(req).then((cached) => cached || fetch(req)));
 });
 
 // Activate event — cleanup old caches
@@ -86,5 +117,20 @@ self.addEventListener('message', (event) => {
   if (!event.data) return;
   if (event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
+  }
+
+  if (event.data.type === 'CLEAR_CACHES') {
+    event.waitUntil((async () => {
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map((name) => caches.delete(name)));
+        await self.registration.unregister();
+        const clients = await self.clients.matchAll({ includeUncontrolled: true });
+        clients.forEach((c) => c.postMessage({ type: 'CACHES_CLEARED' }));
+      } catch (e) {
+        console.warn('SW clear caches failed', e);
+      }
+    })());
   }
 });
