@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
+import Select from 'react-select';
 import { useAuth } from '../context/AuthContext';
 import ProtectedImage from '../components/common/ProtectedImage';
 import AddUserDropdown from '../components/Users/AddUserDropdown';
@@ -328,7 +329,6 @@ function CerimonialistaPage() {
   const [organizadoresPorEvento, setOrganizadoresPorEvento] = useState({});
   const [organizadoresLoadingPorEvento, setOrganizadoresLoadingPorEvento] = useState({});
   const [organizadoresExpandidos, setOrganizadoresExpandidos] = useState({});
-  const [organizadoresBuscaPorEvento, setOrganizadoresBuscaPorEvento] = useState({});
   const [organizadoresSelecionadosPorEvento, setOrganizadoresSelecionadosPorEvento] = useState({});
   const [organizadoresSavingPorEvento, setOrganizadoresSavingPorEvento] = useState({});
 
@@ -445,7 +445,10 @@ function CerimonialistaPage() {
   const loadRecepcaoUsers = async () => {
     try {
       const response = await api.get('/access/users/simple/', { params: { type: 'recepcao' } });
-      setRecepcaoUsers(Array.isArray(response.data) ? response.data : []);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : (Array.isArray(response.data?.results) ? response.data.results : []);
+      setRecepcaoUsers(data);
     } catch (e) {
       console.error('Erro ao carregar usuários de recepção', e);
       setRecepcaoUsers([]);
@@ -455,7 +458,10 @@ function CerimonialistaPage() {
   const loadOrganizadoresUsers = async () => {
     try {
       const response = await api.get('/access/users/simple/', { params: { type: 'organizadores_evento' } });
-      setOrganizadoresUsers(Array.isArray(response.data) ? response.data : []);
+      const data = Array.isArray(response.data)
+        ? response.data
+        : (Array.isArray(response.data?.results) ? response.data.results : []);
+      setOrganizadoresUsers(data);
     } catch (e) {
       console.error('Erro ao carregar usuários organizadores', e);
       setOrganizadoresUsers([]);
@@ -1250,18 +1256,6 @@ function CerimonialistaPage() {
     }
   };
 
-  const toggleOrganizadorSelecionado = (eventoId, userId) => {
-    const id = String(userId);
-    setOrganizadoresSelecionadosPorEvento((prev) => {
-      const atual = Array.isArray(prev[eventoId]) ? prev[eventoId] : [];
-      const existe = atual.includes(id);
-      return {
-        ...prev,
-        [eventoId]: existe ? atual.filter((x) => x !== id) : [...atual, id],
-      };
-    });
-  };
-
   const salvarOrganizadoresEvento = async (eventoId) => {
     const idsSelecionados = organizadoresSelecionadosPorEvento[eventoId] || [];
     setOrganizadoresSavingPorEvento((prev) => ({
@@ -1738,16 +1732,22 @@ function CerimonialistaPage() {
             const organizadoresEvento = organizadoresPorEvento[ev.id] || [];
             const organizadoresLoading = Boolean(organizadoresLoadingPorEvento[ev.id]);
             const organizadoresSaving = Boolean(organizadoresSavingPorEvento[ev.id]);
-            const organizadoresBusca = organizadoresBuscaPorEvento[ev.id] || '';
             const organizadoresSelecionados = organizadoresSelecionadosPorEvento[ev.id] || [];
-            const organizadoresSistemaFiltrados = (organizadoresUsers || []).filter((u) => {
-              const q = organizadoresBusca.trim().toLowerCase();
-              if (!q) return true;
-              return (
-                (u.full_name || '').toLowerCase().includes(q) ||
-                (u.username || '').toLowerCase().includes(q)
-              );
+            const organizadoresOptionsMap = new Map();
+            [...(organizadoresUsers || []), ...organizadoresEvento].forEach((u) => {
+              const id = String(u.id || '');
+              if (!id) return;
+              const nome = u.full_name || u.username || `Usuário ${id}`;
+              const telefone = u.phone ? ` - ${u.phone}` : '';
+              organizadoresOptionsMap.set(id, {
+                value: id,
+                label: `${nome}${telefone}`,
+              });
             });
+            const organizadoresOptions = Array.from(organizadoresOptionsMap.values())
+              .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+            const organizadoresSelecionadosOptions = organizadoresOptions
+              .filter((opt) => organizadoresSelecionados.includes(opt.value));
             const funcionariosAberto = Boolean(funcionariosExpandidos[ev.id]);
             const funcionariosEvento = funcionariosPorEvento[ev.id] || [];
             const funcionariosLoading = Boolean(funcionariosLoadingPorEvento[ev.id]);
@@ -1907,87 +1907,38 @@ function CerimonialistaPage() {
                     <p style={{ margin: 0, color: '#64748b' }}>Carregando organizadores...</p>
                   ) : (
                     <div style={{ display: 'grid', gap: 10 }}>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <input
-                          value={organizadoresBusca}
-                          onChange={(e) => setOrganizadoresBuscaPorEvento((prev) => ({ ...prev, [ev.id]: e.target.value }))}
-                          placeholder="Buscar organizador existente..."
-                          style={{
-                            flex: 1,
-                            minWidth: 200,
-                            border: '1px solid #d1d5db',
-                            borderRadius: 8,
-                            padding: '8px 10px',
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        <Select
+                          isMulti
+                          options={organizadoresOptions}
+                          value={organizadoresSelecionadosOptions}
+                          placeholder="Buscar e selecionar organizadores..."
+                          noOptionsMessage={() => 'Nenhum organizador encontrado'}
+                          onChange={(selectedOptions) => {
+                            const ids = Array.isArray(selectedOptions)
+                              ? selectedOptions.map((opt) => String(opt.value))
+                              : [];
+                            setOrganizadoresSelecionadosPorEvento((prev) => ({
+                              ...prev,
+                              [ev.id]: ids,
+                            }));
                           }}
+                          classNamePrefix="select"
                         />
                         <button
                           type="button"
                           className="add-button"
                           onClick={() => salvarOrganizadoresEvento(ev.id)}
                           disabled={organizadoresSaving}
-                          style={{ padding: '8px 12px', background: '#2563eb', opacity: organizadoresSaving ? 0.7 : 1 }}
+                          style={{ padding: '8px 12px', background: '#2563eb', opacity: organizadoresSaving ? 0.7 : 1, width: 'fit-content' }}
                         >
                           {organizadoresSaving ? 'Salvando...' : 'Salvar seleção'}
                         </button>
                       </div>
 
-                      <div style={{ maxHeight: 170, overflowY: 'auto', display: 'grid', gap: 6 }}>
-                        {organizadoresSistemaFiltrados.length === 0 ? (
-                          <div style={{ color: '#64748b', fontSize: 13 }}>Nenhum organizador encontrado.</div>
-                        ) : (
-                          organizadoresSistemaFiltrados.map((orgSistema) => (
-                            <label
-                              key={orgSistema.id}
-                              style={{
-                                border: '1px solid #dbeafe',
-                                borderRadius: 8,
-                                padding: '7px 9px',
-                                background: '#fff',
-                                color: '#1e293b',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={organizadoresSelecionados.includes(String(orgSistema.id))}
-                                onChange={() => toggleOrganizadorSelecionado(ev.id, orgSistema.id)}
-                              />
-                              <span style={{ fontWeight: 600 }}>{orgSistema.full_name || orgSistema.username}</span>
-                            </label>
-                          ))
-                        )}
-                      </div>
-
                       <div style={{ color: '#334155', fontSize: 13 }}>
                         Selecionados: <strong>{organizadoresSelecionados.length}</strong>
                       </div>
-
-                      {organizadoresEvento.length > 0 && (
-                        <div style={{ display: 'grid', gap: 6 }}>
-                          <div style={{ fontWeight: 700, color: '#1d4ed8', fontSize: 13 }}>Atualmente associados</div>
-                          {organizadoresEvento.map((org) => (
-                            <div
-                              key={org.id}
-                              style={{
-                                border: '1px solid #dbeafe',
-                                borderRadius: 8,
-                                padding: '8px 10px',
-                                background: '#fff',
-                                color: '#1e293b',
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                gap: 8,
-                                flexWrap: 'wrap',
-                              }}
-                            >
-                              <strong>{org.full_name || org.username}</strong>
-                              <span style={{ color: '#64748b', fontSize: 13 }}>{org.phone || '-'}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>

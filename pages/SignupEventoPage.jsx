@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import logo from '../assets/logo_login.svg';
-import { eventoCerimonialInviteAPI } from '../services/api';
+import api from '../services/api';
 import '../styles/SignupPage.css';
 
 function SignupEventoPage() {
@@ -36,7 +36,7 @@ function SignupEventoPage() {
       }
       try {
         setLoadingInfo(true);
-        const resp = await eventoCerimonialInviteAPI.getInfo(token);
+        const resp = await api.get(`/cadastros/eventos-cerimonial/convites/${token}/`);
         if (!active) return;
         setInvite(resp.data);
       } catch (e) {
@@ -64,7 +64,7 @@ function SignupEventoPage() {
     setSubmitting(true);
     setError('');
     try {
-      const resp = await eventoCerimonialInviteAPI.register(token, formData);
+      const resp = await api.post(`/cadastros/eventos-cerimonial/convites/${token}/registrar/`, formData);
       setResult(resp.data);
     } catch (e2) {
       setError(e2.response?.data?.error || 'Erro ao criar cadastro.');
