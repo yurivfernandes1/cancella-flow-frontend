@@ -97,6 +97,7 @@ const CERIMONIALISTA_MENU = [
     items: [
       { label: 'Organizador de Eventos', icon: FaIdCard, path: '/cerimonialista', tab: 'organizadores_evento' },
       { label: 'Funcionários',           icon: FaUsers,  path: '/cerimonialista', tab: 'funcionarios' },
+      { label: 'Funções da Festa',       icon: FaClipboardList, path: '/cerimonialista', tab: 'funcoes_festa' },
     ],
   },
 ];

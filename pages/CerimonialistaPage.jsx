@@ -5,6 +5,7 @@ import ProtectedImage from '../components/common/ProtectedImage';
 import AddUserDropdown from '../components/Users/AddUserDropdown';
 import UsersCards from '../components/Users/UsersCards';
 import PasswordResetModal from '../components/Users/PasswordResetModal';
+import GenericTable from '../components/GenericTable';
 import api, {
   eventoCerimonialAPI,
   listaConvidadosCerimonialAPI,
@@ -52,6 +53,17 @@ const formatDateInput = (value) => {
 const formatCurrency = (value) => {
   const num = Number(value || 0);
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+};
+
+const getRespostaPresencaMeta = (value) => {
+  const normalized = String(value || '').toLowerCase();
+  if (normalized === 'confirmado') {
+    return { label: 'Presença confirmada', color: '#166534' };
+  }
+  if (normalized === 'recusado') {
+    return { label: 'Presença recusada', color: '#b91c1c' };
+  }
+  return { label: 'Aguardando confirmação', color: '#9ca3af' };
 };
 
 const eventoActionGridStyle = {
@@ -112,6 +124,19 @@ const createConvidadoRow = () => ({
   erro: '',
 });
 
+const createFuncaoFestaRow = () => ({
+  rowId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+  nome: '',
+  ativo: true,
+});
+
+const parseAtivoToken = (value) => {
+  const v = String(value || '').trim().toLowerCase();
+  if (!v) return true;
+  if (['0', 'false', 'nao', 'não', 'inativo', 'off'].includes(v)) return false;
+  return true;
+};
+
 const convidadoModalStyles = {
   label: {
     display: 'block',
@@ -148,6 +173,58 @@ const convidadoModalStyles = {
     display: 'flex',
     alignItems: 'center',
     whiteSpace: 'nowrap',
+  },
+};
+
+const funcaoFestaModalStyles = {
+  helperText: {
+    fontSize: '0.8rem',
+    color: '#64748b',
+    marginTop: 0,
+    marginBottom: 10,
+  },
+  gridWrapper: {
+    border: '1px solid #e2e8f0',
+    borderRadius: 10,
+    padding: 10,
+    background: '#f8fafc',
+    marginBottom: 10,
+    display: 'grid',
+    gap: 8,
+  },
+  row: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 90px 42px',
+    gap: 8,
+    alignItems: 'center',
+  },
+  colLabel: {
+    fontSize: 12,
+    fontWeight: 700,
+    color: '#64748b',
+  },
+  input: {
+    width: '100%',
+    padding: '8px 10px',
+    border: '1px solid #cbd5e1',
+    borderRadius: 8,
+    background: '#fff',
+    color: '#0f172a',
+    boxSizing: 'border-box',
+    outline: 'none',
+  },
+  removeBtn: {
+    border: '1px solid #e5e7eb',
+    background: '#fff',
+    color: '#9ca3af',
+    borderRadius: 8,
+    height: 36,
+  },
+  addRowSection: {
+    display: 'flex',
+    gap: 8,
+    alignItems: 'center',
+    flexWrap: 'wrap',
   },
 };
 
@@ -264,15 +341,34 @@ function CerimonialistaPage() {
   const [funcionarioSaving, setFuncionarioSaving] = useState(false);
   const [recepcaoUsers, setRecepcaoUsers] = useState([]);
   const [funcionarioForm, setFuncionarioForm] = useState({
+    is_recepcao: false,
     usuario: '',
+    email: '',
+    phone: '',
+    usuario_is_active: false,
     nome: '',
     documento: '',
-    funcao: '',
+    funcoes_ids: [],
     horario_entrada: '',
     horario_saida: '',
     pagamento_realizado: false,
     valor_pagamento: '0.00',
   });
+  const [funcionariosCadastrados, setFuncionariosCadastrados] = useState([]);
+  const [funcionariosCadastradosLoading, setFuncionariosCadastradosLoading] = useState(false);
+
+  const [funcoesFesta, setFuncoesFesta] = useState([]);
+  const [funcoesFestaLoading, setFuncoesFestaLoading] = useState(false);
+  const [funcoesFestaSearch, setFuncoesFestaSearch] = useState('');
+  const [funcaoFestaModalOpen, setFuncaoFestaModalOpen] = useState(false);
+  const [funcaoFestaEditing, setFuncaoFestaEditing] = useState(null);
+  const [funcaoFestaSaving, setFuncaoFestaSaving] = useState(false);
+  const [funcaoFestaForm, setFuncaoFestaForm] = useState({
+    nome: '',
+    ativo: true,
+  });
+  const [funcaoFestaRows, setFuncaoFestaRows] = useState([createFuncaoFestaRow()]);
+  const [qtdAdicionarFuncoes, setQtdAdicionarFuncoes] = useState(1);
 
   const addOrganizadorButtonRef = useRef(null);
   const addFuncionarioButtonRef = useRef(null);
@@ -363,6 +459,37 @@ function CerimonialistaPage() {
     } catch (e) {
       console.error('Erro ao carregar usuários organizadores', e);
       setOrganizadoresUsers([]);
+    }
+  };
+
+  const loadFuncionariosCadastrados = async (search = '', isRecepcao = null) => {
+    setFuncionariosCadastradosLoading(true);
+    try {
+      const params = {};
+      if (search) params.q = search;
+      if (typeof isRecepcao === 'boolean') {
+        params.is_recepcao = isRecepcao ? '1' : '0';
+      }
+      const response = await eventoCerimonialAPI.listFuncionariosCadastrados(params);
+      setFuncionariosCadastrados(Array.isArray(response.data) ? response.data : []);
+    } catch (e) {
+      console.error('Erro ao carregar funcionários cadastrados', e);
+      setFuncionariosCadastrados([]);
+    } finally {
+      setFuncionariosCadastradosLoading(false);
+    }
+  };
+
+  const loadFuncoesFesta = async (search = '') => {
+    setFuncoesFestaLoading(true);
+    try {
+      const response = await eventoCerimonialAPI.listFuncoesFesta({ search });
+      setFuncoesFesta(Array.isArray(response.data) ? response.data : []);
+    } catch (e) {
+      console.error('Erro ao carregar funções da festa', e);
+      setFuncoesFesta([]);
+    } finally {
+      setFuncoesFestaLoading(false);
     }
   };
 
@@ -547,6 +674,7 @@ function CerimonialistaPage() {
     loadListasConvidados();
     loadRecepcaoUsers();
     loadOrganizadoresUsers();
+    loadFuncoesFesta();
   }, [hasAccess]);
 
   useEffect(() => {
@@ -564,6 +692,14 @@ function CerimonialistaPage() {
     }, 250);
     return () => clearTimeout(t);
   }, [hasAccess, activeTab, funcionariosCadastroPage, funcionariosCadastroSearch]);
+
+  useEffect(() => {
+    if (!hasAccess || activeTab !== 'funcoes_festa') return;
+    const t = setTimeout(() => {
+      loadFuncoesFesta(funcoesFestaSearch);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [hasAccess, activeTab, funcoesFestaSearch]);
 
   const openCreateEvento = () => {
     setEventoEditing(null);
@@ -1020,10 +1156,10 @@ function CerimonialistaPage() {
             nomeTrim: String(row.nome || '').trim(),
             emailTrim: String(row.email || '').trim(),
           }))
-          .filter((row) => row.cpfDigits.length === 11 && row.nomeTrim);
+          .filter((row) => row.cpfDigits.length === 11 && row.nomeTrim && row.emailTrim);
 
         if (!rowsValidos.length) {
-          alert('Preencha CPF e nome válidos para pelo menos um convidado.');
+          alert('Preencha CPF, nome e e-mail válidos para pelo menos um convidado.');
           return;
         }
 
@@ -1072,6 +1208,22 @@ function CerimonialistaPage() {
     } catch (err) {
       console.error('Erro ao remover convidado', err);
       alert(err.response?.data?.error || 'Erro ao remover convidado.');
+    }
+  };
+
+  const enviarQrCodeConvidado = async (listaId, convidado) => {
+    const resposta = String(convidado?.resposta_presenca || '').toLowerCase();
+    if (resposta !== 'confirmado') {
+      alert('O QR Code só pode ser enviado para convidados com presença confirmada.');
+      return;
+    }
+
+    try {
+      await listaConvidadosCerimonialAPI.enviarQrCode(listaId, convidado.id);
+      alert('QR Code enviado com sucesso.');
+    } catch (err) {
+      console.error('Erro ao enviar QR Code do convidado', err);
+      alert(err.response?.data?.error || 'Não foi possível enviar o QR Code agora.');
     }
   };
 
@@ -1298,15 +1450,21 @@ function CerimonialistaPage() {
     setFuncionarioEventoSelecionadoId(String(eventoId));
     setFuncionarioEditing(null);
     setFuncionarioForm({
+      is_recepcao: false,
       usuario: '',
+      email: '',
+      phone: '',
+      usuario_is_active: false,
       nome: '',
       documento: '',
-      funcao: '',
+      funcoes_ids: [],
       horario_entrada: '',
       horario_saida: '',
       pagamento_realizado: false,
       valor_pagamento: '0.00',
     });
+    loadFuncionariosCadastrados();
+    loadFuncoesFesta();
     setFuncionarioModalOpen(true);
   };
 
@@ -1314,16 +1472,44 @@ function CerimonialistaPage() {
     setFuncionarioEventoSelecionadoId(String(eventoId));
     setFuncionarioEditing(item);
     setFuncionarioForm({
+      is_recepcao: Boolean(item.is_recepcao),
       usuario: item.usuario ? String(item.usuario) : '',
+      email: item.usuario_email || '',
+      phone: item.usuario_phone || '',
+      usuario_is_active: item.usuario_ativo === null || item.usuario_ativo === undefined ? false : Boolean(item.usuario_ativo),
       nome: item.nome || '',
       documento: item.documento || '',
-      funcao: item.funcao || '',
+      funcoes_ids: Array.isArray(item.funcoes) ? item.funcoes.map((f) => f.id) : [],
       horario_entrada: formatDateInput(item.horario_entrada),
       horario_saida: formatDateInput(item.horario_saida),
       pagamento_realizado: Boolean(item.pagamento_realizado),
       valor_pagamento: String(item.valor_pagamento ?? '0.00'),
     });
+    loadFuncionariosCadastrados();
+    loadFuncoesFesta();
     setFuncionarioModalOpen(true);
+  };
+
+  const handleSelectFuncionarioCadastrado = (usuarioId) => {
+    const selecionado = funcionariosCadastrados.find((u) => String(u.id) === String(usuarioId));
+    if (!selecionado) {
+      setFuncionarioForm((prev) => ({
+        ...prev,
+        usuario: '',
+        usuario_is_active: prev.is_recepcao,
+      }));
+      return;
+    }
+
+    setFuncionarioForm((prev) => ({
+      ...prev,
+      usuario: String(selecionado.id),
+      nome: selecionado.full_name || selecionado.username || prev.nome,
+      documento: selecionado.cpf || prev.documento,
+      email: selecionado.email || prev.email,
+      phone: selecionado.phone || prev.phone,
+      usuario_is_active: Boolean(selecionado.is_active),
+    }));
   };
 
   const saveFuncionario = async (e) => {
@@ -1335,19 +1521,34 @@ function CerimonialistaPage() {
         usuario: funcionarioForm.usuario || null,
         nome: funcionarioForm.nome,
         documento: funcionarioForm.documento,
-        funcao: funcionarioForm.funcao,
+        email: funcionarioForm.email,
+        phone: funcionarioForm.phone,
+        is_recepcao: Boolean(funcionarioForm.is_recepcao),
+        usuario_is_active: Boolean(funcionarioForm.usuario_is_active),
+        funcoes_ids: funcionarioForm.funcoes_ids || [],
         horario_entrada: funcionarioForm.horario_entrada || null,
         horario_saida: funcionarioForm.horario_saida || null,
         pagamento_realizado: Boolean(funcionarioForm.pagamento_realizado),
         valor_pagamento: funcionarioForm.valor_pagamento || '0.00',
       };
+      let response;
       if (funcionarioEditing?.id) {
-        await eventoCerimonialAPI.patchFuncionario(funcionarioEventoSelecionadoId, funcionarioEditing.id, payload);
+        response = await eventoCerimonialAPI.patchFuncionario(funcionarioEventoSelecionadoId, funcionarioEditing.id, payload);
       } else {
-        await eventoCerimonialAPI.addFuncionario(funcionarioEventoSelecionadoId, payload);
+        response = await eventoCerimonialAPI.addFuncionario(funcionarioEventoSelecionadoId, payload);
       }
+
+      if (response?.data?.usuario_ativado) {
+        if (response.data.usuario_email_enviado) {
+          alert('Usuário ativado e nova senha enviada por e-mail.');
+        } else {
+          alert(`Usuário ativado, mas o envio de e-mail falhou${response.data.usuario_email_erro ? `: ${response.data.usuario_email_erro}` : '.'}`);
+        }
+      }
+
       setFuncionarioModalOpen(false);
       await loadFuncionariosEvento(funcionarioEventoSelecionadoId);
+      await loadFuncionariosCadastrados();
     } catch (err) {
       console.error('Erro ao salvar funcionário', err);
       alert(err.response?.data?.error || 'Erro ao salvar funcionário.');
@@ -1365,6 +1566,137 @@ function CerimonialistaPage() {
     } catch (err) {
       console.error('Erro ao excluir funcionário', err);
       alert(err.response?.data?.error || 'Erro ao excluir funcionário.');
+    }
+  };
+
+  const openCreateFuncaoFesta = () => {
+    setFuncaoFestaEditing(null);
+    setFuncaoFestaForm({ nome: '', ativo: true });
+    setFuncaoFestaRows([createFuncaoFestaRow()]);
+    setQtdAdicionarFuncoes(1);
+    setFuncaoFestaModalOpen(true);
+  };
+
+  const openEditFuncaoFesta = (item) => {
+    setFuncaoFestaEditing(item);
+    setFuncaoFestaForm({
+      nome: item.nome || '',
+      ativo: Boolean(item.ativo),
+    });
+    setFuncaoFestaRows([createFuncaoFestaRow()]);
+    setQtdAdicionarFuncoes(1);
+    setFuncaoFestaModalOpen(true);
+  };
+
+  const addFuncaoFestaRow = () => {
+    setFuncaoFestaRows((prev) => [...prev, createFuncaoFestaRow()]);
+  };
+
+  const addFuncaoFestaRows = () => {
+    const qtd = Number.isFinite(Number(qtdAdicionarFuncoes)) ? Math.max(1, Number(qtdAdicionarFuncoes)) : 1;
+    setFuncaoFestaRows((prev) => [...prev, ...Array.from({ length: qtd }, () => createFuncaoFestaRow())]);
+  };
+
+  const removeFuncaoFestaRow = (rowId) => {
+    setFuncaoFestaRows((prev) => {
+      if (prev.length <= 1) return prev;
+      return prev.filter((row) => row.rowId !== rowId);
+    });
+  };
+
+  const updateFuncaoFestaRow = (rowId, field, value) => {
+    setFuncaoFestaRows((prev) => prev.map((row) => (
+      row.rowId === rowId ? { ...row, [field]: value } : row
+    )));
+  };
+
+  const handleFuncaoFestaGridPaste = (rowId, e) => {
+    const text = e.clipboardData?.getData('text') || '';
+    if (!text) return;
+
+    const grid = parseClipboardGrid(text);
+    const hasMatrixData = grid.length > 1 || (grid[0] && grid[0].length > 1);
+    if (!hasMatrixData) return;
+
+    e.preventDefault();
+
+    setFuncaoFestaRows((prev) => {
+      const startIndex = prev.findIndex((r) => r.rowId === rowId);
+      const safeStart = startIndex >= 0 ? startIndex : 0;
+      const next = [...prev];
+
+      grid.forEach((cells, idx) => {
+        const c0 = String(cells[0] || '').trim().toLowerCase();
+        if (idx === 0 && (c0 === 'funcao' || c0 === 'função' || c0 === 'nome')) {
+          return;
+        }
+
+        const targetIndex = safeStart + idx;
+        while (targetIndex >= next.length) {
+          next.push(createFuncaoFestaRow());
+        }
+
+        const current = next[targetIndex] || createFuncaoFestaRow();
+        next[targetIndex] = {
+          ...current,
+          nome: String(cells[0] || '').trim(),
+          ativo: parseAtivoToken(cells[1]),
+        };
+      });
+
+      return next;
+    });
+  };
+
+  const saveFuncaoFesta = async (e) => {
+    e.preventDefault();
+    setFuncaoFestaSaving(true);
+    try {
+      if (funcaoFestaEditing?.id) {
+        const payload = {
+          nome: funcaoFestaForm.nome,
+          ativo: Boolean(funcaoFestaForm.ativo),
+        };
+        await eventoCerimonialAPI.patchFuncaoFesta(funcaoFestaEditing.id, payload);
+      } else {
+        const itens = funcaoFestaRows
+          .map((row) => ({
+            nome: String(row.nome || '').trim(),
+            ativo: Boolean(row.ativo),
+          }))
+          .filter((row) => row.nome.length > 0);
+
+        if (!itens.length) {
+          alert('Preencha ao menos uma função para cadastrar.');
+          return;
+        }
+
+        const response = await eventoCerimonialAPI.createFuncaoFesta({ itens });
+        const erros = Array.isArray(response?.data?.errors) ? response.data.errors : [];
+        if (erros.length) {
+          alert(`Algumas funções não foram criadas: ${erros.map((err) => err.error).join(' | ')}`);
+        }
+      }
+
+      setFuncaoFestaModalOpen(false);
+      await loadFuncoesFesta(funcoesFestaSearch);
+    } catch (err) {
+      console.error('Erro ao salvar função', err);
+      alert(err.response?.data?.error || 'Erro ao salvar função.');
+    } finally {
+      setFuncaoFestaSaving(false);
+    }
+  };
+
+  const deleteFuncaoFesta = async (item) => {
+    if (!item?.id) return;
+    if (!window.confirm(`Excluir função "${item.nome}"?`)) return;
+    try {
+      await eventoCerimonialAPI.deleteFuncaoFesta(item.id);
+      await loadFuncoesFesta(funcoesFestaSearch);
+    } catch (err) {
+      console.error('Erro ao excluir função', err);
+      alert(err.response?.data?.error || 'Erro ao excluir função.');
     }
   };
 
@@ -1704,7 +2036,10 @@ function CerimonialistaPage() {
                     <p style={{ margin: 0, color: '#64748b' }}>Lista sem convidados no momento.</p>
                   ) : (
                     <div style={{ display: 'grid', gap: 8 }}>
-                      {(listaEvento.convidados || []).map((c) => (
+                      {(listaEvento.convidados || []).map((c) => {
+                        const respostaMeta = getRespostaPresencaMeta(c.resposta_presenca);
+                        const podeEnviarQr = String(c.resposta_presenca || '').toLowerCase() === 'confirmado';
+                        return (
                         <div
                           key={c.id}
                           style={{
@@ -1726,15 +2061,19 @@ function CerimonialistaPage() {
                             </div>
                             <div style={{ color: '#6b7280', fontSize: 13 }}>CPF: {c.cpf_mascarado || '-'}</div>
                           </div>
-                          <div style={{ color: c.entrada_confirmada ? '#059669' : '#9ca3af', fontWeight: 600, fontSize: 13 }}>
-                            {c.entrada_confirmada ? 'Entrada confirmada' : 'Aguardando entrada'}
+                          <div style={{ display: 'grid', gap: 2 }}>
+                            <div style={{ color: respostaMeta.color, fontWeight: 600, fontSize: 13 }}>
+                              {respostaMeta.label}
+                            </div>
+                            <div style={{ color: c.entrada_confirmada ? '#059669' : '#9ca3af', fontWeight: 600, fontSize: 13 }}>
+                              {c.entrada_confirmada ? 'Entrada confirmada' : 'Aguardando entrada'}
+                            </div>
                           </div>
-                          <div style={{ display: 'flex', gap: 6 }}>
+                          <div className="actions-column" style={{ display: 'flex', gap: 6 }}>
                             <button
                               type="button"
-                              className="add-button"
+                              className="edit-button"
                               onClick={() => openEditConvidado(listaEvento.id, c)}
-                              style={{ width: 32, height: 32, padding: 0 }}
                               title="Editar convidado"
                               aria-label="Editar convidado"
                             >
@@ -1742,9 +2081,19 @@ function CerimonialistaPage() {
                             </button>
                             <button
                               type="button"
-                              className="add-button"
+                              className="save-button"
+                              onClick={() => enviarQrCodeConvidado(listaEvento.id, c)}
+                              disabled={!podeEnviarQr}
+                              style={!podeEnviarQr ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
+                              title={podeEnviarQr ? 'Enviar QR Code por e-mail' : 'Disponível somente para presença confirmada'}
+                              aria-label="Enviar QR Code"
+                            >
+                              <FaQrcode />
+                            </button>
+                            <button
+                              type="button"
+                              className="delete-button"
                               onClick={() => deleteConvidado(listaEvento.id, c)}
-                              style={{ width: 32, height: 32, padding: 0, background: '#b91c1c' }}
                               title="Excluir convidado"
                               aria-label="Excluir convidado"
                             >
@@ -1752,7 +2101,8 @@ function CerimonialistaPage() {
                             </button>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1793,7 +2143,10 @@ function CerimonialistaPage() {
                           <div style={{ display: 'grid', gap: 4 }}>
                             <div style={{ fontWeight: 600, color: '#111827' }}>{item.nome}</div>
                             <div style={{ color: '#6b7280', fontSize: 13 }}>
-                              Documento: {item.documento_mascarado || item.documento || '-'} • Função: {item.funcao || '-'}
+                              Documento: {item.documento_mascarado || item.documento || '-'} • {item.is_recepcao ? 'Recepção' : 'Demais funções'}
+                            </div>
+                            <div style={{ color: '#6b7280', fontSize: 13 }}>
+                              Funções: {Array.isArray(item.funcoes) && item.funcoes.length > 0 ? item.funcoes.map((f) => f.nome).join(', ') : (item.funcao || '-')}
                             </div>
                             <div style={{ color: '#6b7280', fontSize: 13 }}>
                               Entrada: {formatDateTime(item.horario_entrada)} • Saída: {formatDateTime(item.horario_saida)}
@@ -1801,6 +2154,11 @@ function CerimonialistaPage() {
                             <div style={{ color: '#6b7280', fontSize: 13 }}>
                               Valor: {formatCurrency(item.valor_pagamento)} • {item.pagamento_realizado ? 'Pago' : 'Pendente'}
                             </div>
+                            {item.usuario_ativo !== null && item.usuario_ativo !== undefined && (
+                              <div style={{ color: item.usuario_ativo ? '#166534' : '#92400e', fontSize: 13, fontWeight: 600 }}>
+                                Usuário: {item.usuario_ativo ? 'Ativo' : 'Inativo'}
+                              </div>
+                            )}
                           </div>
 
                           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -1949,12 +2307,109 @@ function CerimonialistaPage() {
     );
   };
 
+  const renderFuncoesFestaCadastro = () => {
+    const funcoesFestaColumns = [
+      {
+        key: 'nome',
+        header: 'Função',
+      },
+      {
+        key: 'ativo',
+        header: 'Status',
+        render: (value) => (
+          <span style={{
+            padding: '3px 9px',
+            borderRadius: 999,
+            fontSize: 12,
+            fontWeight: 700,
+            color: value ? '#166534' : '#92400e',
+            background: value ? '#dcfce7' : '#fef3c7',
+          }}>
+            {value ? 'Ativa' : 'Inativa'}
+          </span>
+        ),
+      },
+      {
+        key: 'created_at',
+        header: 'Criado em',
+        render: (value) => formatDateTime(value),
+      },
+      {
+        key: 'updated_at',
+        header: 'Atualizado em',
+        render: (value) => formatDateTime(value),
+      },
+      {
+        key: 'actions',
+        header: 'Ações',
+        render: (value, row) => (
+          <div className="actions-column">
+            <button
+              type="button"
+              className="edit-button"
+              onClick={() => openEditFuncaoFesta(row)}
+              title="Editar função"
+            >
+              <FaEdit />
+            </button>
+            <button
+              type="button"
+              className="delete-button"
+              onClick={() => deleteFuncaoFesta(row)}
+              title="Excluir função"
+            >
+              <FaTrash />
+            </button>
+          </div>
+        ),
+      },
+    ];
+
+    return (
+      <>
+        <div className="page-header">
+          <div className="page-actions">
+            <button className="add-button" onClick={openCreateFuncaoFesta}>
+              <FaPlus /> Nova Função
+            </button>
+          </div>
+
+          <div className="search-container">
+            <div className="search-wrapper">
+              <FaSearch className="search-icon" />
+              <input
+                className="search-input"
+                type="text"
+                placeholder="Buscar funções..."
+                value={funcoesFestaSearch}
+                onChange={(e) => setFuncoesFestaSearch(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+
+        <GenericTable
+          columns={funcoesFestaColumns}
+          data={funcoesFesta}
+          loading={funcoesFestaLoading}
+          totalPages={1}
+          currentPage={1}
+          onPageChange={() => {}}
+          className="full-width-table allow-horizontal-scroll"
+          hideEditButton
+          titleColumnKey="nome"
+        />
+      </>
+    );
+  };
+
   return (
     <div className="tecnicos-page users-page">
       <div className="tecnicos-content">
         {activeTab === 'eventos' && renderEventos()}
         {activeTab === 'organizadores_evento' && renderOrganizadoresCadastro()}
         {activeTab === 'funcionarios' && renderFuncionariosCadastro()}
+        {activeTab === 'funcoes_festa' && renderFuncoesFestaCadastro()}
 
         {resetInfo.show && (
           <PasswordResetModal
@@ -2304,15 +2759,52 @@ function CerimonialistaPage() {
               </div>
               <form onSubmit={saveFuncionario}>
                 <div className="modal-content">
+                  <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(funcionarioForm.is_recepcao)}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setFuncionarioForm((prev) => ({
+                          ...prev,
+                          is_recepcao: checked,
+                          usuario: '',
+                          usuario_is_active: checked,
+                        }));
+                        loadFuncionariosCadastrados('', checked);
+                      }}
+                    />
+                    Funcionário da recepção
+                  </label>
+
                   <div className="form-group">
-                    <label>Usuário Recepção (opcional)</label>
-                    <select value={funcionarioForm.usuario} onChange={(e) => setFuncionarioForm((p) => ({ ...p, usuario: e.target.value }))}>
-                      <option value="">Não vincular</option>
-                      {recepcaoUsers.map((u) => (
-                        <option key={u.id} value={u.id}>{u.full_name || u.username}</option>
-                      ))}
+                    <label>Funcionário já cadastrado</label>
+                    <select value={funcionarioForm.usuario} onChange={(e) => handleSelectFuncionarioCadastrado(e.target.value)}>
+                      <option value="">Adicionar novo funcionário</option>
+                      {funcionariosCadastrados
+                        .filter((u) => Boolean(u.is_recepcao) === Boolean(funcionarioForm.is_recepcao))
+                        .map((u) => (
+                          <option key={u.id} value={u.id}>
+                            {(u.full_name || u.username)}{u.is_active ? ' (ativo)' : ' (inativo)'}
+                          </option>
+                        ))}
                     </select>
+                    {funcionariosCadastradosLoading && (
+                      <div style={{ color: '#64748b', fontSize: 12, marginTop: 4 }}>Carregando cadastrados...</div>
+                    )}
                   </div>
+
+                  {funcionarioForm.usuario && (
+                    <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(funcionarioForm.usuario_is_active)}
+                        onChange={(e) => setFuncionarioForm((p) => ({ ...p, usuario_is_active: e.target.checked }))}
+                      />
+                      Usuário ativo no sistema
+                    </label>
+                  )}
+
                   <div className="form-row">
                     <div className="form-group" style={{ flex: 1 }}>
                       <label>Nome</label>
@@ -2323,11 +2815,64 @@ function CerimonialistaPage() {
                       <input value={funcionarioForm.documento} onChange={(e) => setFuncionarioForm((p) => ({ ...p, documento: e.target.value }))} required />
                     </div>
                   </div>
+
                   <div className="form-row">
                     <div className="form-group" style={{ flex: 1 }}>
-                      <label>Função</label>
-                      <input value={funcionarioForm.funcao} onChange={(e) => setFuncionarioForm((p) => ({ ...p, funcao: e.target.value }))} required />
+                      <label>E-mail {funcionarioForm.is_recepcao ? '(obrigatório)' : '(opcional)'}</label>
+                      <input
+                        type="email"
+                        value={funcionarioForm.email}
+                        onChange={(e) => setFuncionarioForm((p) => ({ ...p, email: e.target.value }))}
+                        required={Boolean(funcionarioForm.is_recepcao)}
+                      />
                     </div>
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label>Telefone</label>
+                      <input
+                        value={funcionarioForm.phone}
+                        onChange={(e) => setFuncionarioForm((p) => ({ ...p, phone: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 10, marginBottom: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                      <label style={{ margin: 0, fontWeight: 600 }}>Funções que pode exercer</label>
+                      <button type="button" className="add-button" onClick={openCreateFuncaoFesta} style={{ padding: '6px 10px' }}>
+                        <FaPlus /> Nova Função
+                      </button>
+                    </div>
+                    {funcoesFestaLoading ? (
+                      <div style={{ color: '#64748b', fontSize: 13 }}>Carregando funções...</div>
+                    ) : funcoesFesta.filter((f) => f.ativo).length === 0 ? (
+                      <div style={{ color: '#64748b', fontSize: 13 }}>Nenhuma função ativa cadastrada.</div>
+                    ) : (
+                      <div style={{ maxHeight: 140, overflowY: 'auto', display: 'grid', gap: 6 }}>
+                        {funcoesFesta
+                          .filter((f) => f.ativo)
+                          .map((f) => (
+                            <label key={f.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={funcionarioForm.funcoes_ids.includes(f.id)}
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setFuncionarioForm((prev) => ({
+                                    ...prev,
+                                    funcoes_ids: checked
+                                      ? [...prev.funcoes_ids, f.id]
+                                      : prev.funcoes_ids.filter((id) => id !== f.id),
+                                  }));
+                                }}
+                              />
+                              <span>{f.nome}</span>
+                            </label>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="form-row">
                     <div className="form-group" style={{ flex: 1 }}>
                       <label>Valor a pagar</label>
                       <input type="number" step="0.01" min="0" value={funcionarioForm.valor_pagamento} onChange={(e) => setFuncionarioForm((p) => ({ ...p, valor_pagamento: e.target.value }))} required />
@@ -2390,6 +2935,149 @@ function CerimonialistaPage() {
                     }}
                   >
                     {funcionarioSaving ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {funcaoFestaModalOpen && (
+          <div className="modal-overlay" onClick={() => setFuncaoFestaModalOpen(false)}>
+            <div className="modal-container" style={{ maxWidth: 520 }} onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>{funcaoFestaEditing ? 'Editar Função da Festa' : 'Nova Função da Festa'}</h2>
+                <button className="modal-close" onClick={() => setFuncaoFestaModalOpen(false)}><FaTimes /></button>
+              </div>
+
+              <form onSubmit={saveFuncaoFesta}>
+                <div className="modal-content">
+                  {funcaoFestaEditing ? (
+                    <>
+                      <div className="form-group">
+                        <label>Nome da Função</label>
+                        <input
+                          value={funcaoFestaForm.nome}
+                          onChange={(e) => setFuncaoFestaForm((p) => ({ ...p, nome: e.target.value }))}
+                          required
+                        />
+                      </div>
+
+                      <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean(funcaoFestaForm.ativo)}
+                          onChange={(e) => setFuncaoFestaForm((p) => ({ ...p, ativo: e.target.checked }))}
+                        />
+                        Função ativa
+                      </label>
+                    </>
+                  ) : (
+                    <>
+                      <p style={funcaoFestaModalStyles.helperText}>
+                        Dica: cole várias linhas do Excel no campo Nome.
+                      </p>
+
+                      <div style={funcaoFestaModalStyles.gridWrapper}>
+                        <div style={funcaoFestaModalStyles.row}>
+                          <span style={funcaoFestaModalStyles.colLabel}>Nome da função</span>
+                          <span style={funcaoFestaModalStyles.colLabel}>Ativa</span>
+                          <span />
+                        </div>
+
+                        {funcaoFestaRows.map((row) => (
+                          <div key={row.rowId} style={funcaoFestaModalStyles.row}>
+                            <input
+                              value={row.nome}
+                              onChange={(e) => updateFuncaoFestaRow(row.rowId, 'nome', e.target.value)}
+                              onPaste={(e) => handleFuncaoFestaGridPaste(row.rowId, e)}
+                              placeholder="Ex.: Garçom"
+                              style={funcaoFestaModalStyles.input}
+                            />
+                            <label style={{ display: 'flex', justifyContent: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={Boolean(row.ativo)}
+                                onChange={(e) => updateFuncaoFestaRow(row.rowId, 'ativo', e.target.checked)}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => removeFuncaoFestaRow(row.rowId)}
+                              style={{
+                                ...funcaoFestaModalStyles.removeBtn,
+                                cursor: funcaoFestaRows.length <= 1 ? 'default' : 'pointer',
+                                opacity: funcaoFestaRows.length <= 1 ? 0.35 : 1,
+                              }}
+                              disabled={funcaoFestaRows.length <= 1}
+                            >
+                              <FaTrash />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div style={funcaoFestaModalStyles.addRowSection}>
+                        <input
+                          type="number"
+                          min="1"
+                          max="50"
+                          value={qtdAdicionarFuncoes}
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            setQtdAdicionarFuncoes(Number.isFinite(v) && v > 0 ? v : 1);
+                          }}
+                          style={{ ...funcaoFestaModalStyles.input, width: 70, textAlign: 'center' }}
+                        />
+                        <button type="button" className="add-button" onClick={addFuncaoFestaRows} style={{ padding: '7px 10px' }}>
+                          <FaPlus /> Adicionar {qtdAdicionarFuncoes > 1 ? `${qtdAdicionarFuncoes} linhas` : 'linha'}
+                        </button>
+                        <button type="button" className="add-button" onClick={addFuncaoFestaRow} style={{ padding: '7px 10px' }}>
+                          <FaPlus /> Nova linha
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: 10,
+                  borderTop: '1px solid #e2e8f0',
+                  padding: '12px 16px',
+                  background: '#fff',
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => setFuncaoFestaModalOpen(false)}
+                    style={{
+                      border: '1px solid #e5e7eb',
+                      background: '#fff',
+                      color: '#374151',
+                      borderRadius: 8,
+                      padding: '9px 14px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={funcaoFestaSaving}
+                    style={{
+                      border: 'none',
+                      background: '#0f766e',
+                      color: '#fff',
+                      borderRadius: 8,
+                      padding: '9px 14px',
+                      fontWeight: 700,
+                      cursor: funcaoFestaSaving ? 'not-allowed' : 'pointer',
+                      opacity: funcaoFestaSaving ? 0.7 : 1,
+                    }}
+                  >
+                    {funcaoFestaSaving ? 'Salvando...' : 'Salvar'}
                   </button>
                 </div>
               </form>
