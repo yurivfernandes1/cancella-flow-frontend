@@ -409,6 +409,7 @@ function WelcomePage() {
   const isRecepcao = user?.groups?.some(group => group.name === 'Recepção');
   const isOrganizadorEvento = user?.groups?.some(group => group.name === 'Organizador do Evento');
   const recepcaoOnly = isRecepcao && !isCerimonialista && !isOrganizadorEvento && !isAdmin && !isSindico && !isMorador && !isPortaria;
+  const cerimonialOnly = isCerimonialista && !isRecepcao && !isOrganizadorEvento && !isAdmin && !isSindico && !isMorador && !isPortaria;
 
   useEffect(() => {
     if (!recepcaoOnly) return;
@@ -416,7 +417,13 @@ function WelcomePage() {
     navigate('/recepcao', { replace: true });
   }, [recepcaoOnly, navigate]);
 
-  if ((isCerimonialista || isRecepcao || isOrganizadorEvento) && cards.length === 0) {
+  useEffect(() => {
+    if (!cerimonialOnly) return;
+    if (window.location.pathname === '/cerimonialista') return;
+    navigate('/cerimonialista?tab=eventos', { replace: true });
+  }, [cerimonialOnly, navigate]);
+
+  if ((isCerimonialista || isRecepcao || isOrganizadorEvento) && cards.length === 0 && !cerimonialOnly) {
     const rolePanels = [];
     if (isCerimonialista) {
       rolePanels.push({

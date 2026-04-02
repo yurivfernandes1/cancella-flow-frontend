@@ -1207,8 +1207,14 @@ function CerimonialistaPage() {
     setConvidadoSaving(true);
     try {
       if (convidadoEditing?.id) {
+        const cpfDigits = String(convidadoForm.cpf || '').replace(/\D/g, '');
+        if (cpfDigits && cpfDigits.length !== 11) {
+          alert('CPF inválido. Informe 11 dígitos ou deixe em branco.');
+          return;
+        }
+
         const payload = {
-          cpf: String(convidadoForm.cpf || '').replace(/\D/g, ''),
+          cpf: cpfDigits,
           nome: String(convidadoForm.nome || '').trim(),
           email: String(convidadoForm.email || '').trim(),
           vip: Boolean(convidadoForm.vip),
@@ -1228,10 +1234,18 @@ function CerimonialistaPage() {
             nomeTrim: String(row.nome || '').trim(),
             emailTrim: String(row.email || '').trim(),
           }))
-          .filter((row) => row.cpfDigits.length === 11 && row.nomeTrim && row.emailTrim);
+          .filter((row) => row.nomeTrim && row.emailTrim);
+
+        const rowsComCpfInvalido = rowsValidos.filter(
+          (row) => row.cpfDigits && row.cpfDigits.length !== 11,
+        );
+        if (rowsComCpfInvalido.length) {
+          alert('Há convidados com CPF inválido. Informe 11 dígitos ou deixe o CPF em branco.');
+          return;
+        }
 
         if (!rowsValidos.length) {
-          alert('Preencha CPF, nome e e-mail válidos para pelo menos um convidado.');
+          alert('Preencha nome e e-mail válidos para pelo menos um convidado.');
           return;
         }
 
@@ -3528,12 +3542,11 @@ function CerimonialistaPage() {
                     <>
                       <div className="form-row">
                         <div className="form-group" style={{ flex: 1 }}>
-                          <label>CPF</label>
+                          <label>CPF (opcional)</label>
                           <input
                             value={formatCpfValue(convidadoForm.cpf)}
                             onChange={(e) => setConvidadoForm((p) => ({ ...p, cpf: formatCpfValue(e.target.value) }))}
                             onBlur={preencherNomeConvidadoFormPorCpf}
-                            required
                           />
                         </div>
                         <div className="form-group" style={{ flex: 1 }}>
@@ -3583,7 +3596,7 @@ function CerimonialistaPage() {
                         </p>
 
                         <div className="convidado-col-header">
-                          <div className="col-cpf"><span style={convidadoModalStyles.label}>CPF</span></div>
+                          <div className="col-cpf"><span style={convidadoModalStyles.label}>CPF (opcional)</span></div>
                           <div className="col-nome"><span style={convidadoModalStyles.label}>Nome</span></div>
                           <div className="col-email"><span style={convidadoModalStyles.label}>E-mail (opcional)</span></div>
                           <div className="col-vip"><span style={convidadoModalStyles.label}>VIP</span></div>
@@ -3608,7 +3621,6 @@ function CerimonialistaPage() {
                                       ? '#f59e0b'
                                       : '#d1d5db',
                                 }}
-                                required
                               />
                             </div>
 
@@ -3723,8 +3735,8 @@ function CerimonialistaPage() {
                               <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: 0, textAlign: 'center' }}>Digite o nome ou CPF para buscar.</p>
                             )}
 
-                            {resultadosConvidadoAnterior.map((c) => (
-                              <div key={`${c.cpf}-${c.nome}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, marginBottom: 4 }}>
+                            {resultadosConvidadoAnterior.map((c, idx) => (
+                              <div key={`${c.cpf || 'sem-cpf'}-${c.nome}-${idx}`} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 6, marginBottom: 4 }}>
                                 <div style={{ minWidth: 0, overflow: 'hidden' }}>
                                   <div style={{ fontSize: '0.83rem', fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                     {c.nome}
