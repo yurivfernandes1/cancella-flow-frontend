@@ -1253,16 +1253,14 @@ function CerimonialistaPage() {
         let sucessos = 0;
         for (const row of rowsValidos) {
           try {
-            const createResp = await listaConvidadosCerimonialAPI.adicionarConvidado(convidadoListaId, {
+            await listaConvidadosCerimonialAPI.adicionarConvidado(convidadoListaId, {
               cpf: row.cpfDigits,
               nome: row.nomeTrim,
               email: row.emailTrim,
               vip: Boolean(row.vip),
+              confirmado: Boolean(row.confirmado),
             });
             sucessos += 1;
-            if (row.confirmado && createResp?.data?.id) {
-              await listaConvidadosCerimonialAPI.confirmarEntrada(convidadoListaId, createResp.data.id);
-            }
           } catch (rowErr) {
             const msg = rowErr?.response?.data?.error || `Erro ao adicionar ${row.nomeTrim || row.cpfDigits}`;
             erros.push(msg);
