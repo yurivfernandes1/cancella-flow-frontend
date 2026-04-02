@@ -109,17 +109,6 @@ const getFuncaoPrincipalFuncionario = (item) => {
   return legado.split(',')[0].trim() || 'Sem função';
 };
 
-const getRespostaPresencaMeta = (value) => {
-  const normalized = String(value || '').toLowerCase();
-  if (normalized === 'confirmado') {
-    return { label: 'Presença confirmada', color: '#166534' };
-  }
-  if (normalized === 'recusado') {
-    return { label: 'Presença recusada', color: '#b91c1c' };
-  }
-  return { label: 'Aguardando confirmação', color: '#9ca3af' };
-};
-
 const eventoActionGridStyle = {
   display: 'flex',
   flexWrap: 'wrap',
@@ -327,6 +316,8 @@ const isHeaderLine = (cols) => {
   return c0 === 'cpf' || c1 === 'nome' || c2 === 'email';
 };
 
+const CONVIDADOS_PAGE_SIZE = 5;
+
 function CerimonialistaPage() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
@@ -388,6 +379,8 @@ function CerimonialistaPage() {
   const [buscaConvidadoAnterior, setBuscaConvidadoAnterior] = useState('');
   const [resultadosConvidadoAnterior, setResultadosConvidadoAnterior] = useState([]);
   const [buscandoConvidadoAnterior, setBuscandoConvidadoAnterior] = useState(false);
+  const [convidadosSearchPorEvento, setConvidadosSearchPorEvento] = useState({});
+  const [convidadosPagePorEvento, setConvidadosPagePorEvento] = useState({});
 
   const [organizadoresPorEvento, setOrganizadoresPorEvento] = useState({});
   const [organizadoresLoadingPorEvento, setOrganizadoresLoadingPorEvento] = useState({});
@@ -1314,6 +1307,26 @@ function CerimonialistaPage() {
     }));
   };
 
+  const updateConvidadosSearchEvento = (eventoId, value) => {
+    setConvidadosSearchPorEvento((prev) => ({
+      ...prev,
+      [eventoId]: value,
+    }));
+    setConvidadosPagePorEvento((prev) => ({
+      ...prev,
+      [eventoId]: 1,
+    }));
+  };
+
+  const changeConvidadosPageEvento = (eventoId, nextPage, totalPages) => {
+    const safeTotal = Math.max(1, Number(totalPages || 1));
+    const safePage = Math.min(Math.max(1, Number(nextPage || 1)), safeTotal);
+    setConvidadosPagePorEvento((prev) => ({
+      ...prev,
+      [eventoId]: safePage,
+    }));
+  };
+
   const toggleOrganizadoresEvento = async (eventoId) => {
     const proximoAberto = !organizadoresExpandidos[eventoId];
     setOrganizadoresExpandidos((prev) => ({
@@ -1731,6 +1744,37 @@ function CerimonialistaPage() {
     }
   };
 
+  const desfazerCheckoutRecepcao = async (eventoId, item) => {
+    if (!eventoId || !item?.id || !item?.is_recepcao || !item?.horario_saida) return;
+    if (!window.confirm(`Desfazer checkout de ${item.nome || 'funcionário'}?`)) return;
+    try {
+      await eventoCerimonialAPI.patchFuncionario(eventoId, item.id, {
+        horario_saida: null,
+      });
+      await loadFuncionariosEvento(eventoId);
+      alert('Checkout desfeito com sucesso.');
+    } catch (err) {
+      console.error('Erro ao desfazer checkout', err);
+      alert(err.response?.data?.error || 'Não foi possível desfazer o checkout.');
+    }
+  };
+
+  const desfazerCheckinRecepcao = async (eventoId, item) => {
+    if (!eventoId || !item?.id || !item?.is_recepcao || !item?.horario_entrada) return;
+    if (!window.confirm(`Desfazer check-in de ${item.nome || 'funcionário'}? Isso também remove o checkout.`)) return;
+    try {
+      await eventoCerimonialAPI.patchFuncionario(eventoId, item.id, {
+        horario_entrada: null,
+        horario_saida: null,
+      });
+      await loadFuncionariosEvento(eventoId);
+      alert('Check-in desfeito com sucesso.');
+    } catch (err) {
+      console.error('Erro ao desfazer check-in', err);
+      alert(err.response?.data?.error || 'Não foi possível desfazer o check-in.');
+    }
+  };
+
   const openCreateFuncaoFesta = () => {
     setFuncaoFestaEditing(null);
     setFuncaoFestaForm({ nome: '', ativo: true });
@@ -1895,6 +1939,18 @@ function CerimonialistaPage() {
         ) : (
           eventosFiltrados.map((ev) => {
             const listaEvento = getListaByEventoId(ev.id);
+            const convidadosSearch = String(convidadosSearchPorEvento[ev.id] || '');
+            const convidadosFiltrados = (listaEvento?.convidados || []).filter((convidado) =>
+              String(convidado?.nome || '').toLowerCase().includes(convidadosSearch.trim().toLowerCase())
+            );
+            const convidadosTotalPages = Math.max(1, Math.ceil(convidadosFiltrados.length / CONVIDADOS_PAGE_SIZE));
+            const convidadosCurrentPageRaw = Number(convidadosPagePorEvento[ev.id] || 1);
+            const convidadosCurrentPage = Math.min(Math.max(1, convidadosCurrentPageRaw), convidadosTotalPages);
+            const convidadosSliceStart = (convidadosCurrentPage - 1) * CONVIDADOS_PAGE_SIZE;
+            const convidadosPaginados = convidadosFiltrados.slice(
+              convidadosSliceStart,
+              convidadosSliceStart + CONVIDADOS_PAGE_SIZE
+            );
             const listaAberta = Boolean(listasExpandidas[ev.id]);
             const organizadoresAberto = Boolean(organizadoresExpandidos[ev.id]);
             const organizadoresEvento = organizadoresPorEvento[ev.id] || [];
@@ -2151,77 +2207,121 @@ function CerimonialistaPage() {
                         </button>
                       </div>
                     </div>
-                  ) : (listaEvento.convidados || []).length === 0 ? (
-                    <p style={{ margin: 0, color: '#64748b' }}>Lista sem convidados no momento.</p>
                   ) : (
                     <div style={{ display: 'grid', gap: 8 }}>
-                      {(listaEvento.convidados || []).map((c) => {
-                        const respostaMeta = getRespostaPresencaMeta(c.resposta_presenca);
-                        const podeEnviarQr = String(c.resposta_presenca || '').toLowerCase() === 'confirmado';
-                        return (
-                        <div
-                          key={c.id}
-                          style={{
-                            border: '1px solid #e5e7eb',
-                            borderRadius: 8,
-                            padding: '10px 12px',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            gap: 10,
-                            background: c.vip ? '#fffbeb' : '#fff',
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <div>
-                            <div style={{ fontWeight: 600, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
-                              {c.nome}
-                              {c.vip && <span style={{ background: '#f59e0b', color: '#fff', borderRadius: 999, fontSize: 11, padding: '2px 8px' }}>VIP</span>}
-                            </div>
-                            <div style={{ color: '#6b7280', fontSize: 13 }}>CPF: {c.cpf_mascarado || '-'}</div>
-                          </div>
-                          <div style={{ display: 'grid', gap: 2 }}>
-                            <div style={{ color: respostaMeta.color, fontWeight: 600, fontSize: 13 }}>
-                              {respostaMeta.label}
-                            </div>
-                            <div style={{ color: c.entrada_confirmada ? '#059669' : '#9ca3af', fontWeight: 600, fontSize: 13 }}>
-                              {c.entrada_confirmada ? 'Entrada confirmada' : 'Aguardando entrada'}
-                            </div>
-                          </div>
-                          <div className="actions-column" style={{ display: 'flex', gap: 6 }}>
-                            <button
-                              type="button"
-                              className="edit-button"
-                              onClick={() => openEditConvidado(listaEvento.id, c)}
-                              title="Editar convidado"
-                              aria-label="Editar convidado"
-                            >
-                              <FaEdit />
-                            </button>
-                            <button
-                              type="button"
-                              className="save-button"
-                              onClick={() => enviarQrCodeConvidado(listaEvento.id, c)}
-                              disabled={!podeEnviarQr}
-                              style={!podeEnviarQr ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
-                              title={podeEnviarQr ? 'Enviar QR Code por e-mail' : 'Disponível somente para presença confirmada'}
-                              aria-label="Enviar QR Code"
-                            >
-                              <FaQrcode />
-                            </button>
-                            <button
-                              type="button"
-                              className="delete-button"
-                              onClick={() => deleteConvidado(listaEvento.id, c)}
-                              title="Excluir convidado"
-                              aria-label="Excluir convidado"
-                            >
-                              <FaTrash />
-                            </button>
-                          </div>
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div className="search-wrapper" style={{ minWidth: 240, flex: '1 1 240px' }}>
+                          <FaSearch className="search-icon" />
+                          <input
+                            className="search-input"
+                            type="text"
+                            placeholder="Buscar convidado por nome..."
+                            value={convidadosSearch}
+                            onChange={(e) => updateConvidadosSearchEvento(ev.id, e.target.value)}
+                          />
                         </div>
-                        );
-                      })}
+                        <div style={{ color: '#475569', fontSize: 12 }}>
+                          Mostrando {convidadosPaginados.length} de {convidadosFiltrados.length}
+                        </div>
+                      </div>
+
+                      {convidadosFiltrados.length === 0 ? (
+                        <p style={{ margin: 0, color: '#64748b' }}>
+                          {convidadosSearch.trim() ? 'Nenhum convidado encontrado para a busca.' : 'Lista sem convidados no momento.'}
+                        </p>
+                      ) : (
+                        <>
+                          <div style={{ display: 'grid', gap: 8 }}>
+                            {convidadosPaginados.map((c) => {
+                              const podeEnviarQr = String(c.resposta_presenca || '').toLowerCase() === 'confirmado';
+                              return (
+                                <div
+                                  key={c.id}
+                                  style={{
+                                    border: '1px solid #e5e7eb',
+                                    borderRadius: 8,
+                                    padding: '10px 12px',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    gap: 10,
+                                    background: c.vip ? '#fffbeb' : '#fff',
+                                  }}
+                                >
+                                  <div style={{ fontWeight: 600, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    {c.nome}
+                                    {c.vip && (
+                                      <span style={{ background: '#f59e0b', color: '#fff', borderRadius: 999, fontSize: 11, padding: '2px 8px' }}>
+                                        VIP
+                                      </span>
+                                    )}
+                                  </div>
+
+                                  <div className="actions-column" style={{ display: 'flex', gap: 6 }}>
+                                    <button
+                                      type="button"
+                                      className="edit-button"
+                                      onClick={() => openEditConvidado(listaEvento.id, c)}
+                                      title="Editar convidado"
+                                      aria-label="Editar convidado"
+                                    >
+                                      <FaEdit />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="save-button"
+                                      onClick={() => enviarQrCodeConvidado(listaEvento.id, c)}
+                                      disabled={!podeEnviarQr}
+                                      style={!podeEnviarQr ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
+                                      title={podeEnviarQr ? 'Enviar QR Code por e-mail' : 'Disponível somente para presença confirmada'}
+                                      aria-label="Enviar QR Code"
+                                    >
+                                      <FaQrcode />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="delete-button"
+                                      onClick={() => deleteConvidado(listaEvento.id, c)}
+                                      title="Excluir convidado"
+                                      aria-label="Excluir convidado"
+                                    >
+                                      <FaTrash />
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {convidadosTotalPages > 1 && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                              <button
+                                type="button"
+                                className="add-button"
+                                style={{ padding: '6px 10px' }}
+                                disabled={convidadosCurrentPage <= 1}
+                                onClick={() => changeConvidadosPageEvento(ev.id, convidadosCurrentPage - 1, convidadosTotalPages)}
+                              >
+                                Anterior
+                              </button>
+
+                              <span style={{ fontSize: 12, color: '#475569', fontWeight: 600 }}>
+                                Página {convidadosCurrentPage} de {convidadosTotalPages}
+                              </span>
+
+                              <button
+                                type="button"
+                                className="add-button"
+                                style={{ padding: '6px 10px' }}
+                                disabled={convidadosCurrentPage >= convidadosTotalPages}
+                                onClick={() => changeConvidadosPageEvento(ev.id, convidadosCurrentPage + 1, convidadosTotalPages)}
+                              >
+                                Próxima
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -2337,6 +2437,30 @@ function CerimonialistaPage() {
                                   Funções: {Array.isArray(item.funcoes) && item.funcoes.length > 0 ? item.funcoes.map((f) => f.nome).join(', ') : (item.funcao || '-')}
                                 </div>
                                 <div>Entrada: {formatDateTime(item.horario_entrada)} • Saída: {formatDateTime(item.horario_saida)}</div>
+                                {item.is_recepcao && (item.horario_entrada || item.horario_saida) && (
+                                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
+                                    <button
+                                      type="button"
+                                      className="add-button"
+                                      style={{ padding: '6px 10px', background: '#7c3aed' }}
+                                      disabled={!item.horario_saida}
+                                      onClick={() => desfazerCheckoutRecepcao(ev.id, item)}
+                                      title="Desfazer checkout da recepção"
+                                    >
+                                      Desfazer checkout
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="add-button"
+                                      style={{ padding: '6px 10px', background: '#5b21b6' }}
+                                      disabled={!item.horario_entrada}
+                                      onClick={() => desfazerCheckinRecepcao(ev.id, item)}
+                                      title="Desfazer check-in da recepção"
+                                    >
+                                      Desfazer check-in
+                                    </button>
+                                  </div>
+                                )}
                                 <div>Valor: {formatCurrency(item.valor_pagamento)} • {item.pagamento_realizado ? 'Pago' : 'Pendente'}</div>
                                 {item.usuario_ativo !== null && item.usuario_ativo !== undefined && (
                                   <div style={{ color: item.usuario_ativo ? '#166534' : '#92400e', fontWeight: 600 }}>
