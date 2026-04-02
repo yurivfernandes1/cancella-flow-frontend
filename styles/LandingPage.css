@@ -248,6 +248,15 @@
   color: #19294a;
 }
 
+.trust-item-link {
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.trust-item-link:hover {
+  opacity: 0.8;
+}
+
 .trust-icon {
   color: #2abb98;
   font-size: 1.2rem;
@@ -324,6 +333,39 @@
   color: #64748b;
   margin: 0;
   line-height: 1.6;
+}
+
+/* ===== Event Suite ===== */
+.event-suite {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem 1.5rem 5rem;
+}
+
+.event-suite-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.event-suite-card {
+  background: linear-gradient(145deg, #f8fbff, #ffffff);
+  border: 1px solid #dbeafe;
+  border-radius: 16px;
+  padding: 1.5rem;
+}
+
+.event-suite-card h3 {
+  margin: 0 0 0.9rem;
+  color: #19294a;
+  font-size: 1.1rem;
+}
+
+.event-suite-card ul {
+  margin: 0;
+  padding-left: 1rem;
+  color: #475569;
+  line-height: 1.65;
 }
 
 /* ===== Pricing ===== */

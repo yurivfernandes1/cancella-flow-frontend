@@ -408,31 +408,55 @@ function WelcomePage() {
   const isCerimonialista = user?.groups?.some(group => group.name === 'Cerimonialista');
   const isRecepcao = user?.groups?.some(group => group.name === 'Recepção');
   const isOrganizadorEvento = user?.groups?.some(group => group.name === 'Organizador do Evento');
+  const recepcaoOnly = isRecepcao && !isCerimonialista && !isOrganizadorEvento && !isAdmin && !isSindico && !isMorador && !isPortaria;
+
+  useEffect(() => {
+    if (!recepcaoOnly) return;
+    if (window.location.pathname === '/recepcao') return;
+    navigate('/recepcao', { replace: true });
+  }, [recepcaoOnly, navigate]);
 
   if ((isCerimonialista || isRecepcao || isOrganizadorEvento) && cards.length === 0) {
-    const rolePanelPath = isCerimonialista
-      ? '/cerimonialista?tab=eventos'
-      : isRecepcao
-        ? '/recepcao?tab=eventos'
-        : '/organizador-evento?tab=eventos';
+    const rolePanels = [];
+    if (isCerimonialista) {
+      rolePanels.push({
+        name: 'Painel Cerimonial',
+        path: '/cerimonialista?tab=eventos',
+      });
+    }
+    if (isRecepcao) {
+      rolePanels.push({
+        name: 'Painel da Recepção',
+        path: '/recepcao',
+      });
+    }
+    if (isOrganizadorEvento) {
+      rolePanels.push({
+        name: 'Painel Organizador',
+        path: '/organizador-evento?tab=eventos',
+      });
+    }
+
+    const subItems = rolePanels.map((panel) => ({
+      name: panel.name,
+      icon: <FaChartLine size={16} />,
+      path: panel.path,
+    }));
+
+    subItems.push({
+      name: 'Meu Perfil',
+      icon: <FaUserShield size={16} />,
+      path: '/perfil/meu',
+    });
 
     cards.push({
-      title: 'Minha Área',
-      description: 'Acesse seu painel e configurações de perfil.',
+      title: recepcaoOnly ? 'Recepção' : 'Minha Área',
+      description: recepcaoOnly
+        ? 'Acesse seu painel operacional da recepção.'
+        : 'Acesse seu painel e configurações de perfil.',
       active: true,
       icon: <FaUserCog size={32} />,
-      subItems: [
-        {
-          name: 'Painel',
-          icon: <FaChartLine size={16} />,
-          path: rolePanelPath,
-        },
-        {
-          name: 'Meu Perfil',
-          icon: <FaUserShield size={16} />,
-          path: '/perfil/meu',
-        },
-      ],
+      subItems,
     });
   }
   const showDashboard = isAdmin || isSindico || isMorador || isPortaria;

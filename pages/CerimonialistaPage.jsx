@@ -9,6 +9,7 @@ import PasswordResetModal from '../components/Users/PasswordResetModal';
 import GenericTable from '../components/GenericTable';
 import api, * as apiServices from '../services/api';
 import { generateStrongPassword } from '../utils/passwordGenerator';
+import { validateCPF } from '../utils/validators';
 import '../styles/UsersPage.css';
 import '../styles/UnitsCards.css';
 import '../styles/Modal.css';
@@ -83,6 +84,31 @@ const formatCurrency = (value) => {
   return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
+const parseCurrencyInputToDecimalString = (value) => {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (!digits) return '0.00';
+  return (Number(digits) / 100).toFixed(2);
+};
+
+const getPrimeiroNome = (nomeCompleto) => {
+  const nome = String(nomeCompleto || '').trim();
+  if (!nome) return '-';
+  return nome.split(/\s+/)[0] || '-';
+};
+
+const getFuncaoPrincipalFuncionario = (item) => {
+  if (item?.is_recepcao) return 'Recepção';
+
+  const funcoes = Array.isArray(item?.funcoes) ? item.funcoes : [];
+  if (funcoes.length > 0) {
+    return String(funcoes[0]?.nome || '').trim() || 'Sem função';
+  }
+
+  const legado = String(item?.funcao || '').trim();
+  if (!legado) return 'Sem função';
+  return legado.split(',')[0].trim() || 'Sem função';
+};
+
 const getRespostaPresencaMeta = (value) => {
   const normalized = String(value || '').toLowerCase();
   if (normalized === 'confirmado') {
@@ -133,6 +159,16 @@ const formatCpfValue = (value) => {
   if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
   if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+};
+
+const formatPhoneValue = (value) => {
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 };
 
 const parseBooleanToken = (value) => {
@@ -362,10 +398,17 @@ function CerimonialistaPage() {
   const [funcionariosPorEvento, setFuncionariosPorEvento] = useState({});
   const [funcionariosLoadingPorEvento, setFuncionariosLoadingPorEvento] = useState({});
   const [funcionariosExpandidos, setFuncionariosExpandidos] = useState({});
+  const [funcionariosDetalhesExpandidosPorEvento, setFuncionariosDetalhesExpandidosPorEvento] = useState({});
   const [funcionarioEventoSelecionadoId, setFuncionarioEventoSelecionadoId] = useState('');
   const [funcionarioModalOpen, setFuncionarioModalOpen] = useState(false);
   const [funcionarioEditing, setFuncionarioEditing] = useState(null);
   const [funcionarioSaving, setFuncionarioSaving] = useState(false);
+  const [cpfUsoStatus, setCpfUsoStatus] = useState({
+    checking: false,
+    exists: false,
+    invalid: false,
+    message: '',
+  });
   const [recepcaoUsers, setRecepcaoUsers] = useState([]);
   const [funcionarioForm, setFuncionarioForm] = useState({
     is_recepcao: false,
@@ -1318,6 +1361,21 @@ function CerimonialistaPage() {
     }
   };
 
+  const toggleDetalhesFuncionarioEvento = (eventoId, funcionarioId) => {
+    setFuncionariosDetalhesExpandidosPorEvento((prev) => {
+      const eventoKey = String(eventoId);
+      const funcionarioKey = String(funcionarioId);
+      const atuais = prev[eventoKey] || {};
+      return {
+        ...prev,
+        [eventoKey]: {
+          ...atuais,
+          [funcionarioKey]: !atuais[funcionarioKey],
+        },
+      };
+    });
+  };
+
   const generateConviteOrganizador = async (eventoId, eventoNome = '') => {
     try {
       const response = await eventoCerimonialAPI.gerarConvite(eventoId, 'organizador');
@@ -1484,6 +1542,7 @@ function CerimonialistaPage() {
       pagamento_realizado: false,
       valor_pagamento: '0.00',
     });
+    setCpfUsoStatus({ checking: false, exists: false, invalid: false, message: '' });
     loadFuncionariosCadastrados();
     loadFuncoesFesta();
     setFuncionarioModalOpen(true);
@@ -1496,16 +1555,17 @@ function CerimonialistaPage() {
       is_recepcao: Boolean(item.is_recepcao),
       usuario: item.usuario ? String(item.usuario) : '',
       email: item.usuario_email || '',
-      phone: item.usuario_phone || '',
+      phone: formatPhoneValue(item.usuario_phone || ''),
       usuario_is_active: item.usuario_ativo === null || item.usuario_ativo === undefined ? false : Boolean(item.usuario_ativo),
       nome: item.nome || '',
-      documento: item.documento || '',
-      funcoes_ids: Array.isArray(item.funcoes) ? item.funcoes.map((f) => f.id) : [],
+      documento: formatCpfValue(item.documento || ''),
+      funcoes_ids: Array.isArray(item.funcoes) && item.funcoes.length > 0 ? [item.funcoes[0].id] : [],
       horario_entrada: formatDateInput(item.horario_entrada),
       horario_saida: formatDateInput(item.horario_saida),
       pagamento_realizado: Boolean(item.pagamento_realizado),
       valor_pagamento: String(item.valor_pagamento ?? '0.00'),
     });
+    setCpfUsoStatus({ checking: false, exists: false, invalid: false, message: '' });
     loadFuncionariosCadastrados();
     loadFuncoesFesta();
     setFuncionarioModalOpen(true);
@@ -1526,30 +1586,111 @@ function CerimonialistaPage() {
       ...prev,
       usuario: String(selecionado.id),
       nome: selecionado.full_name || selecionado.username || prev.nome,
-      documento: selecionado.cpf || prev.documento,
+      documento: formatCpfValue(selecionado.cpf || prev.documento),
       email: selecionado.email || prev.email,
-      phone: selecionado.phone || prev.phone,
+      phone: formatPhoneValue(selecionado.phone || prev.phone),
       usuario_is_active: Boolean(selecionado.is_active),
     }));
   };
+
+  useEffect(() => {
+    if (!funcionarioModalOpen) {
+      setCpfUsoStatus({ checking: false, exists: false, invalid: false, message: '' });
+      return;
+    }
+
+    const podeValidarCpf = !funcionarioForm.usuario || Boolean(funcionarioEditing);
+    if (!podeValidarCpf) {
+      setCpfUsoStatus({ checking: false, exists: false, invalid: false, message: '' });
+      return;
+    }
+
+    const cpfDigits = String(funcionarioForm.documento || '').replace(/\D/g, '');
+    if (!cpfDigits) {
+      setCpfUsoStatus({ checking: false, exists: false, invalid: false, message: '' });
+      return;
+    }
+
+    if (cpfDigits.length < 11) {
+      setCpfUsoStatus({ checking: false, exists: false, invalid: false, message: '' });
+      return;
+    }
+
+    if (!validateCPF(cpfDigits)) {
+      setCpfUsoStatus({ checking: false, exists: false, invalid: true, message: 'CPF inválido.' });
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setCpfUsoStatus({ checking: true, exists: false, invalid: false, message: 'Validando CPF...' });
+      try {
+        const response = await eventoCerimonialAPI.listFuncionariosCadastrados({ q: cpfDigits });
+        const lista = Array.isArray(response.data) ? response.data : [];
+        const cpfJaExiste = lista.some((usuario) => {
+          const usuarioId = String(usuario.id || '');
+          const usuarioEdicaoId = String(funcionarioEditing?.usuario || '');
+          if (usuarioEdicaoId && usuarioId && usuarioId === usuarioEdicaoId) {
+            return false;
+          }
+          const docDigits = String(usuario.cpf || '').replace(/\D/g, '');
+          return docDigits === cpfDigits;
+        });
+
+        if (cancelled) return;
+
+        setCpfUsoStatus(
+          cpfJaExiste
+            ? { checking: false, exists: true, invalid: false, message: 'CPF já está sendo usado por um funcionário.' }
+            : { checking: false, exists: false, invalid: false, message: 'CPF disponível na base de funcionários.' }
+        );
+      } catch {
+        if (cancelled) return;
+        setCpfUsoStatus({ checking: false, exists: false, invalid: false, message: 'Não foi possível validar o CPF agora.' });
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [
+    funcionarioModalOpen,
+    funcionarioForm.documento,
+    funcionarioForm.usuario,
+    funcionarioEditing,
+  ]);
 
   const saveFuncionario = async (e) => {
     e.preventDefault();
     if (!funcionarioEventoSelecionadoId) return;
     setFuncionarioSaving(true);
     try {
+      const validaCpfNoFormulario = !funcionarioForm.usuario || Boolean(funcionarioEditing);
+      const cpfDigits = String(funcionarioForm.documento || '').replace(/\D/g, '');
+      if (validaCpfNoFormulario && cpfDigits.length === 11 && !validateCPF(cpfDigits)) {
+        alert('CPF inválido. Verifique os dígitos informados.');
+        return;
+      }
+
+      if (validaCpfNoFormulario && cpfUsoStatus.exists) {
+        alert('Este CPF já está sendo usado por um funcionário.');
+        return;
+      }
+
+      const cadastroComUsuarioExistente = !funcionarioEditing?.id && Boolean(funcionarioForm.usuario);
       const payload = {
         usuario: funcionarioForm.usuario || null,
         nome: funcionarioForm.nome,
-        documento: funcionarioForm.documento,
+        documento: String(funcionarioForm.documento || '').replace(/\D/g, '').slice(0, 11),
         email: funcionarioForm.email,
-        phone: funcionarioForm.phone,
+        phone: String(funcionarioForm.phone || '').replace(/\D/g, '').slice(0, 11),
         is_recepcao: Boolean(funcionarioForm.is_recepcao),
         usuario_is_active: Boolean(funcionarioForm.usuario_is_active),
-        funcoes_ids: funcionarioForm.funcoes_ids || [],
-        horario_entrada: funcionarioForm.horario_entrada || null,
-        horario_saida: funcionarioForm.horario_saida || null,
-        pagamento_realizado: Boolean(funcionarioForm.pagamento_realizado),
+        funcoes_ids:
+          funcionarioForm.is_recepcao || cadastroComUsuarioExistente
+            ? []
+            : (funcionarioForm.funcoes_ids || []),
         valor_pagamento: funcionarioForm.valor_pagamento || '0.00',
       };
       let response;
@@ -2103,52 +2244,110 @@ function CerimonialistaPage() {
                     <p style={{ margin: 0, color: '#64748b' }}>Nenhum funcionário cadastrado para este evento.</p>
                   ) : (
                     <div style={{ display: 'grid', gap: 8 }}>
-                      {funcionariosEvento.map((item) => (
-                        <div
-                          key={item.id}
-                          style={{
-                            border: '1px solid #e5e7eb',
-                            borderRadius: 8,
-                            padding: '10px 12px',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            gap: 10,
-                            background: '#fff',
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <div style={{ display: 'grid', gap: 4 }}>
-                            <div style={{ fontWeight: 600, color: '#111827' }}>{item.nome}</div>
-                            <div style={{ color: '#6b7280', fontSize: 13 }}>
-                              Documento: {item.documento_mascarado || item.documento || '-'} • {item.is_recepcao ? 'Recepção' : 'Demais funções'}
+                      {funcionariosEvento.map((item) => {
+                        const primeiroNome = getPrimeiroNome(item.nome || item.usuario_nome);
+                        const funcaoPrincipal = getFuncaoPrincipalFuncionario(item);
+                        const detalhesAbertos = Boolean(
+                          funcionariosDetalhesExpandidosPorEvento[String(ev.id)]?.[String(item.id)]
+                        );
+
+                        return (
+                          <div
+                            key={item.id}
+                            style={{
+                              border: '1px solid #e5e7eb',
+                              borderRadius: 8,
+                              padding: '10px 12px',
+                              background: '#fff',
+                              display: 'grid',
+                              gap: 8,
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                gap: 10,
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                  className="expand-button"
+                                  onClick={() => toggleDetalhesFuncionarioEvento(ev.id, item.id)}
+                                  title={detalhesAbertos ? 'Ocultar detalhes' : 'Mostrar detalhes'}
+                                  aria-label={detalhesAbertos ? 'Ocultar detalhes' : 'Mostrar detalhes'}
+                                >
+                                  {detalhesAbertos ? '▾' : '▸'}
+                                </button>
+                                <span style={{ fontWeight: 700, color: '#111827' }}>{primeiroNome}</span>
+                                <span
+                                  style={{
+                                    color: '#5b21b6',
+                                    background: '#ede9fe',
+                                    border: '1px solid #ddd6fe',
+                                    borderRadius: 999,
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    padding: '2px 8px',
+                                  }}
+                                >
+                                  {funcaoPrincipal}
+                                </span>
+                              </div>
+
+                              <div className="actions-column" style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                <button
+                                  type="button"
+                                  className="edit-button"
+                                  onClick={() => openEditFuncionario(ev.id, item)}
+                                  title="Editar funcionário"
+                                  aria-label="Editar funcionário"
+                                >
+                                  <FaEdit />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="delete-button"
+                                  onClick={() => deleteFuncionario(ev.id, item)}
+                                  title="Excluir funcionário"
+                                  aria-label="Excluir funcionário"
+                                >
+                                  <FaTrash />
+                                </button>
+                              </div>
                             </div>
-                            <div style={{ color: '#6b7280', fontSize: 13 }}>
-                              Funções: {Array.isArray(item.funcoes) && item.funcoes.length > 0 ? item.funcoes.map((f) => f.nome).join(', ') : (item.funcao || '-')}
-                            </div>
-                            <div style={{ color: '#6b7280', fontSize: 13 }}>
-                              Entrada: {formatDateTime(item.horario_entrada)} • Saída: {formatDateTime(item.horario_saida)}
-                            </div>
-                            <div style={{ color: '#6b7280', fontSize: 13 }}>
-                              Valor: {formatCurrency(item.valor_pagamento)} • {item.pagamento_realizado ? 'Pago' : 'Pendente'}
-                            </div>
-                            {item.usuario_ativo !== null && item.usuario_ativo !== undefined && (
-                              <div style={{ color: item.usuario_ativo ? '#166534' : '#92400e', fontSize: 13, fontWeight: 600 }}>
-                                Usuário: {item.usuario_ativo ? 'Ativo' : 'Inativo'}
+
+                            {detalhesAbertos && (
+                              <div
+                                style={{
+                                  borderTop: '1px solid #f1f5f9',
+                                  paddingTop: 8,
+                                  color: '#6b7280',
+                                  fontSize: 13,
+                                  display: 'grid',
+                                  gap: 4,
+                                }}
+                              >
+                                <div>Nome completo: {item.nome || '-'}</div>
+                                <div>Documento: {item.documento_mascarado || item.documento || '-'}</div>
+                                <div>
+                                  Funções: {Array.isArray(item.funcoes) && item.funcoes.length > 0 ? item.funcoes.map((f) => f.nome).join(', ') : (item.funcao || '-')}
+                                </div>
+                                <div>Entrada: {formatDateTime(item.horario_entrada)} • Saída: {formatDateTime(item.horario_saida)}</div>
+                                <div>Valor: {formatCurrency(item.valor_pagamento)} • {item.pagamento_realizado ? 'Pago' : 'Pendente'}</div>
+                                {item.usuario_ativo !== null && item.usuario_ativo !== undefined && (
+                                  <div style={{ color: item.usuario_ativo ? '#166534' : '#92400e', fontWeight: 600 }}>
+                                    Usuário: {item.usuario_ativo ? 'Ativo' : 'Inativo'}
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
-
-                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                            <button type="button" className="add-button" onClick={() => openEditFuncionario(ev.id, item)} style={{ padding: '6px 10px' }}>
-                              <FaEdit /> Editar
-                            </button>
-                            <button type="button" className="add-button" onClick={() => deleteFuncionario(ev.id, item)} style={{ padding: '6px 10px', background: '#b91c1c' }}>
-                              <FaTrash /> Excluir
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -2737,43 +2936,41 @@ function CerimonialistaPage() {
               </div>
               <form onSubmit={saveFuncionario}>
                 <div className="modal-content">
-                  <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
-                    <input
-                      type="checkbox"
-                      checked={Boolean(funcionarioForm.is_recepcao)}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        setFuncionarioForm((prev) => ({
-                          ...prev,
-                          is_recepcao: checked,
-                          usuario: '',
-                          usuario_is_active: checked,
-                        }));
-                        loadFuncionariosCadastrados('', checked);
-                      }}
-                    />
-                    Funcionário da recepção
-                  </label>
-
                   <div className="form-group">
                     <label>Funcionário já cadastrado</label>
                     <select value={funcionarioForm.usuario} onChange={(e) => handleSelectFuncionarioCadastrado(e.target.value)}>
                       <option value="">Adicionar novo funcionário</option>
-                      {funcionariosCadastrados
-                        .filter((u) => Boolean(u.is_recepcao) === Boolean(funcionarioForm.is_recepcao))
-                        .map((u) => (
-                          <option key={u.id} value={u.id}>
-                            {(u.full_name || u.username)}{u.is_active ? ' (ativo)' : ' (inativo)'}
-                          </option>
-                        ))}
+                      {funcionariosCadastrados.map((u) => (
+                        <option key={u.id} value={u.id}>
+                          {(u.full_name || u.username)}
+                          {u.is_recepcao ? ' • recepção' : ''}
+                          {u.is_active ? ' (ativo)' : ' (inativo)'}
+                        </option>
+                      ))}
                     </select>
                     {funcionariosCadastradosLoading && (
                       <div style={{ color: '#64748b', fontSize: 12, marginTop: 4 }}>Carregando cadastrados...</div>
                     )}
                   </div>
 
-                  {funcionarioForm.usuario && (
-                    <label style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                  <div className="cerimonialista-checkbox-row">
+                    <label className="cerimonialista-checkbox-pill">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(funcionarioForm.is_recepcao)}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setFuncionarioForm((prev) => ({
+                            ...prev,
+                            is_recepcao: checked,
+                            usuario_is_active: checked ? true : prev.usuario_is_active,
+                          }));
+                        }}
+                      />
+                      Funcionário da recepção
+                    </label>
+
+                    <label className="cerimonialista-checkbox-pill">
                       <input
                         type="checkbox"
                         checked={Boolean(funcionarioForm.usuario_is_active)}
@@ -2781,95 +2978,171 @@ function CerimonialistaPage() {
                       />
                       Usuário ativo no sistema
                     </label>
+                  </div>
+
+                  {(!funcionarioEditing && Boolean(funcionarioForm.usuario)) ? null : (
+                    <>
+                      <div className="form-row">
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label>Nome</label>
+                          <input value={funcionarioForm.nome} onChange={(e) => setFuncionarioForm((p) => ({ ...p, nome: e.target.value }))} required />
+                        </div>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label>CPF</label>
+                          <input
+                            value={funcionarioForm.documento}
+                            onChange={(e) => setFuncionarioForm((p) => ({
+                              ...p,
+                              documento: formatCpfValue(e.target.value),
+                            }))}
+                            placeholder="000.000.000-00"
+                            required
+                          />
+                          {cpfUsoStatus.message && (
+                            <div
+                              style={{
+                                marginTop: 4,
+                                fontSize: 12,
+                                color: cpfUsoStatus.checking
+                                  ? '#475569'
+                                    : (cpfUsoStatus.exists || cpfUsoStatus.invalid)
+                                    ? '#b91c1c'
+                                    : '#047857',
+                                  fontWeight: (cpfUsoStatus.exists || cpfUsoStatus.invalid) ? 700 : 600,
+                              }}
+                            >
+                              {cpfUsoStatus.message}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="form-row">
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label>E-mail {funcionarioForm.is_recepcao ? '(obrigatório)' : '(opcional)'}</label>
+                          <input
+                            type="email"
+                            value={funcionarioForm.email}
+                            onChange={(e) => setFuncionarioForm((p) => ({ ...p, email: e.target.value }))}
+                            required={Boolean(funcionarioForm.is_recepcao)}
+                          />
+                        </div>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label>Telefone</label>
+                          <input
+                            value={funcionarioForm.phone}
+                            onChange={(e) => setFuncionarioForm((p) => ({
+                              ...p,
+                              phone: formatPhoneValue(e.target.value),
+                            }))}
+                            placeholder="(11) 99999-9999"
+                          />
+                        </div>
+                      </div>
+                    </>
                   )}
 
                   <div className="form-row">
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label>Nome</label>
-                      <input value={funcionarioForm.nome} onChange={(e) => setFuncionarioForm((p) => ({ ...p, nome: e.target.value }))} required />
-                    </div>
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label>Documento</label>
-                      <input value={funcionarioForm.documento} onChange={(e) => setFuncionarioForm((p) => ({ ...p, documento: e.target.value }))} required />
-                    </div>
-                  </div>
-
-                  <div className="form-row">
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label>E-mail {funcionarioForm.is_recepcao ? '(obrigatório)' : '(opcional)'}</label>
-                      <input
-                        type="email"
-                        value={funcionarioForm.email}
-                        onChange={(e) => setFuncionarioForm((p) => ({ ...p, email: e.target.value }))}
-                        required={Boolean(funcionarioForm.is_recepcao)}
-                      />
-                    </div>
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label>Telefone</label>
-                      <input
-                        value={funcionarioForm.phone}
-                        onChange={(e) => setFuncionarioForm((p) => ({ ...p, phone: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: 10, marginBottom: 10 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center', marginBottom: 8 }}>
-                      <label style={{ margin: 0, fontWeight: 600 }}>Funções que pode exercer</label>
-                      <button type="button" className="add-button" onClick={openCreateFuncaoFesta} style={{ padding: '6px 10px' }}>
-                        <FaPlus /> Nova Função
-                      </button>
-                    </div>
-                    {funcoesFestaLoading ? (
-                      <div style={{ color: '#64748b', fontSize: 13 }}>Carregando funções...</div>
-                    ) : funcoesFesta.filter((f) => f.ativo).length === 0 ? (
-                      <div style={{ color: '#64748b', fontSize: 13 }}>Nenhuma função ativa cadastrada.</div>
-                    ) : (
-                      <div style={{ maxHeight: 140, overflowY: 'auto', display: 'grid', gap: 6 }}>
-                        {funcoesFesta
-                          .filter((f) => f.ativo)
-                          .map((f) => (
-                            <label key={f.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                              <input
-                                type="checkbox"
-                                checked={funcionarioForm.funcoes_ids.includes(f.id)}
-                                onChange={(e) => {
-                                  const checked = e.target.checked;
-                                  setFuncionarioForm((prev) => ({
-                                    ...prev,
-                                    funcoes_ids: checked
-                                      ? [...prev.funcoes_ids, f.id]
-                                      : prev.funcoes_ids.filter((id) => id !== f.id),
-                                  }));
-                                }}
-                              />
-                              <span>{f.nome}</span>
-                            </label>
-                          ))}
+                    {(!funcionarioForm.is_recepcao && (!funcionarioForm.usuario || Boolean(funcionarioEditing))) && (
+                      <div className="form-group" style={{ flex: 1 }}>
+                        <label>Função no evento</label>
+                        {funcoesFestaLoading ? (
+                          <div style={{ color: '#64748b', fontSize: 13, padding: '10px 0' }}>Carregando funções...</div>
+                        ) : funcoesFesta.filter((f) => f.ativo).length === 0 ? (
+                          <div style={{ color: '#64748b', fontSize: 13, padding: '10px 0' }}>Nenhuma função ativa cadastrada.</div>
+                        ) : (
+                          <Select
+                            classNamePrefix="funcao-evento-select"
+                            options={funcoesFesta
+                              .filter((f) => f.ativo)
+                              .map((f) => ({ value: f.id, label: f.nome }))}
+                            value={
+                              funcoesFesta
+                                .filter((f) => f.ativo)
+                                .map((f) => ({ value: f.id, label: f.nome }))
+                                .find((opt) => String(opt.value) === String(funcionarioForm.funcoes_ids[0] || '')) || null
+                            }
+                            onChange={(selectedOption) => {
+                              const value = Number(selectedOption?.value);
+                              setFuncionarioForm((prev) => ({
+                                ...prev,
+                                funcoes_ids: Number.isFinite(value) && value > 0 ? [value] : [],
+                              }));
+                            }}
+                            placeholder="Selecione uma função"
+                            isClearable
+                            noOptionsMessage={() => 'Nenhuma função ativa cadastrada'}
+                            styles={{
+                              control: (base, state) => ({
+                                ...base,
+                                minHeight: 40,
+                                height: 40,
+                                borderColor: state.isFocused ? '#2abb98' : '#c7d3e3',
+                                boxShadow: state.isFocused ? '0 0 0 3px rgba(42, 187, 152, 0.2)' : 'none',
+                                backgroundColor: '#f8fafc',
+                                borderRadius: 8,
+                                '&:hover': {
+                                  borderColor: '#2abb98',
+                                },
+                              }),
+                              valueContainer: (base) => ({
+                                ...base,
+                                height: 40,
+                                padding: '0 12px',
+                              }),
+                              input: (base) => ({
+                                ...base,
+                                margin: 0,
+                                padding: 0,
+                              }),
+                              indicatorsContainer: (base) => ({
+                                ...base,
+                                height: 40,
+                              }),
+                              clearIndicator: (base) => ({
+                                ...base,
+                                padding: 8,
+                              }),
+                              dropdownIndicator: (base) => ({
+                                ...base,
+                                padding: 8,
+                              }),
+                              menu: (base) => ({
+                                ...base,
+                                zIndex: 1200,
+                                borderRadius: 8,
+                                overflow: 'hidden',
+                              }),
+                              option: (base, state) => ({
+                                ...base,
+                                backgroundColor: state.isSelected
+                                  ? '#2abb98'
+                                  : state.isFocused
+                                    ? '#ecfdf5'
+                                    : '#ffffff',
+                                color: state.isSelected ? '#ffffff' : '#0f172a',
+                                cursor: 'pointer',
+                              }),
+                            }}
+                          />
+                        )}
                       </div>
                     )}
-                  </div>
 
-                  <div className="form-row">
                     <div className="form-group" style={{ flex: 1 }}>
                       <label>Valor a pagar</label>
-                      <input type="number" step="0.01" min="0" value={funcionarioForm.valor_pagamento} onChange={(e) => setFuncionarioForm((p) => ({ ...p, valor_pagamento: e.target.value }))} required />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={formatCurrency(funcionarioForm.valor_pagamento)}
+                        onChange={(e) => setFuncionarioForm((p) => ({
+                          ...p,
+                          valor_pagamento: parseCurrencyInputToDecimalString(e.target.value),
+                        }))}
+                        required
+                      />
                     </div>
                   </div>
-                  <div className="form-row">
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label>Horário de entrada</label>
-                      <input type="datetime-local" value={funcionarioForm.horario_entrada} onChange={(e) => setFuncionarioForm((p) => ({ ...p, horario_entrada: e.target.value }))} />
-                    </div>
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label>Horário de saída</label>
-                      <input type="datetime-local" value={funcionarioForm.horario_saida} onChange={(e) => setFuncionarioForm((p) => ({ ...p, horario_saida: e.target.value }))} />
-                    </div>
-                  </div>
-                  <label style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <input type="checkbox" checked={funcionarioForm.pagamento_realizado} onChange={(e) => setFuncionarioForm((p) => ({ ...p, pagamento_realizado: e.target.checked }))} />
-                    Pagamento realizado
-                  </label>
                 </div>
 
                 <div style={{

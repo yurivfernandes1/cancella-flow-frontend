@@ -1,6 +1,20 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { FaBuilding, FaUserShield, FaClipboardList, FaBell, FaFileInvoiceDollar, FaGlassCheers, FaUsers, FaAddressCard, FaArrowRight, FaCheckCircle, FaCheck, FaStar, FaQuoteLeft, FaWhatsapp, FaCar } from 'react-icons/fa';
+import {
+  FaAddressCard,
+  FaBell,
+  FaCar,
+  FaCheckCircle,
+  FaClipboardList,
+  FaGlassCheers,
+  FaInstagram,
+  FaQrcode,
+  FaQuoteLeft,
+  FaStar,
+  FaUserShield,
+  FaUsers,
+  FaWhatsapp,
+} from 'react-icons/fa';
 import logo from '../assets/logo_header.svg';
 import '../styles/LandingPage.css';
 
@@ -16,7 +30,16 @@ function LandingPage() {
           </Link>
           <nav className="public-nav">
             <a className="nav-link" href="#features">Funcionalidades</a>
+            <a className="nav-link" href="#cerimonial-suite">Cerimonial</a>
             <a className="nav-link" href="#testimonials">Depoimentos</a>
+            <a
+              className="nav-link"
+              href="https://instagram.com/cancellaflow"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              @cancellaflow
+            </a>
             <Link className="nav-link nav-login" to="/login">Entrar</Link>
           </nav>
         </div>
@@ -30,7 +53,8 @@ function LandingPage() {
           <h1>Transforme a gestão do seu condomínio</h1>
           <p>
             Plataforma completa e intuitiva para administrar seu condomínio.
-            Portaria, funcionários, encomendas, avisos, lista de convidados, gestão de áreas comuns e muito mais.
+            Portaria, controle de acessos, equipe de recepção, listas de convidados,
+            módulo de cerimonial, reservas e comunicação em um só painel.
           </p>
           <div className="hero-ctas">
             <a
@@ -52,6 +76,9 @@ function LandingPage() {
             </div>
             <div className="stat-item">
               <strong>4.9/5</strong> Avaliação
+            </div>
+            <div className="stat-item">
+              <FaInstagram style={{ color: '#2abb98' }} /> @cancellaflow
             </div>
           </div>
         </div>
@@ -76,6 +103,15 @@ function LandingPage() {
               <FaCheckCircle className="trust-icon" />
               <span>Atualizações constantes</span>
             </div>
+            <a
+              className="trust-item trust-item-link"
+              href="https://instagram.com/cancellaflow"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <FaInstagram className="trust-icon" />
+              <span>Siga @cancellaflow</span>
+            </a>
           </div>
         </div>
       </section>
@@ -85,7 +121,7 @@ function LandingPage() {
         <div className="section-header">
           <h2>Tudo que você precisa, em um só lugar</h2>
           <p className="section-subtitle">
-            O Cancella Flow centraliza as rotinas do seu condomínio com segurança e eficiência.
+            O Cancella Flow centraliza as rotinas do condomínio e dos eventos com segurança e eficiência.
           </p>
         </div>
           <div className="features-grid">
@@ -95,14 +131,14 @@ function LandingPage() {
             <p>Cadastro de veículos, controle de autorizações e validação de placas.</p>
           </div>
           <div className="feature-card">
-            <div className="feature-icon"><FaUserShield /></div>
-            <h3>Portaria Inteligente</h3>
-            <p>Controle de acessos com registro em tempo real, QR codes e notificações automáticas.</p>
+            <div className="feature-icon"><FaQrcode /></div>
+            <h3>Controle de Acessos</h3>
+            <p>Liberação por QR Code, registros em tempo real e rastreabilidade de entradas e saídas.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon"><FaUsers /></div>
-            <h3>Gestão de Funcionários</h3>
-            <p>Organize equipes, escalas, férias e controle de ponto de forma simples e eficiente.</p>
+            <h3>Funcionários e Equipes</h3>
+            <p>Cadastro da equipe operacional, funções por evento e histórico de atuação por colaborador.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon"><FaClipboardList /></div>
@@ -116,8 +152,18 @@ function LandingPage() {
           </div>
           <div className="feature-card">
             <div className="feature-icon"><FaClipboardList /></div>
-            <h3>Lista de Convidados</h3>
-            <p>Organize listas de convidados para eventos e autorizações temporárias com facilidade.</p>
+            <h3>Listas de Convidados</h3>
+            <p>Listas por evento, convidados VIP, validação por nome e QR, com status de entrada em tempo real.</p>
+          </div>
+          <div className="feature-card">
+            <div className="feature-icon"><FaUserShield /></div>
+            <h3>Portaria Inteligente</h3>
+            <p>Fluxo moderno para portaria com notificações automáticas e integração com moradores.</p>
+          </div>
+          <div className="feature-card">
+            <div className="feature-icon"><FaQrcode /></div>
+            <h3>Módulo Cerimonial</h3>
+            <p>Eventos, convites, equipe de recepção e operação do evento com check-in, checkout e ponto.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon"><FaGlassCheers /></div>
@@ -129,6 +175,44 @@ function LandingPage() {
             <h3>Visitantes & Moradores</h3>
             <p>Cadastro completo, controle de autorizações e histórico de visitas detalhado.</p>
           </div>
+        </div>
+      </section>
+
+      <section id="cerimonial-suite" className="event-suite">
+        <div className="section-header">
+          <h2>Cerimonial e recepção com operação completa</h2>
+          <p className="section-subtitle">
+            Planeje, monte equipe, valide convidados e acompanhe o evento com controle total de acessos.
+          </p>
+        </div>
+
+        <div className="event-suite-grid">
+          <article className="event-suite-card">
+            <h3>1. Planejamento do evento</h3>
+            <ul>
+              <li>Cadastro de evento com data, local e capacidade</li>
+              <li>Vinculação de organizadores e equipe de recepção</li>
+              <li>Contato rápido com o cerimonial durante a operação</li>
+            </ul>
+          </article>
+
+          <article className="event-suite-card">
+            <h3>2. Lista e confirmação de convidados</h3>
+            <ul>
+              <li>Lista única por evento com histórico para eventos futuros</li>
+              <li>RSVP por link e QR Code por convidado</li>
+              <li>Entrada validada por QR ou nome completo</li>
+            </ul>
+          </article>
+
+          <article className="event-suite-card">
+            <h3>3. Operação da recepção</h3>
+            <ul>
+              <li>Check-in e checkout da equipe para controle de horas</li>
+              <li>Um evento ativo por vez para reduzir falhas operacionais</li>
+              <li>Consulta da lista apenas durante o evento, com CPF mascarado</li>
+            </ul>
+          </article>
         </div>
       </section>
 
@@ -222,12 +306,13 @@ function LandingPage() {
           <div className="footer-column">
             <h4>Produto</h4>
             <a href="#features">Funcionalidades</a>
-            <a href="#pricing">Planos</a>
+            <a href="#cerimonial-suite">Módulo Cerimonial</a>
             <a href="#testimonials">Depoimentos</a>
           </div>
           <div className="footer-column">
             <h4>Suporte</h4>
             <a href="mailto:contato@cancellaflow.com.br">Contato</a>
+            <a href="https://instagram.com/cancellaflow" target="_blank" rel="noopener noreferrer">Instagram @cancellaflow</a>
             <a href="#">Central de Ajuda</a>
             <a href="#">FAQ</a>
           </div>

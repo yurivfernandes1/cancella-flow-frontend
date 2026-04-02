@@ -9,7 +9,13 @@ const QR_ID = 'qr-scanner-viewport';
 // Altura do app-header (definida em Header.css)
 const HEADER_H = 64;
 
-export default function QrCodeScanner({ onClose, onConfirmado }) {
+export default function QrCodeScanner({
+  onClose,
+  onConfirmado,
+  onScanToken,
+  titulo = 'Confirmar Entrada · QR Code',
+  instrucao = 'Aponte a câmera para o QR Code do convidado para confirmar a entrada',
+}) {
   const { user } = useAuth();
   const scannerRef = useRef(null);
   const processingRef = useRef(false);
@@ -70,8 +76,22 @@ export default function QrCodeScanner({ onClose, onConfirmado }) {
             setFase('loading');
             const trimmed = String(text || '').trim();
             try {
+              if (onScanToken) {
+                const customResp = await onScanToken(trimmed);
+                const d = customResp?.data || customResp;
+                if (!d || typeof d !== 'object') {
+                  throw new Error('Resposta inválida ao validar o QR Code.');
+                }
+                const cpf = d.cpf || d.documento || d.cpf_mascarado || null;
+                setResultado(
+                  d.aviso
+                    ? { tipo: 'aviso', msg: d.aviso, nome: d.nome, lista: d.lista, cpf }
+                    : { tipo: 'sucesso', msg: d.message || 'Entrada confirmada!', nome: d.nome, lista: d.lista, cpf }
+                );
+                if (!d.aviso) onConfirmado?.(d);
+              }
               // Caso o QR seja do tipo morador (gerado pelo perfil): "MORADOR:<cpf>"
-              if (trimmed.toUpperCase().startsWith('MORADOR:')) {
+              else if (trimmed.toUpperCase().startsWith('MORADOR:')) {
                 const parts = trimmed.split(':');
                 const cpfRaw = (parts[1] || '').replace(/\D/g, '');
                 if (!cpfRaw) throw new Error('CPF inválido no QR.');
@@ -190,7 +210,7 @@ export default function QrCodeScanner({ onClose, onConfirmado }) {
           </p>
         )}
         <p style={{ color: '#2abb98', fontWeight: 600, fontSize: '0.78rem', margin: 0, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-          Confirmar Entrada · QR Code
+          {titulo}
         </p>
       </div>
 
@@ -244,7 +264,7 @@ export default function QrCodeScanner({ onClose, onConfirmado }) {
           color: '#64748b', fontSize: '0.82rem', textAlign: 'center',
           margin: '16px 24px 0', lineHeight: 1.5,
         }}>
-          Aponte a câmera para o QR Code do convidado para confirmar a entrada
+          {instrucao}
         </p>
       )}
 
