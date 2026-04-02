@@ -24,6 +24,7 @@ import {
   FaClipboardList,
   FaDoorOpen,
   FaQrcode,
+  FaUserCheck,
 } from 'react-icons/fa';
 import QrCodeScanner from '../components/Eventos/QrCodeScanner';
 
@@ -417,15 +418,9 @@ function WelcomePage() {
     navigate('/recepcao', { replace: true });
   }, [recepcaoOnly, navigate]);
 
-  useEffect(() => {
-    if (!cerimonialOnly) return;
-    if (window.location.pathname === '/cerimonialista') return;
-    navigate('/cerimonialista?tab=eventos', { replace: true });
-  }, [cerimonialOnly, navigate]);
-
-  if ((isCerimonialista || isRecepcao || isOrganizadorEvento) && cards.length === 0 && !cerimonialOnly) {
+  if ((isRecepcao || isOrganizadorEvento || (isCerimonialista && !cerimonialOnly)) && cards.length === 0) {
     const rolePanels = [];
-    if (isCerimonialista) {
+    if (isCerimonialista && !cerimonialOnly) {
       rolePanels.push({
         name: 'Painel Cerimonial',
         path: '/cerimonialista?tab=eventos',
@@ -457,16 +452,19 @@ function WelcomePage() {
     });
 
     cards.push({
-      title: recepcaoOnly ? 'Recepção' : 'Minha Área',
+      title: recepcaoOnly ? 'Recepção' : cerimonialOnly ? 'Cerimonial' : 'Minha Área',
       description: recepcaoOnly
         ? 'Acesse seu painel operacional da recepção.'
-        : 'Acesse seu painel e configurações de perfil.',
+        : cerimonialOnly
+          ? 'Acesse seu painel e a operação de entrada do evento do dia.'
+          : 'Acesse seu painel e configurações de perfil.',
       active: true,
       icon: <FaUserCog size={32} />,
       subItems,
     });
   }
   const showDashboard = isAdmin || isSindico || isMorador || isPortaria;
+  const showCerimonialOperacao = cerimonialOnly;
 
   // Nome e logo do condomínio vêm do contexto — sem fetch adicional
   const condominioName = condominioData?.nome || null;
@@ -649,6 +647,10 @@ function WelcomePage() {
                 <p className="welcome-subtitle">
                   Acompanhe suas encomendas e visitantes.
                 </p>
+              ) : isCerimonialista ? (
+                <p className="welcome-subtitle">
+                  Operação de entrada do evento do dia
+                </p>
               ) : (
                 <p className="welcome-subtitle">
                   Selecione uma das opções abaixo para acessar as funcionalidades:
@@ -775,6 +777,53 @@ function WelcomePage() {
               </section>
             )}
           </>
+        ) : showCerimonialOperacao ? (
+          <main className="dashboard-grid">
+            <div
+              className="dashboard-card clickable"
+              onClick={() => navigate('/recepcao?tab=eventos&acao=qr')}
+              style={{ cursor: 'pointer' }}
+            >
+              <div className="dashboard-card-icon" style={{ color: '#2abb98' }}>
+                <FaQrcode size={32} />
+              </div>
+              <div className="dashboard-card-content">
+                <h3>Ler QR Code</h3>
+                <div className="dashboard-card-value" style={{ color: '#2abb98' }}>→</div>
+                <p className="dashboard-card-description">Validar entrada por QR no evento do dia</p>
+              </div>
+            </div>
+
+            <div
+              className="dashboard-card clickable"
+              onClick={() => navigate('/recepcao?tab=eventos')}
+              style={{ cursor: 'pointer' }}
+            >
+              <div className="dashboard-card-icon" style={{ color: '#19294a' }}>
+                <FaUserCheck size={32} />
+              </div>
+              <div className="dashboard-card-content">
+                <h3>Validar por Nome</h3>
+                <div className="dashboard-card-value" style={{ color: '#19294a' }}>→</div>
+                <p className="dashboard-card-description">Buscar convidado por nome e selecionar entrada</p>
+              </div>
+            </div>
+
+            <div
+              className="dashboard-card clickable"
+              onClick={() => navigate('/cerimonialista?tab=eventos')}
+              style={{ cursor: 'pointer' }}
+            >
+              <div className="dashboard-card-icon" style={{ color: '#0f766e' }}>
+                <FaClipboardList size={32} />
+              </div>
+              <div className="dashboard-card-content">
+                <h3>Painel Cerimonial</h3>
+                <div className="dashboard-card-value" style={{ color: '#0f766e' }}>→</div>
+                <p className="dashboard-card-description">Acessar eventos, convidados e cadastros do cerimonial</p>
+              </div>
+            </div>
+          </main>
         ) : (
           <main className="welcome-cards-grid">
             {cards.map((card, index) => (

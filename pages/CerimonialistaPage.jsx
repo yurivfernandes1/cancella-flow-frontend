@@ -15,9 +15,9 @@ import '../styles/UsersPage.css';
 import '../styles/UnitsCards.css';
 import '../styles/Modal.css';
 import {
+  FaClipboardList,
   FaCopy,
   FaDownload,
-  FaEye,
   FaEyeSlash,
   FaEdit,
   FaPlus,
@@ -50,6 +50,7 @@ const eventoCerimonialAPI = apiServices.eventoCerimonialAPI || {
 const listaConvidadosCerimonialAPI = apiServices.listaConvidadosCerimonialAPI || {
   getListas: (params = {}) => api.get('/cadastros/listas-convidados-cerimonial/', { params }),
   criarLista: (data) => api.post('/cadastros/listas-convidados-cerimonial/', data),
+  getLista: (listaId) => api.get(`/cadastros/listas-convidados-cerimonial/${listaId}/`),
   buscarCpfSimples: (cpf) => api.get('/cadastros/listas-convidados-cerimonial/buscar-cpf/', { params: { cpf } }),
   buscarConvidadosAnteriores: (q = '') => api.get('/cadastros/listas-convidados-cerimonial/convidados-anteriores/', { params: { q } }),
   adicionarConvidado: (listaId, data) => api.post(`/cadastros/listas-convidados-cerimonial/${listaId}/adicionar-convidado/`, data),
@@ -96,6 +97,44 @@ const getPrimeiroNome = (nomeCompleto) => {
   const nome = String(nomeCompleto || '').trim();
   if (!nome) return '-';
   return nome.split(/\s+/)[0] || '-';
+};
+
+const normalizeConvidadoMatchField = (value) => String(value || '').trim().toLowerCase();
+
+const normalizeCpfDigits = (value) => String(value || '').replace(/\D/g, '');
+
+const findConvidadoByStableData = (convidados, reference) => {
+  const lista = Array.isArray(convidados) ? convidados : [];
+  const qrToken = String(reference?.qr_token || '').trim().toLowerCase();
+  if (qrToken) {
+    const byQrToken = lista.find((c) => String(c?.qr_token || '').trim().toLowerCase() === qrToken);
+    if (byQrToken?.id) return byQrToken;
+  }
+
+  const refCpf = normalizeCpfDigits(reference?.cpf);
+  const refNome = normalizeConvidadoMatchField(reference?.nome);
+  const refEmail = normalizeConvidadoMatchField(reference?.email);
+
+  if (refCpf && refNome && refEmail) {
+    const byCpfNomeEmail = lista.find((c) => {
+      const cCpf = normalizeCpfDigits(c?.cpf);
+      const cNome = normalizeConvidadoMatchField(c?.nome);
+      const cEmail = normalizeConvidadoMatchField(c?.email);
+      return cCpf === refCpf && cNome === refNome && cEmail === refEmail;
+    });
+    if (byCpfNomeEmail?.id) return byCpfNomeEmail;
+  }
+
+  if (refNome && refEmail) {
+    const byNomeEmail = lista.find((c) => {
+      const cNome = normalizeConvidadoMatchField(c?.nome);
+      const cEmail = normalizeConvidadoMatchField(c?.email);
+      return cNome === refNome && cEmail === refEmail;
+    });
+    if (byNomeEmail?.id) return byNomeEmail;
+  }
+
+  return null;
 };
 
 const getFuncaoPrincipalFuncionario = (item) => {
@@ -1206,6 +1245,19 @@ function CerimonialistaPage() {
 
     setConvidadoSaving(true);
     try {
+      const resolveConvidadoIdAtualizado = async (listaId, convidadoRef) => {
+        try {
+          const resp = await listaConvidadosCerimonialAPI.getLista(listaId);
+          const convidadosAtualizados = Array.isArray(resp?.data?.convidados)
+            ? resp.data.convidados
+            : [];
+          return findConvidadoByStableData(convidadosAtualizados, convidadoRef)?.id || null;
+        } catch (resolveErr) {
+          console.error('Erro ao recarregar lista para resolver convidado', resolveErr);
+          return null;
+        }
+      };
+
       if (convidadoEditing?.id) {
         const cpfDigits = String(convidadoForm.cpf || '').replace(/\D/g, '');
         if (cpfDigits && cpfDigits.length !== 11) {
@@ -1219,12 +1271,25 @@ function CerimonialistaPage() {
           email: String(convidadoForm.email || '').trim(),
           vip: Boolean(convidadoForm.vip),
         };
-        await listaConvidadosCerimonialAPI.atualizarConvidado(convidadoListaId, convidadoEditing.id, payload);
+        let convidadoIdAlvo = convidadoEditing.id;
+        try {
+          await listaConvidadosCerimonialAPI.atualizarConvidado(convidadoListaId, convidadoIdAlvo, payload);
+        } catch (updateErr) {
+          if (updateErr?.response?.status !== 404) {
+            throw updateErr;
+          }
+          const convidadoAtualizadoId = await resolveConvidadoIdAtualizado(convidadoListaId, convidadoEditing);
+          if (!convidadoAtualizadoId || String(convidadoAtualizadoId) === String(convidadoIdAlvo)) {
+            throw updateErr;
+          }
+          convidadoIdAlvo = convidadoAtualizadoId;
+          await listaConvidadosCerimonialAPI.atualizarConvidado(convidadoListaId, convidadoIdAlvo, payload);
+        }
 
         const confirmadoAtual = Boolean(convidadoEditing.entrada_confirmada);
         const confirmadoNovo = Boolean(convidadoForm.confirmado);
         if (confirmadoAtual !== confirmadoNovo) {
-          await listaConvidadosCerimonialAPI.confirmarEntrada(convidadoListaId, convidadoEditing.id);
+          await listaConvidadosCerimonialAPI.confirmarEntrada(convidadoListaId, convidadoIdAlvo);
         }
       } else {
         const rowsValidos = convidadoRows
@@ -1287,7 +1352,34 @@ function CerimonialistaPage() {
   const deleteConvidado = async (listaId, convidado) => {
     if (!window.confirm(`Remover convidado "${convidado.nome}"?`)) return;
     try {
-      await listaConvidadosCerimonialAPI.removerConvidado(listaId, convidado.id);
+      const resolveConvidadoIdAtualizado = async () => {
+        try {
+          const resp = await listaConvidadosCerimonialAPI.getLista(listaId);
+          const convidadosAtualizados = Array.isArray(resp?.data?.convidados)
+            ? resp.data.convidados
+            : [];
+          return findConvidadoByStableData(convidadosAtualizados, convidado)?.id || null;
+        } catch (resolveErr) {
+          console.error('Erro ao recarregar lista para resolver convidado', resolveErr);
+          return null;
+        }
+      };
+
+      let convidadoIdAlvo = convidado.id;
+      try {
+        await listaConvidadosCerimonialAPI.removerConvidado(listaId, convidadoIdAlvo);
+      } catch (removeErr) {
+        if (removeErr?.response?.status !== 404) {
+          throw removeErr;
+        }
+        const convidadoAtualizadoId = await resolveConvidadoIdAtualizado();
+        if (!convidadoAtualizadoId || String(convidadoAtualizadoId) === String(convidadoIdAlvo)) {
+          throw removeErr;
+        }
+        convidadoIdAlvo = convidadoAtualizadoId;
+        await listaConvidadosCerimonialAPI.removerConvidado(listaId, convidadoIdAlvo);
+      }
+
       await loadListasConvidados();
     } catch (err) {
       console.error('Erro ao remover convidado', err);
@@ -2128,15 +2220,15 @@ function CerimonialistaPage() {
                   type="button"
                   className="add-button"
                   onClick={() => toggleListaConvidadosEvento(ev.id)}
-                  title={listaAberta ? 'Ocultar convidados' : 'Mostrar convidados'}
-                  aria-label={listaAberta ? 'Ocultar convidados' : 'Mostrar convidados'}
+                  title={listaAberta ? 'Ocultar lista de convidados' : 'Abrir lista de convidados'}
+                  aria-label={listaAberta ? 'Ocultar lista de convidados' : 'Abrir lista de convidados'}
                   style={eventoToggleButtonStyle(listaAberta, {
                     bgActive: '#0f766e',
                     color: '#0f766e',
                     border: '#99f6e4',
                   })}
                 >
-                  {listaAberta ? <FaEyeSlash /> : <FaEye />}
+                  <FaClipboardList />
                 </button>
                 <button
                   type="button"

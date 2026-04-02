@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api, * as apiServices from '../services/api';
@@ -21,8 +21,11 @@ const eventoCerimonialAPI = apiServices.eventoCerimonialAPI || {
   recepcaoPainel: () => api.get('/cadastros/eventos-cerimonial/recepcao/painel/'),
   recepcaoCheckin: (eventoId) => api.post(`/cadastros/eventos-cerimonial/${eventoId}/recepcao/checkin/`),
   recepcaoCheckout: (eventoId) => api.post(`/cadastros/eventos-cerimonial/${eventoId}/recepcao/checkout/`),
+  recepcaoConvidados: (eventoId, params = {}) => api.get(`/cadastros/eventos-cerimonial/${eventoId}/recepcao/convidados/`, { params }),
   recepcaoConfirmarPorNome: (eventoId, nome_completo) =>
     api.post(`/cadastros/eventos-cerimonial/${eventoId}/recepcao/confirmar-por-nome/`, { nome_completo }),
+  recepcaoConfirmarConvidado: (eventoId, convidado_id) =>
+    api.post(`/cadastros/eventos-cerimonial/${eventoId}/recepcao/confirmar-convidado/`, { convidado_id }),
 };
 
 const listaConvidadosCerimonialAPI = apiServices.listaConvidadosCerimonialAPI || {
@@ -87,7 +90,9 @@ function isEventoNoDiaLocal(evento) {
 function RecepcaoPage() {
   const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
-  const hasAccess = user?.groups?.some((g) => g.name === 'Recepção');
+  const isRecepcao = user?.groups?.some((g) => g.name === 'Recepção');
+  const isCerimonialista = user?.groups?.some((g) => g.name === 'Cerimonialista');
+  const hasAccess = Boolean(isRecepcao || isCerimonialista);
 
   const [loading, setLoading] = useState(true);
   const [eventos, setEventos] = useState([]);
@@ -96,8 +101,13 @@ function RecepcaoPage() {
   const [selectedEventoId, setSelectedEventoId] = useState(null);
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [validandoNome, setValidandoNome] = useState(false);
+  const [buscandoConvidados, setBuscandoConvidados] = useState(false);
+  const [nomeBusca, setNomeBusca] = useState('');
+  const [convidadosEncontrados, setConvidadosEncontrados] = useState([]);
+  const [convidadoSelecionado, setConvidadoSelecionado] = useState(null);
   const [feedback, setFeedback] = useState({ type: '', text: '' });
   const [autoActionDone, setAutoActionDone] = useState(false);
+  const nomeInputRef = useRef(null);
 
   const eventoSelecionado = useMemo(
     () => eventos.find((evento) => String(evento.id) === String(selectedEventoId)) || null,
@@ -123,6 +133,7 @@ function RecepcaoPage() {
   );
 
   const podeCheckinNoEventoDoDia = useMemo(() => {
+    if (!isRecepcao) return false;
     if (!eventoDoDia) return false;
     if (eventoDoDia.can_checkin_today) return true;
 
@@ -133,7 +144,7 @@ function RecepcaoPage() {
     const eventoHojeLocal = isEventoNoDiaLocal(eventoDoDia);
     const semConflitoOperacao = !eventoAtivoId || String(eventoAtivoId) === String(eventoDoDia.id);
     return eventoHojeLocal && semConflitoOperacao;
-  }, [eventoDoDia, eventoAtivoId]);
+  }, [eventoDoDia, eventoAtivoId, isRecepcao]);
 
   const loadPainel = async ({ preserveSelection = true } = {}) => {
     setLoading(true);
@@ -200,6 +211,13 @@ function RecepcaoPage() {
 
       try {
         if (acao === 'checkin') {
+          if (!isRecepcao) {
+            setFeedback({
+              type: 'error',
+              text: 'Check-in é exclusivo para equipe de recepção.',
+            });
+            return;
+          }
           await eventoCerimonialAPI.recepcaoCheckin(targetId);
           const eventoAlvo = eventos.find((ev) => String(ev.id) === String(targetId));
           setFeedback({
@@ -208,6 +226,13 @@ function RecepcaoPage() {
           });
           await loadPainel({ preserveSelection: false });
         } else if (acao === 'checkout') {
+          if (!isRecepcao) {
+            setFeedback({
+              type: 'error',
+              text: 'Checkout é exclusivo para equipe de recepção.',
+            });
+            return;
+          }
           await eventoCerimonialAPI.recepcaoCheckout(targetId);
           const eventoAlvo = eventos.find((ev) => String(ev.id) === String(targetId));
           setFeedback({
@@ -220,7 +245,7 @@ function RecepcaoPage() {
           if (!eventoAlvo?.can_read_qr) {
             setFeedback({
               type: 'error',
-              text: 'A leitura de QR só fica disponível com check-in ativo e durante o horário do evento.',
+              text: 'A leitura de QR está disponível apenas para evento liberado no dia.',
             });
           } else {
             setShowQrScanner(true);
@@ -283,26 +308,52 @@ function RecepcaoPage() {
     }
   };
 
-  const handleConfirmarPorNome = async (nomeInformado) => {
+  const handleConfirmarConvidadoSelecionado = async () => {
     if (!eventoSelecionado?.id) return;
-    const nomeNormalizado = (nomeInformado || '').trim();
-    if (!nomeNormalizado) {
-      setFeedback({ type: 'error', text: 'Digite o nome completo para validar a entrada.' });
+
+    if (!eventoSelecionado?.can_read_qr) {
+      setFeedback({
+        type: 'error',
+        text: 'A validação por nome está disponível apenas para evento liberado no dia.',
+      });
+      return;
+    }
+
+    const nomeDigitado = String(nomeBusca || '').trim();
+    if (!nomeDigitado && !convidadoSelecionado?.id) {
+      setFeedback({
+        type: 'error',
+        text: 'Digite ao menos o primeiro nome para localizar o convidado.',
+      });
       return;
     }
 
     setValidandoNome(true);
     try {
-      const response = await eventoCerimonialAPI.recepcaoConfirmarPorNome(
-        eventoSelecionado.id,
-        nomeNormalizado
-      );
+      let response;
+      if (convidadoSelecionado?.id) {
+        response = await eventoCerimonialAPI.recepcaoConfirmarConvidado(
+          eventoSelecionado.id,
+          convidadoSelecionado.id,
+        );
+      } else {
+        response = await eventoCerimonialAPI.recepcaoConfirmarPorNome(
+          eventoSelecionado.id,
+          nomeDigitado,
+        );
+      }
+
       const data = response.data || {};
       if (data.aviso) {
         setFeedback({ type: 'warning', text: data.aviso });
       } else {
         setFeedback({ type: 'success', text: data.message || 'Entrada confirmada com sucesso.' });
       }
+
+      setNomeBusca('');
+      setConvidadosEncontrados([]);
+      setConvidadoSelecionado(null);
+      await loadPainel({ preserveSelection: true });
     } catch (error) {
       setFeedback({
         type: 'error',
@@ -313,26 +364,64 @@ function RecepcaoPage() {
     }
   };
 
+  useEffect(() => {
+    setNomeBusca('');
+    setConvidadosEncontrados([]);
+    setConvidadoSelecionado(null);
+  }, [eventoSelecionado?.id]);
+
+  useEffect(() => {
+    const termo = String(nomeBusca || '').trim();
+    if (!eventoSelecionado?.id || !eventoSelecionado?.can_consultar_lista || termo.length < 2) {
+      setConvidadosEncontrados([]);
+      setBuscandoConvidados(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setBuscandoConvidados(true);
+      try {
+        const response = await eventoCerimonialAPI.recepcaoConvidados(eventoSelecionado.id, { q: termo });
+        const results = Array.isArray(response?.data?.results) ? response.data.results : [];
+        setConvidadosEncontrados(results);
+      } catch (error) {
+        setConvidadosEncontrados([]);
+        setFeedback({
+          type: 'error',
+          text: extractApiError(error, 'Não foi possível buscar convidados pelo nome.'),
+        });
+      } finally {
+        setBuscandoConvidados(false);
+      }
+    }, 220);
+
+    return () => clearTimeout(timer);
+  }, [nomeBusca, eventoSelecionado?.id, eventoSelecionado?.can_consultar_lista]);
+
+  const handleSelecionarConvidado = (convidado) => {
+    setConvidadoSelecionado(convidado);
+    setNomeBusca(convidado?.nome || '');
+  };
+
   const handleCardValidarNome = () => {
     if (!eventoSelecionado?.can_read_qr) {
       setFeedback({
         type: 'error',
-        text: 'A validação por nome só está disponível com check-in ativo e durante o evento.',
+        text: 'A validação por nome está disponível apenas para evento liberado no dia.',
       });
       return;
     }
 
-    const nome = window.prompt('Digite o nome completo do convidado para confirmar a entrada:');
-    if (!nome) return;
-
-    void handleConfirmarPorNome(nome);
+    if (nomeInputRef.current) {
+      nomeInputRef.current.focus();
+    }
   };
 
   const handleCardLerQr = () => {
     if (!eventoSelecionado?.can_read_qr) {
       setFeedback({
         type: 'error',
-        text: 'A leitura de QR só está disponível com check-in ativo e durante o evento.',
+        text: 'A leitura de QR está disponível apenas para evento liberado no dia.',
       });
       return;
     }
@@ -344,125 +433,236 @@ function RecepcaoPage() {
     return <Navigate to="/welcome" replace />;
   }
 
+  const cerimonialOnly = isCerimonialista && !isRecepcao;
+
   return (
     <div className="tecnicos-page users-page">
       <div className="tecnicos-content">
-        <div className="unit-card" style={{ marginBottom: '1rem' }}>
-          <div className="unit-card__header">
-            <span className="unit-card__title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <FaUsers /> Operação da Recepção
-            </span>
-          </div>
-          <div className="unit-card__summary">
-            <p style={{ margin: 0, color: '#334155' }}>
-              Você pode atuar em um evento por vez. Faça check-in no dia do evento para iniciar as validações.
-            </p>
-            {feedback.text && (
-              <p
-                style={{
-                  margin: '10px 0 0',
-                  fontWeight: 600,
-                  color:
-                    feedback.type === 'success'
-                      ? '#047857'
-                      : feedback.type === 'warning'
-                        ? '#b45309'
-                        : '#b91c1c',
-                }}
-              >
-                {feedback.text}
+        {!cerimonialOnly && (
+          <>
+            <div className="unit-card" style={{ marginBottom: '1rem' }}>
+              <div className="unit-card__header">
+                <span className="unit-card__title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <FaUsers /> Operação de Entrada
+                </span>
+              </div>
+              <div className="unit-card__summary">
+                <p style={{ margin: 0, color: '#334155' }}>
+                  Você pode atuar em um evento por vez. Faça check-in no dia do evento para iniciar as validações.
+                </p>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '1rem' }}>
+              <p style={{ margin: '0 0 8px', color: '#334155', fontWeight: 700, fontSize: '0.92rem' }}>
+                Acessos rápidos
               </p>
+              <div className="recepcao-action-cards">
+                {isRecepcao && (
+                  <button
+                    type="button"
+                    className="recepcao-action-card"
+                    onClick={() => eventoDoDia?.id && handleCheckin(eventoDoDia)}
+                    disabled={!podeCheckinNoEventoDoDia}
+                  >
+                    <span className="recepcao-action-card__icon">
+                      <FaSignInAlt size={20} />
+                    </span>
+                    <span className="recepcao-action-card__body">
+                      <strong>Check-in no evento do dia</strong>
+                      <small>
+                        {!eventoDoDia
+                          ? 'Sem evento do dia disponível para check-in'
+                          : podeCheckinNoEventoDoDia
+                            ? `Iniciar operação no evento do dia: ${eventoDoDia.nome}`
+                            : `Check-in indisponível para o evento do dia: ${eventoDoDia.nome}`}
+                      </small>
+                    </span>
+                  </button>
+                )}
+
+                {isRecepcao && (
+                  <button
+                    type="button"
+                    className="recepcao-action-card"
+                    onClick={() => eventoEmOperacao?.id && handleCheckout(eventoEmOperacao)}
+                    disabled={!eventoEmOperacao?.can_checkout}
+                  >
+                    <span className="recepcao-action-card__icon">
+                      <FaSignOutAlt size={20} />
+                    </span>
+                    <span className="recepcao-action-card__body">
+                      <strong>Checkout</strong>
+                      <small>
+                        {!eventoEmOperacao
+                          ? 'Sem evento com check-in ativo para checkout'
+                          : eventoEmOperacao.can_checkout
+                            ? `Encerrar operação em: ${eventoEmOperacao.nome}`
+                            : `Checkout indisponível para: ${eventoEmOperacao.nome}`}
+                      </small>
+                    </span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  className="recepcao-action-card"
+                  onClick={handleCardLerQr}
+                  disabled={!eventoSelecionado?.can_read_qr}
+                >
+                  <span className="recepcao-action-card__icon">
+                    <FaQrcode size={20} />
+                  </span>
+                  <span className="recepcao-action-card__body">
+                    <strong>Ler QR Code</strong>
+                    <small>
+                      {eventoSelecionado
+                        ? 'Confirmar entrada do convidado via QR'
+                        : 'Selecione um evento para iniciar'}
+                    </small>
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  className="recepcao-action-card"
+                  onClick={handleCardValidarNome}
+                  disabled={!eventoSelecionado?.can_read_qr || validandoNome}
+                >
+                  <span className="recepcao-action-card__icon">
+                    <FaUserCheck size={20} />
+                  </span>
+                  <span className="recepcao-action-card__body">
+                    <strong>Validar via Nome</strong>
+                    <small>
+                      {eventoSelecionado
+                        ? validandoNome
+                          ? 'Validando convidado...'
+                          : 'Digite na mesma tela e selecione o convidado'
+                        : 'Selecione um evento para iniciar'}
+                    </small>
+                  </span>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+
+        {feedback.text && (
+          <p
+            style={{
+              margin: '0 0 12px',
+              fontWeight: 600,
+              color:
+                feedback.type === 'success'
+                  ? '#047857'
+                  : feedback.type === 'warning'
+                    ? '#b45309'
+                    : '#b91c1c',
+            }}
+          >
+            {feedback.text}
+          </p>
+        )}
+
+        <div className="unit-card" style={{ marginBottom: '1rem' }}>
+          <div
+            className="unit-card__header"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}
+          >
+            <span className="unit-card__title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <FaUserCheck /> Validação de Entrada por Nome
+            </span>
+            {cerimonialOnly && (
+              <button
+                type="button"
+                className="add-button"
+                onClick={handleCardLerQr}
+                disabled={!eventoSelecionado?.can_read_qr}
+                style={{ padding: '8px 12px' }}
+              >
+                <FaQrcode /> Ler QR Code
+              </button>
             )}
           </div>
-        </div>
+          <div className="unit-card__summary" style={{ display: 'grid', gap: 10 }}>
+            <p style={{ margin: 0, color: '#334155' }}>
+              Digite o nome completo como está na lista. Se informar apenas o primeiro nome, selecione o convidado na lista abaixo.
+            </p>
 
-        <div style={{ marginBottom: '1rem' }}>
-          <p style={{ margin: '0 0 8px', color: '#334155', fontWeight: 700, fontSize: '0.92rem' }}>
-            Acessos rápidos
-          </p>
-          <div className="recepcao-action-cards">
-          <button
-            type="button"
-            className="recepcao-action-card"
-            onClick={() => eventoDoDia?.id && handleCheckin(eventoDoDia)}
-            disabled={!podeCheckinNoEventoDoDia}
-          >
-            <span className="recepcao-action-card__icon">
-              <FaSignInAlt size={20} />
-            </span>
-            <span className="recepcao-action-card__body">
-              <strong>Check-in</strong>
-              <small>
-                {!eventoDoDia
-                  ? 'Sem evento do dia disponível para check-in'
-                  : podeCheckinNoEventoDoDia
-                    ? `Iniciar operação no evento do dia: ${eventoDoDia.nome}`
-                    : `Check-in indisponível para o evento do dia: ${eventoDoDia.nome}`}
-              </small>
-            </span>
-          </button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <input
+                ref={nomeInputRef}
+                type="text"
+                value={nomeBusca}
+                onChange={(e) => {
+                  setNomeBusca(e.target.value);
+                  setConvidadoSelecionado(null);
+                }}
+                placeholder="Digite o nome do convidado..."
+                disabled={!eventoSelecionado?.can_consultar_lista || validandoNome}
+                style={{
+                  flex: '1 1 280px',
+                  minWidth: 220,
+                  padding: '10px 12px',
+                  borderRadius: 10,
+                  border: '1px solid #cbd5e1',
+                  outline: 'none',
+                }}
+              />
+              <button
+                type="button"
+                className="add-button"
+                onClick={handleConfirmarConvidadoSelecionado}
+                disabled={!eventoSelecionado?.can_consultar_lista || validandoNome}
+              >
+                {validandoNome ? 'Validando...' : 'Confirmar entrada'}
+              </button>
+            </div>
 
-          <button
-            type="button"
-            className="recepcao-action-card"
-            onClick={() => eventoEmOperacao?.id && handleCheckout(eventoEmOperacao)}
-            disabled={!eventoEmOperacao?.can_checkout}
-          >
-            <span className="recepcao-action-card__icon">
-              <FaSignOutAlt size={20} />
-            </span>
-            <span className="recepcao-action-card__body">
-              <strong>Checkout</strong>
-              <small>
-                {!eventoEmOperacao
-                  ? 'Sem evento com check-in ativo para checkout'
-                  : eventoEmOperacao.can_checkout
-                    ? `Encerrar operação em: ${eventoEmOperacao.nome}`
-                    : `Checkout indisponível para: ${eventoEmOperacao.nome}`}
-              </small>
-            </span>
-          </button>
+            {!eventoSelecionado?.can_consultar_lista && (
+              <p style={{ margin: 0, color: '#b91c1c', fontWeight: 600 }}>
+                Selecione um evento liberado para validação hoje.
+              </p>
+            )}
 
-          <button
-            type="button"
-            className="recepcao-action-card"
-            onClick={handleCardLerQr}
-            disabled={!eventoSelecionado?.can_read_qr}
-          >
-            <span className="recepcao-action-card__icon">
-              <FaQrcode size={20} />
-            </span>
-            <span className="recepcao-action-card__body">
-              <strong>Ler QR Code</strong>
-              <small>
-                {eventoSelecionado
-                  ? 'Confirmar entrada do convidado via QR'
-                  : 'Selecione um evento para iniciar'}
-              </small>
-            </span>
-          </button>
+            {buscandoConvidados && (
+              <p style={{ margin: 0, color: '#475569' }}>Buscando convidados...</p>
+            )}
 
-          <button
-            type="button"
-            className="recepcao-action-card"
-            onClick={handleCardValidarNome}
-            disabled={!eventoSelecionado?.can_read_qr || validandoNome}
-          >
-            <span className="recepcao-action-card__icon">
-              <FaUserCheck size={20} />
-            </span>
-            <span className="recepcao-action-card__body">
-              <strong>Validar via Nome</strong>
-              <small>
-                {eventoSelecionado
-                  ? validandoNome
-                    ? 'Validando convidado...'
-                    : 'Digite o nome completo em uma janela rápida'
-                  : 'Selecione um evento para iniciar'}
-              </small>
-            </span>
-          </button>
-        </div>
+            {!buscandoConvidados && String(nomeBusca || '').trim().length >= 2 && convidadosEncontrados.length === 0 && (
+              <p style={{ margin: 0, color: '#64748b' }}>Nenhum convidado encontrado para este nome.</p>
+            )}
+
+            {convidadosEncontrados.length > 0 && (
+              <div style={{ display: 'grid', gap: 6 }}>
+                {convidadosEncontrados.map((convidado) => {
+                  const selecionado = String(convidadoSelecionado?.id || '') === String(convidado.id);
+                  return (
+                    <button
+                      key={convidado.id}
+                      type="button"
+                      onClick={() => handleSelecionarConvidado(convidado)}
+                      style={{
+                        textAlign: 'left',
+                        borderRadius: 10,
+                        border: selecionado ? '1px solid #2abb98' : '1px solid #e2e8f0',
+                        background: selecionado ? '#ecfdf5' : '#fff',
+                        padding: '10px 12px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, color: '#0f172a' }}>{convidado.nome}</div>
+                      <div style={{ marginTop: 2, fontSize: 12, color: '#64748b' }}>
+                        {convidado.cpf_mascarado || 'Sem CPF'}
+                        {convidado.entrada_confirmada ? ' · Entrada já confirmada' : ''}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="units-cards-grid">
