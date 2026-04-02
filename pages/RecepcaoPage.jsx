@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { eventoCerimonialAPI, listaConvidadosCerimonialAPI } from '../services/api';
+import api, * as apiServices from '../services/api';
 import QrCodeScanner from '../components/Eventos/QrCodeScanner';
 import {
   FaCalendarCheck,
@@ -16,6 +16,18 @@ import {
 } from 'react-icons/fa';
 import '../styles/UsersPage.css';
 import '../styles/UnitsCards.css';
+
+const eventoCerimonialAPI = apiServices.eventoCerimonialAPI || {
+  recepcaoPainel: () => api.get('/cadastros/eventos-cerimonial/recepcao/painel/'),
+  recepcaoCheckin: (eventoId) => api.post(`/cadastros/eventos-cerimonial/${eventoId}/recepcao/checkin/`),
+  recepcaoCheckout: (eventoId) => api.post(`/cadastros/eventos-cerimonial/${eventoId}/recepcao/checkout/`),
+  recepcaoConfirmarPorNome: (eventoId, nome_completo) =>
+    api.post(`/cadastros/eventos-cerimonial/${eventoId}/recepcao/confirmar-por-nome/`, { nome_completo }),
+};
+
+const listaConvidadosCerimonialAPI = apiServices.listaConvidadosCerimonialAPI || {
+  confirmarPorQrCode: (token) => api.post('/cadastros/listas-convidados-cerimonial/confirmar-por-qrcode/', { token }),
+};
 
 function formatDateTime(value) {
   if (!value) return '-';
