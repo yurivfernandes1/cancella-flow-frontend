@@ -7,6 +7,7 @@ import AddUserDropdown from '../components/Users/AddUserDropdown';
 import UsersCards from '../components/Users/UsersCards';
 import PasswordResetModal from '../components/Users/PasswordResetModal';
 import GenericTable from '../components/GenericTable';
+import { useToast } from '../components/common/Toast';
 import api, * as apiServices from '../services/api';
 import { generateStrongPassword } from '../utils/passwordGenerator';
 import { validateCPF } from '../utils/validators';
@@ -56,6 +57,7 @@ const listaConvidadosCerimonialAPI = apiServices.listaConvidadosCerimonialAPI ||
   removerConvidado: (listaId, convidadoId) => api.delete(`/cadastros/listas-convidados-cerimonial/${listaId}/convidados/${convidadoId}/delete/`),
   confirmarEntrada: (listaId, convidadoId) => api.patch(`/cadastros/listas-convidados-cerimonial/${listaId}/convidados/${convidadoId}/confirmar-entrada/`),
   enviarQrCode: (listaId, convidadoId) => api.post(`/cadastros/listas-convidados-cerimonial/${listaId}/convidados/${convidadoId}/enviar-qrcode/`),
+  downloadQrCode: (token) => api.get('/cadastros/listas-convidados-cerimonial/download-qrcode/', { params: { token }, responseType: 'blob' }),
 };
 
 const formatDateTime = (value) => {
@@ -320,6 +322,7 @@ const CONVIDADOS_PAGE_SIZE = 5;
 
 function CerimonialistaPage() {
   const { user } = useAuth();
+  const toast = useToast();
   const [searchParams] = useSearchParams();
   const hasAccess = user?.groups?.some((g) => g.name === 'Cerimonialista');
   const activeTabRaw = searchParams.get('tab') || 'eventos';
@@ -1296,6 +1299,44 @@ function CerimonialistaPage() {
     }
   };
 
+  const baixarQrCodeConvidado = async (convidado) => {
+    const token = String(convidado?.qr_token || '').trim();
+    if (!token) {
+      toast?.push('QR Code indisponível para este convidado.', { type: 'error' });
+      return;
+    }
+
+    try {
+      const response = await listaConvidadosCerimonialAPI.downloadQrCode(token);
+      const blob = response?.data instanceof Blob
+        ? response.data
+        : new Blob([response?.data], { type: 'image/png' });
+
+      const disposition = response?.headers?.['content-disposition'] || '';
+      const match = disposition.match(/filename\*=UTF-8''([^;]+)|filename=\"?([^\";]+)\"?/i);
+      let filename = `qrcode-${String(convidado?.nome || 'convidado').trim().replace(/\s+/g, '-').toLowerCase()}.png`;
+      if (match) {
+        try {
+          filename = decodeURIComponent(match[1] || match[2] || filename);
+        } catch {
+          filename = match[1] || match[2] || filename;
+        }
+      }
+
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Erro ao baixar QR Code do convidado', err);
+      toast?.push(err.response?.data?.error || 'Não foi possível baixar o QR Code agora.', { type: 'error' });
+    }
+  };
+
   const getListaByEventoId = (eventoId) => {
     return listasConvidados.find((lista) => String(lista.evento) === String(eventoId));
   };
@@ -1752,10 +1793,10 @@ function CerimonialistaPage() {
         horario_saida: null,
       });
       await loadFuncionariosEvento(eventoId);
-      alert('Checkout desfeito com sucesso.');
+      toast?.push('Checkout desfeito com sucesso.', { type: 'success' });
     } catch (err) {
       console.error('Erro ao desfazer checkout', err);
-      alert(err.response?.data?.error || 'Não foi possível desfazer o checkout.');
+      toast?.push(err.response?.data?.error || 'Não foi possível desfazer o checkout.', { type: 'error' });
     }
   };
 
@@ -1768,10 +1809,10 @@ function CerimonialistaPage() {
         horario_saida: null,
       });
       await loadFuncionariosEvento(eventoId);
-      alert('Check-in desfeito com sucesso.');
+      toast?.push('Check-in desfeito com sucesso.', { type: 'success' });
     } catch (err) {
       console.error('Erro ao desfazer check-in', err);
-      alert(err.response?.data?.error || 'Não foi possível desfazer o check-in.');
+      toast?.push(err.response?.data?.error || 'Não foi possível desfazer o check-in.', { type: 'error' });
     }
   };
 
@@ -2277,6 +2318,17 @@ function CerimonialistaPage() {
                                       aria-label="Enviar QR Code"
                                     >
                                       <FaQrcode />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="save-button"
+                                      onClick={() => baixarQrCodeConvidado(c)}
+                                      disabled={!c.qr_token}
+                                      style={!c.qr_token ? { opacity: 0.45, cursor: 'not-allowed' } : undefined}
+                                      title={c.qr_token ? 'Baixar QR Code' : 'QR Code indisponível'}
+                                      aria-label="Baixar QR Code"
+                                    >
+                                      <FaDownload />
                                     </button>
                                     <button
                                       type="button"
