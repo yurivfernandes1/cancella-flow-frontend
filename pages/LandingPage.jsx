@@ -123,7 +123,7 @@ function LandingPage() {
     <div className="landing-root">
       <header className="public-header">
         <div className="public-header-content">
-          <Link to="/" className="brand">
+          <Link to="/home" className="brand">
             <img src={logo} alt="Cancella Flow" className="brand-logo-img" />
           </Link>
           <nav className="public-nav">

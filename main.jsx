@@ -6,6 +6,8 @@ import ScrollToTop from './components/common/ScrollToTop';
 import GroupsCardsInjector from './components/Global/GroupsCardsInjector';
 import LoginPage from './pages/LoginPage';
 import LandingPage from './pages/LandingPage';
+import FlowIntroPage from './pages/FlowIntroPage';
+import SystemLinksPage from './pages/SystemLinksPage';
 import SignupPage from './pages/SignupPage';
 import SignupEventoPage from './pages/SignupEventoPage';
 import WelcomePage from './pages/WelcomePage';
@@ -76,7 +78,9 @@ root.render(
         <GroupsCardsInjector />
         <Routes>
           {/* Rotas públicas */}
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<FlowIntroPage />} />
+          <Route path="/home" element={<LandingPage />} />
+          <Route path="/links" element={<SystemLinksPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/signup/:slug" element={<SignupPage />} />
