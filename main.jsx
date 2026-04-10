@@ -66,6 +66,30 @@ const ProtectedAdminRoute = ({ children }) => {
   return children;
 };
 
+const isPwaSession = () => {
+  if (typeof window === 'undefined') return false;
+
+  const isStandalone = window.matchMedia?.('(display-mode: standalone)').matches;
+  const isFullscreen = window.matchMedia?.('(display-mode: fullscreen)').matches;
+  const isIOSStandalone = window.navigator?.standalone === true;
+  const isAndroidTwa = typeof document !== 'undefined' && document.referrer?.startsWith('android-app://');
+
+  return Boolean(isStandalone || isFullscreen || isIOSStandalone || isAndroidTwa);
+};
+
+const RootEntryRoute = () => {
+  const { user, loading } = useAuth();
+
+  if (!isPwaSession()) {
+    return <FlowIntroPage />;
+  }
+
+  if (loading) return null;
+
+  const token = localStorage.getItem('token');
+  return token && user ? <Navigate to="/welcome" replace /> : <Navigate to="/login" replace />;
+};
+
 // ─── Root ──────────────────────────────────────────────────────
 const root = ReactDOM.createRoot(document.getElementById('root'));
 
@@ -78,7 +102,7 @@ root.render(
         <GroupsCardsInjector />
         <Routes>
           {/* Rotas públicas */}
-          <Route path="/" element={<FlowIntroPage />} />
+          <Route path="/" element={<RootEntryRoute />} />
           <Route path="/home" element={<LandingPage />} />
           <Route path="/links" element={<SystemLinksPage />} />
           <Route path="/login" element={<LoginPage />} />
